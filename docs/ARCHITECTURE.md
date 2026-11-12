@@ -52,30 +52,35 @@ Use explicit SQL and versioned migrations. Select a maintained SQLite driver and
 | Background work | Durable image/email jobs, bounded retries, cleanup. |
 | Persistence | Queries, transactions, migrations, database configuration. |
 
-Handlers call application services; services own authorization and transaction boundaries. SQL ownership conditions remain required even if a handler already checked ownership.
+Handlers call application services through typed commands and results. Services enforce authorization and validate domain policies. Repository operations execute state-dependent checks and writes in one SQLite transaction; ownership conditions remain in SQL even after application authorization.
 
-Suggested repository layout:
+Implemented repository layout:
 
 ```text
-cmd/mindflow/             Go entry point and embedded release frontend
-internal/httpapi/        HTTP handlers and middleware
-internal/identity/       Accounts, setup, sessions, authorization
-internal/workspace/      Workspace/page operations
-internal/document/       Document validation and saving
-internal/editor/         Leases and event delivery
-internal/media/          Uploads and image processing
-internal/jobs/           Durable background work
-internal/store/          SQLite queries and transactions
-internal/store/migrations/
-web/                     React/TypeScript frontend
-api/openapi.yaml         API contract, added during implementation
-deploy/                  Container and TrueNAS YAML, added during implementation
+cmd/mindflow/             Go entry point
+internal/domain/         Models, validation, account/lease/media policies
+internal/application/    Use cases and typed repository interfaces
+internal/app/            HTTP adapters, SSE and composition root (app.go)
+internal/store/          SQLite adapters, transactions, SMTP/image workers
+internal/architecture/   Tests enforcing dependency direction
+web/src/features/        Account, workspace and editor components
+web/                     Shared frontend modules and embedded release assets
+api/openapi.yaml         API contract
+deploy/                  Container and TrueNAS YAML
 docs/                    Product and technical documents
 ```
+
+Domain code has no dependency on HTTP, SQL, application services or adapters. Application code depends on domain models and interfaces; the SQLite adapter implements those interfaces. Only the HTTP composition root constructs persistence adapters. Boundary tests enforce these import rules, and the adapter keeps its database handle private.
+
+Keep this a small modular application: explicit constructors, ordinary Go interfaces and SQL transactions. No dependency injection container, generic command dispatcher, ORM, event sourcing, or separate domain service per table. Durable email/image jobs are infrastructure, separate from the domain policies they use.
 
 ## 4. Frontend architecture
 
 React manages application navigation, forms, tabs, toolbars, settings, and editor state. Vite builds the frontend for embedding in the Go release. This is a browser-rendered app; server-side rendering is unnecessary for its private editor flows. [React setup documentation](https://react.dev/learn/build-a-react-app-from-scratch)
+
+The frontend is organized by feature. `accounts` contains authentication, administration and shared SMTP fields; `workspaces` contains the dashboard, page tabs and naming dialogs. The editor separates the document/gesture controller, Konva scene, element rendering, HTML text editor, toolbar, selection inspector, help and keyboard shortcuts. Shared geometry and the save-session state machine remain independent modules.
+
+The application owns the authenticated event stream and passes typed events and callbacks through props. Reauthentication is an explicit callback; there is no global custom-event bus. Hooks declare their dependencies, and TypeScript rejects unused locals and parameters.
 
 Keep three categories of state separate:
 

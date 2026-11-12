@@ -104,9 +104,17 @@ Image decoding and processing are serialized to bound memory; the database uses 
 ## Tests
 
 ```sh
+make lint
 make test
 cd web && npx playwright install chromium firefox
 cd .. && make test-e2e
 ```
 
 Browser tests run a temporary backend on `127.0.0.1:8087` with a temporary SQLite database and a local, non-delivering SMTP target. Test data is removed afterward. They exercise setup/login, canvas composition, lasso/grouping, images/transforms/variants, persistence, two-session takeover with disconnected recovery, and a large-page fixture. Backend tests cover access isolation, token lifecycle, revocation/deletion, and save fencing/idempotency. Unit tests cover geometry and save-state edge cases.
+
+
+`make verify-container` builds the production image and tests it with disposable Docker volumes, an HTTPS proxy and a capturing TLS SMTP server. Requires Docker, Python 3 and OpenSSL. It checks secure cookies, SSE delivery, invitations, implicit TLS/STARTTLS, owner isolation, image originals/variants, save retries and takeover, restart persistence, snapshot restore and credential revocation. The application runs without root, with a read-only root filesystem. Fixture email stays inside the test environment; the script removes its own containers, network and volumes afterward.
+
+GitHub Actions runs these checks on pushes and pull requests in three independent jobs: quality (Go formatting/vet/race tests, ESLint including React hooks, Prettier, TypeScript/build, frontend unit tests and dependency audit), Chrome/Firefox acceptance, and production container verification. Actions are pinned to commit hashes. Browser failures upload test artifacts. Hosted runs start once these commits are pushed to GitHub.
+
+The frontend package override pins `minimatch` to 11.0.8 to resolve development-tool dependency advisories. Keep the override under review when updating ESLint dependencies; `npm audit` is checked in CI.
