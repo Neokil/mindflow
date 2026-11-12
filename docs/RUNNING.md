@@ -35,20 +35,20 @@ For local testing of a container over plain HTTP, explicitly set `MINDFLOW_DEV=1
 
 ### TrueNAS Custom App
 
-1. Build and push the image to a registry accessible to your TrueNAS server:
+1. Use `neokil/mindflow:<version>` after a successful publishing run, or build and push it yourself:
 
    ```sh
-   docker build -t YOUR_REGISTRY/mindflow:0.1.0 .
-   docker push YOUR_REGISTRY/mindflow:0.1.0
+   docker build -t neokil/mindflow:0.1.0 .
+   docker push neokil/mindflow:0.1.0
    ```
 
 2. Create a local dataset for application data, for example `/mnt/POOL/apps/mindflow`. Grant UID/GID `10001:10001` read/write and directory traversal permissions. Do not put the database on an SMB/NFS mount.
-3. Edit [deploy/truenas.yaml](../deploy/truenas.yaml), replacing `YOUR_REGISTRY`, `POOL`, the dataset path, and the host port as needed.
+3. Edit [deploy/truenas.yaml](../deploy/truenas.yaml), selecting the image tag and replacing `POOL`, the dataset path, and the host port as needed.
 4. In Apps → Discover Apps → three-dot menu → Custom App → Install via YAML, paste the edited YAML.
 5. Read the application startup log for its one-time setup credential. Open your configured public hostname and complete setup.
 6. Verify login, saving across restart, SMTP test delivery, and snapshot restore on your installed TrueNAS version.
 
-No registry image has been published by this implementation. The host's Docker daemon must be running to build or test the container. An amd64 server needs an amd64 image: build on that architecture or use Docker Buildx with an explicit platform. The pure-Go application can be cross-compiled, but image builds must still be validated on the target.
+The publishing job targets `neokil/mindflow`; availability of an image requires a successful GitHub Actions publishing run. The host's Docker daemon must be running to build or test the container. An amd64 server needs an amd64 image: build on that architecture or use Docker Buildx with an explicit platform. The pure-Go application can be cross-compiled, but image builds must still be validated on the target.
 
 ## First-run setup and accounts
 
@@ -111,11 +111,11 @@ MINDFLOW_DATA=./data go run ./cmd/mindflow migrate
 docker compose -f deploy/compose.yaml run --rm mindflow migrate
 ```
 
-The command discovers the embedded domain catalog, resolves schema dependencies, applies pending migrations and exits. It starts no HTTP server and requires no account or SMTP setup. Repeated runs are safe. Keep one application/migration process against the SQLite file at a time.
+The command discovers the embedded domain catalog, applies pending migrations and exits. The four top-level schemas have no migration dependencies on one another. It starts no HTTP server and requires no account or SMTP setup. Repeated runs are safe. Keep one application/migration process against the SQLite file at a time.
 
-History is independent: `goose_invitation_version` tracks invitation migrations, `goose_canvas_version` tracks canvas migrations, and equivalent tables track the remaining stored domains. Existing version-2 databases are adopted by the initial Goose migrations without deleting users, pages, images or settings. Newer unsupported history is refused. The old version table is retired by an installation-domain migration.
+History is independent: `goose_account_version`, `goose_workspace_version`, `goose_email_version` and `goose_installation_version`. Subdomains share their parent's schema and history. Initial development scripts were replaced during domain consolidation; databases from the previous layout are not supported. Start this revision with a fresh development database. The app never deletes an existing database automatically.
 
-For a new migration, append an `Up`/`Down` Goose SQL file under `internal/<domain>/storage/migrations`; do not edit already applied files. Each migration package exposes its embedded `Files()` and its `Dependencies()`. When adding a domain migration package, run `make generate` (or `go generate ./internal/mindflow/storage`) to discover and link it automatically. Then run `make generate` for sqlc bindings and commit the SQL and generated files together. The binary embeds SQL, so release containers need no migration-directory mount or standalone Goose executable.
+For a new migration, append an `Up`/`Down` Goose SQL file under `internal/<domain>/storage/migrations`; do not edit already applied files. Each migration package exposes its embedded `Files()`. When adding a domain migration package, run `make generate` (or `go generate ./internal/mindflow/storage`) to discover and link it automatically. Then run `make generate` for sqlc bindings and commit the SQL and generated files together. The binary embeds SQL, so release containers need no migration-directory mount or standalone Goose executable.
 
 Each migration is atomic, but an upgrade across domains is not one transaction. If a migration fails, its own changes/history roll back; earlier successful domains stay applied and a retry resumes remaining work. Use the matching image and pre-upgrade snapshot for release rollback. The application does not expose `down` commands that could partially roll back collaborating domains.
 
@@ -132,10 +132,17 @@ Browser tests run a temporary backend on `127.0.0.1:8087` with a temporary SQLit
 
 `make verify-container` builds the production image and tests it with disposable Docker volumes, an HTTPS proxy and a capturing TLS SMTP server. Requires Docker, Python 3 and OpenSSL. It first runs the standalone `migrate` command twice, then checks secure cookies, SSE delivery, invitations, implicit TLS/STARTTLS, owner isolation, image originals/variants, save retries and takeover, restart persistence, snapshot restore and credential revocation. The application runs without root, with a read-only root filesystem. Fixture email stays inside the test environment; the script removes its own containers, network and volumes afterward.
 
-`make tools` installs pinned sqlc 1.31.1 and golangci-lint 2.15.0 binaries under `.cache/tools/`. Goose 3.30.0 is a normal Go dependency. `make lint` validates linter configuration, checks formatting, checks the migration catalog and uses `sqlc diff` to reject stale query bindings. Each domain's database code lives under `internal/<domain>/storage`, including repository code, queries, generated files and migrations. `sqlc` reads the Goose migration directories as its schema source. Edit SQL rather than generated files.
+`make tools` installs pinned sqlc 1.31.1 and golangci-lint 2.15.0 binaries under `.cache/tools/`. Goose 3.30.0 is a normal Go dependency. `make lint` validates linter configuration, checks formatting, checks the migration catalog and uses `sqlc diff` to reject stale query bindings. Each top-level domain's database code lives under `internal/<domain>/storage`; its subdomains use that same storage, including repository code, queries, generated files and migrations. `sqlc` reads the Goose migration directories as its schema source. Edit SQL rather than generated files.
 
 `.golangci.yml` uses `default: all` and disables exactly `funlen`, `lll`, `depguard`, `exhaustruct`, `exhaustruct_v5`, `dupl`, `cyclop`, `maintidx`, `canonicalheader`, `wsl`, `wsl_v5` and `gomodguard`. Internal typed errors can pass through package boundaries; external failures receive operation context. JSON naming preserves the existing `publicURL` spelling. Narrow, explained gosec suppressions cover the fixed-loopback health check, bounded multipart parsing, deliberate development cookies and disposable test credentials. All other enabled checks apply to production and test code, apart from golangci-lint's standard generated-code handling.
 
 GitHub Actions runs these checks on pushes and pull requests in three jobs: quality (pinned tools, migration catalog and SQL generation freshness, golangci-lint/formatting/race tests, ESLint/React hooks, Prettier, TypeScript/build, frontend unit tests and dependency audit), Chrome/Firefox acceptance, and production container verification. Actions are pinned to commit hashes. Browser failures upload test artifacts. Hosted runs start once these commits are pushed to GitHub.
 
 The frontend package override pins `minimatch` to 11.0.8 to resolve development-tool dependency advisories. Keep the override under review when updating ESLint dependencies; `npm audit` is checked in CI.
+
+
+## Docker Hub publishing
+
+After quality, browser and container verification succeed, pushes to `main` publish `neokil/mindflow:edge` and a `sha-<short-commit>` tag. Pushing a semantic version tag such as `v0.1.0` publishes `neokil/mindflow:0.1.0`; stable versions also receive `latest`. Prerelease tags do not replace `latest`. Pull requests and manual CI runs do not publish images.
+
+The image job uses the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` to authenticate to Docker Hub. It builds Linux amd64 and arm64 images with commit-pinned official Docker actions, following the [Docker GitHub Actions workflow](https://docs.docker.com/build/ci/github-actions/). The image name is fixed to `neokil/mindflow`, independently of the login username. No publishing credentials are needed by the test jobs. Use a version tag or digest for stable deployments; the TrueNAS example defaults to `edge` for initial development.
