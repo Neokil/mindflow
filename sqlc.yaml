@@ -1,12 +1,24 @@
 version: "2"
 sql:
   - engine: sqlite
-    schema: internal/database/schema.sql
-    queries: internal/authentication/queries
+    schema:
+      - internal/installation/schema.sql
+      - internal/account/schema.sql
+      - internal/session/schema.sql
+      - internal/invitation/schema.sql
+      - internal/email/schema.sql
+      - internal/workspace/schema.sql
+      - internal/page/schema.sql
+      - internal/canvas/schema.sql
+      - internal/editor/schema.sql
+      - internal/image/schema.sql
+    queries: internal/account/queries
     gen:
       go:
-        package: dbquery
-        out: internal/authentication/dbquery
+        package: account
+        out: internal/account
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
         emit_empty_slices: true
         omit_unused_structs: true
         overrides:
@@ -35,12 +47,438 @@ sql:
           - db_type: INTEGER
             go_type: int
   - engine: sqlite
-    schema: internal/database/schema.sql
+    schema:
+      - internal/installation/schema.sql
+      - internal/account/schema.sql
+      - internal/session/schema.sql
+      - internal/invitation/schema.sql
+      - internal/email/schema.sql
+      - internal/workspace/schema.sql
+      - internal/page/schema.sql
+      - internal/canvas/schema.sql
+      - internal/editor/schema.sql
+      - internal/image/schema.sql
+    queries: internal/session/queries
+    gen:
+      go:
+        package: session
+        out: internal/session
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
+        emit_empty_slices: true
+        omit_unused_structs: true
+        overrides:
+          - column: save_receipts.expires_at
+            go_type: int64
+          - column: page_leases.expires_at
+            go_type: int64
+          - column: page_leases.epoch
+            go_type: int64
+          - column: pages.updated_at
+            go_type: int64
+          - column: workspaces.updated_at
+            go_type: int64
+          - column: workspaces.created_at
+            go_type: int64
+          - column: assets.created_at
+            go_type: int64
+          - column: users.created_at
+            go_type: int64
+          - column: jobs.run_at
+            go_type: int64
+          - column: account_tokens.expires_at
+            go_type: int64
+          - column: sessions.expires_at
+            go_type: int64
+          - db_type: INTEGER
+            go_type: int
+  - engine: sqlite
+    schema:
+      - internal/installation/schema.sql
+      - internal/account/schema.sql
+      - internal/session/schema.sql
+      - internal/invitation/schema.sql
+      - internal/email/schema.sql
+      - internal/workspace/schema.sql
+      - internal/page/schema.sql
+      - internal/canvas/schema.sql
+      - internal/editor/schema.sql
+      - internal/image/schema.sql
+    queries: internal/invitation/queries
+    gen:
+      go:
+        package: invitation
+        out: internal/invitation
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
+        emit_empty_slices: true
+        omit_unused_structs: true
+        overrides:
+          - column: save_receipts.expires_at
+            go_type: int64
+          - column: page_leases.expires_at
+            go_type: int64
+          - column: page_leases.epoch
+            go_type: int64
+          - column: pages.updated_at
+            go_type: int64
+          - column: workspaces.updated_at
+            go_type: int64
+          - column: workspaces.created_at
+            go_type: int64
+          - column: assets.created_at
+            go_type: int64
+          - column: users.created_at
+            go_type: int64
+          - column: jobs.run_at
+            go_type: int64
+          - column: account_tokens.expires_at
+            go_type: int64
+          - column: sessions.expires_at
+            go_type: int64
+          - db_type: INTEGER
+            go_type: int
+  - engine: sqlite
+    schema:
+      - internal/installation/schema.sql
+      - internal/account/schema.sql
+      - internal/session/schema.sql
+      - internal/invitation/schema.sql
+      - internal/email/schema.sql
+      - internal/workspace/schema.sql
+      - internal/page/schema.sql
+      - internal/canvas/schema.sql
+      - internal/editor/schema.sql
+      - internal/image/schema.sql
+    queries: internal/passwordreset/queries
+    gen:
+      go:
+        package: passwordreset
+        out: internal/passwordreset
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
+        emit_empty_slices: true
+        omit_unused_structs: true
+        overrides:
+          - column: save_receipts.expires_at
+            go_type: int64
+          - column: page_leases.expires_at
+            go_type: int64
+          - column: page_leases.epoch
+            go_type: int64
+          - column: pages.updated_at
+            go_type: int64
+          - column: workspaces.updated_at
+            go_type: int64
+          - column: workspaces.created_at
+            go_type: int64
+          - column: assets.created_at
+            go_type: int64
+          - column: users.created_at
+            go_type: int64
+          - column: jobs.run_at
+            go_type: int64
+          - column: account_tokens.expires_at
+            go_type: int64
+          - column: sessions.expires_at
+            go_type: int64
+          - db_type: INTEGER
+            go_type: int
+  - engine: sqlite
+    schema:
+      - internal/installation/schema.sql
+      - internal/account/schema.sql
+      - internal/session/schema.sql
+      - internal/invitation/schema.sql
+      - internal/email/schema.sql
+      - internal/workspace/schema.sql
+      - internal/page/schema.sql
+      - internal/canvas/schema.sql
+      - internal/editor/schema.sql
+      - internal/image/schema.sql
+    queries: internal/email/queries
+    gen:
+      go:
+        package: email
+        out: internal/email
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
+        emit_empty_slices: true
+        omit_unused_structs: true
+        overrides:
+          - column: save_receipts.expires_at
+            go_type: int64
+          - column: page_leases.expires_at
+            go_type: int64
+          - column: page_leases.epoch
+            go_type: int64
+          - column: pages.updated_at
+            go_type: int64
+          - column: workspaces.updated_at
+            go_type: int64
+          - column: workspaces.created_at
+            go_type: int64
+          - column: assets.created_at
+            go_type: int64
+          - column: users.created_at
+            go_type: int64
+          - column: jobs.run_at
+            go_type: int64
+          - column: account_tokens.expires_at
+            go_type: int64
+          - column: sessions.expires_at
+            go_type: int64
+          - db_type: INTEGER
+            go_type: int
+  - engine: sqlite
+    schema:
+      - internal/installation/schema.sql
+      - internal/account/schema.sql
+      - internal/session/schema.sql
+      - internal/invitation/schema.sql
+      - internal/email/schema.sql
+      - internal/workspace/schema.sql
+      - internal/page/schema.sql
+      - internal/canvas/schema.sql
+      - internal/editor/schema.sql
+      - internal/image/schema.sql
+    queries: internal/installation/queries
+    gen:
+      go:
+        package: installation
+        out: internal/installation
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
+        emit_empty_slices: true
+        omit_unused_structs: true
+        overrides:
+          - column: save_receipts.expires_at
+            go_type: int64
+          - column: page_leases.expires_at
+            go_type: int64
+          - column: page_leases.epoch
+            go_type: int64
+          - column: pages.updated_at
+            go_type: int64
+          - column: workspaces.updated_at
+            go_type: int64
+          - column: workspaces.created_at
+            go_type: int64
+          - column: assets.created_at
+            go_type: int64
+          - column: users.created_at
+            go_type: int64
+          - column: jobs.run_at
+            go_type: int64
+          - column: account_tokens.expires_at
+            go_type: int64
+          - column: sessions.expires_at
+            go_type: int64
+          - db_type: INTEGER
+            go_type: int
+  - engine: sqlite
+    schema:
+      - internal/installation/schema.sql
+      - internal/account/schema.sql
+      - internal/session/schema.sql
+      - internal/invitation/schema.sql
+      - internal/email/schema.sql
+      - internal/workspace/schema.sql
+      - internal/page/schema.sql
+      - internal/canvas/schema.sql
+      - internal/editor/schema.sql
+      - internal/image/schema.sql
     queries: internal/workspace/queries
     gen:
       go:
-        package: dbquery
-        out: internal/workspace/dbquery
+        package: workspace
+        out: internal/workspace
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
+        emit_empty_slices: true
+        omit_unused_structs: true
+        overrides:
+          - column: save_receipts.expires_at
+            go_type: int64
+          - column: page_leases.expires_at
+            go_type: int64
+          - column: page_leases.epoch
+            go_type: int64
+          - column: pages.updated_at
+            go_type: int64
+          - column: workspaces.updated_at
+            go_type: int64
+          - column: workspaces.created_at
+            go_type: int64
+          - column: assets.created_at
+            go_type: int64
+          - column: users.created_at
+            go_type: int64
+          - column: jobs.run_at
+            go_type: int64
+          - column: account_tokens.expires_at
+            go_type: int64
+          - column: sessions.expires_at
+            go_type: int64
+          - db_type: INTEGER
+            go_type: int
+  - engine: sqlite
+    schema:
+      - internal/installation/schema.sql
+      - internal/account/schema.sql
+      - internal/session/schema.sql
+      - internal/invitation/schema.sql
+      - internal/email/schema.sql
+      - internal/workspace/schema.sql
+      - internal/page/schema.sql
+      - internal/canvas/schema.sql
+      - internal/editor/schema.sql
+      - internal/image/schema.sql
+    queries: internal/page/queries
+    gen:
+      go:
+        package: page
+        out: internal/page
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
+        emit_empty_slices: true
+        omit_unused_structs: true
+        overrides:
+          - column: save_receipts.expires_at
+            go_type: int64
+          - column: page_leases.expires_at
+            go_type: int64
+          - column: page_leases.epoch
+            go_type: int64
+          - column: pages.updated_at
+            go_type: int64
+          - column: workspaces.updated_at
+            go_type: int64
+          - column: workspaces.created_at
+            go_type: int64
+          - column: assets.created_at
+            go_type: int64
+          - column: users.created_at
+            go_type: int64
+          - column: jobs.run_at
+            go_type: int64
+          - column: account_tokens.expires_at
+            go_type: int64
+          - column: sessions.expires_at
+            go_type: int64
+          - db_type: INTEGER
+            go_type: int
+  - engine: sqlite
+    schema:
+      - internal/installation/schema.sql
+      - internal/account/schema.sql
+      - internal/session/schema.sql
+      - internal/invitation/schema.sql
+      - internal/email/schema.sql
+      - internal/workspace/schema.sql
+      - internal/page/schema.sql
+      - internal/canvas/schema.sql
+      - internal/editor/schema.sql
+      - internal/image/schema.sql
+    queries: internal/canvas/queries
+    gen:
+      go:
+        package: canvas
+        out: internal/canvas
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
+        emit_empty_slices: true
+        omit_unused_structs: true
+        overrides:
+          - column: save_receipts.expires_at
+            go_type: int64
+          - column: page_leases.expires_at
+            go_type: int64
+          - column: page_leases.epoch
+            go_type: int64
+          - column: pages.updated_at
+            go_type: int64
+          - column: workspaces.updated_at
+            go_type: int64
+          - column: workspaces.created_at
+            go_type: int64
+          - column: assets.created_at
+            go_type: int64
+          - column: users.created_at
+            go_type: int64
+          - column: jobs.run_at
+            go_type: int64
+          - column: account_tokens.expires_at
+            go_type: int64
+          - column: sessions.expires_at
+            go_type: int64
+          - db_type: INTEGER
+            go_type: int
+  - engine: sqlite
+    schema:
+      - internal/installation/schema.sql
+      - internal/account/schema.sql
+      - internal/session/schema.sql
+      - internal/invitation/schema.sql
+      - internal/email/schema.sql
+      - internal/workspace/schema.sql
+      - internal/page/schema.sql
+      - internal/canvas/schema.sql
+      - internal/editor/schema.sql
+      - internal/image/schema.sql
+    queries: internal/editor/queries
+    gen:
+      go:
+        package: editor
+        out: internal/editor
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
+        emit_empty_slices: true
+        omit_unused_structs: true
+        overrides:
+          - column: save_receipts.expires_at
+            go_type: int64
+          - column: page_leases.expires_at
+            go_type: int64
+          - column: page_leases.epoch
+            go_type: int64
+          - column: pages.updated_at
+            go_type: int64
+          - column: workspaces.updated_at
+            go_type: int64
+          - column: workspaces.created_at
+            go_type: int64
+          - column: assets.created_at
+            go_type: int64
+          - column: users.created_at
+            go_type: int64
+          - column: jobs.run_at
+            go_type: int64
+          - column: account_tokens.expires_at
+            go_type: int64
+          - column: sessions.expires_at
+            go_type: int64
+          - db_type: INTEGER
+            go_type: int
+  - engine: sqlite
+    schema:
+      - internal/installation/schema.sql
+      - internal/account/schema.sql
+      - internal/session/schema.sql
+      - internal/invitation/schema.sql
+      - internal/email/schema.sql
+      - internal/workspace/schema.sql
+      - internal/page/schema.sql
+      - internal/canvas/schema.sql
+      - internal/editor/schema.sql
+      - internal/image/schema.sql
+    queries: internal/image/queries
+    gen:
+      go:
+        package: image
+        out: internal/image
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
         emit_empty_slices: true
         omit_unused_structs: true
         overrides:

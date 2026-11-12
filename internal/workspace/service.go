@@ -3,54 +3,35 @@ package workspace
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"mindflow/internal/fault"
-	"mindflow/internal/workspace/dbquery"
-	"sync"
+	"mindflow/internal/page"
 	"time"
+
+	imageasset "mindflow/internal/image"
 )
 
-// Service coordinates workspace operations and their SQLite transactions.
+// NewService constructs workspace operations with explicit page and image collaborators.
+// Activity records workspace recency without depending on page or canvas services.
+// TouchPage updates the parent recency in a document-save transaction.
+
+// Service owns this domain's behavior and persistence.
 type Service struct {
 	db      *sql.DB
-	mediaMu sync.Mutex
+	pages   *page.Service
+	images  *imageasset.Service
 	publish func(string, string, string)
 }
 
-// New constructs the workspace service with explicit dependencies.
-func New(ctx context.Context, db *sql.DB, publish func(string, string, string)) (*Service, error) {
-	s := &Service{db: db, publish: publish}
-	_, err := dbquery.New(db).ExpireLeases(ctx)
-
-	return s, err
+// NewService constructs the domain service with explicit collaborators.
+func NewService(connection *sql.DB, pages *page.Service, images *imageasset.Service, publish func(string, string, string)) *Service {
+	return &Service{db: connection, pages: pages, images: images, publish: publish}
 }
 
-func repositoryError(err error) error {
-	if errors.Is(err, sql.ErrNoRows) {
-		return fault.NotFound()
-	}
+// Activity records workspace recency without a dependency on page or canvas services.
+type Activity struct{}
+
+// TouchPage updates parent workspace recency in the save transaction.
+func (Activity) TouchPage(ctx context.Context, transaction *sql.Tx, pageID string) error {
+	_, err := New(transaction).TouchWorkspace(ctx, TouchWorkspaceParams{UpdatedAt: time.Now().Unix(), ID: pageID})
 
 	return err
-}
-
-// RunWorkers processes due jobs until the context is canceled.
-func (a *Service) RunWorkers(ctx context.Context) {
-	tick := time.NewTicker(workerIntervalSeconds * time.Second)
-	defer tick.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-tick.C:
-			a.RunVariant(ctx)
-			a.cleanup(ctx)
-		}
-	}
-}
-
-// RevokeEditorControl invalidates all leases on a stopped instance after restore.
-func RevokeEditorControl(ctx context.Context, connection *sql.DB) error {
-	_, err := dbquery.New(connection).ExpireLeases(ctx)
-
-	return fault.Wrap("revoke editor control", err)
 }

@@ -9,11 +9,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"mindflow/internal/app"
-	"mindflow/internal/authentication"
-	"mindflow/internal/database"
-	"mindflow/internal/fault"
-	"mindflow/internal/workspace"
+	"mindflow/internal/installation"
+	"mindflow/internal/mindflow"
 	"net"
 	"net/http"
 	"os"
@@ -64,7 +61,7 @@ func run(ctx context.Context) error {
 	if directory == "" {
 		directory = "data"
 	}
-	connection, err := database.Open(ctx, filepath.Join(directory, "mindflow.sqlite"))
+	connection, err := mindflow.OpenData(ctx, filepath.Join(directory, "mindflow.sqlite"))
 	if err != nil {
 		return err
 	}
@@ -72,17 +69,14 @@ func run(ctx context.Context) error {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "revoke-credentials":
-			err = authentication.RevokeCredentials(ctx, connection)
-			if err == nil {
-				err = workspace.RevokeEditorControl(ctx, connection)
-			}
+			err = mindflow.RevokeCredentials(ctx, connection)
 			if err == nil {
 				slog.Info("Sessions, account links, queued token emails, and editor control revoked.")
 			}
 
 			return err
 		case "check-data":
-			err = database.Check(ctx, connection)
+			err = installation.Check(ctx, connection)
 			if err == nil {
 				slog.Info("Database integrity and foreign keys: OK")
 			}
@@ -95,17 +89,17 @@ func run(ctx context.Context) error {
 	token := make([]byte, bootstrapBytes)
 	_, err = rand.Read(token)
 	if err != nil {
-		return fault.Wrap("generate setup credential", err)
+		return wrap("generate setup credential", err)
 	}
 	bootstrap := hex.EncodeToString(token)
-	initialized, err := authentication.SetupComplete(ctx, connection)
+	initialized, err := installation.SetupComplete(ctx, connection)
 	if err != nil {
 		return err
 	}
 	if !initialized {
 		slog.Info("First-run setup credential (operator only): " + bootstrap)
 	}
-	service, err := app.New(ctx, connection, app.Config{Dev: os.Getenv("MINDFLOW_DEV") == "1", Bootstrap: bootstrap})
+	service, err := mindflow.New(ctx, connection, mindflow.Config{Dev: os.Getenv("MINDFLOW_DEV") == "1", Bootstrap: bootstrap})
 	if err != nil {
 		return err
 	}
@@ -124,7 +118,7 @@ func run(ctx context.Context) error {
 		return nil
 	}
 
-	return fault.Wrap("serve HTTP", err)
+	return wrap("serve HTTP", err)
 }
 
 func healthcheck(ctx context.Context, address string) error {
@@ -133,30 +127,38 @@ func healthcheck(ctx context.Context, address string) error {
 	}
 	_, portText, err := net.SplitHostPort(address)
 	if err != nil {
-		return fault.Wrap("healthcheck address", err)
+		return wrap("healthcheck address", err)
 	}
 	port, err := strconv.Atoi(portText)
 	if err != nil {
-		return fault.Wrap("healthcheck port", err)
+		return wrap("healthcheck port", err)
 	}
 	// Health checks always target this container's loopback interface.
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://127.0.0.1:%d/health/ready", port), nil) //nolint:gosec // G704: target is fixed loopback and the only variable is a parsed integer port.
 	if err != nil {
-		return fault.Wrap("healthcheck request", err)
+		return wrap("healthcheck request", err)
 	}
 	client := http.Client{Timeout: healthTimeout}
 	response, err := client.Do(request) //nolint:gosec // G704: the request above is constructed for fixed loopback with a parsed integer port.
 	if err != nil {
-		return fault.Wrap("healthcheck connection", err)
+		return wrap("healthcheck connection", err)
 	}
 	defer func() { _ = response.Body.Close() }()
 	_, err = io.Copy(io.Discard, response.Body)
 	if err != nil {
-		return fault.Wrap("healthcheck response", err)
+		return wrap("healthcheck response", err)
 	}
 	if response.StatusCode != http.StatusOK {
 		return errHealth
 	}
 
 	return nil
+}
+
+func wrap(operation string, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	return fmt.Errorf("%s: %w", operation, err)
 }

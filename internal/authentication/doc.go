@@ -1,2 +1,2 @@
-// Package authentication owns accounts, sessions, invitations, authentication middleware and email delivery.
+// Package authentication owns sign-in orchestration and HTTP authentication middleware.
 package authentication

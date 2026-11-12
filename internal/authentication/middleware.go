@@ -3,15 +3,16 @@ package authentication
 import (
 	"context"
 	"crypto/subtle"
-	"mindflow/internal/fault"
+	"mindflow/internal/account"
+	"mindflow/internal/session"
 	"net/http"
 )
 
 type principalKey struct{}
 
 // Current returns the authenticated caller installed by Middleware.
-func Current(ctx context.Context) Principal {
-	actor, _ := ctx.Value(principalKey{}).(Principal)
+func Current(ctx context.Context) session.Principal {
+	actor, _ := ctx.Value(principalKey{}).(session.Principal)
 
 	return actor
 }
@@ -23,7 +24,7 @@ func (a *Service) Middleware(reject func(http.ResponseWriter, *http.Request, err
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			cookie, err := request.Cookie("mindflow_session")
 			if err != nil {
-				reject(writer, request, fault.Fault("session_expired", "Please sign in."))
+				reject(writer, request, failure("session_expired", "Please sign in."))
 
 				return
 			}
@@ -34,7 +35,7 @@ func (a *Service) Middleware(reject func(http.ResponseWriter, *http.Request, err
 				return
 			}
 			if request.Method != http.MethodGet && request.Method != http.MethodHead && subtle.ConstantTimeCompare([]byte(request.Header.Get("X-CSRF-Token")), []byte(actor.CSRF)) != 1 {
-				reject(writer, request, fault.Fault("csrf", "Refresh the page and try again."))
+				reject(writer, request, failure("csrf", "Refresh the page and try again."))
 
 				return
 			}
@@ -47,7 +48,7 @@ func (a *Service) Middleware(reject func(http.ResponseWriter, *http.Request, err
 func RequireAdministrator(reject func(http.ResponseWriter, *http.Request, error)) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-			err := requireAdministrator(Current(request.Context()))
+			err := account.RequireAdministrator(Current(request.Context()).User)
 			if err != nil {
 				reject(writer, request, err)
 
