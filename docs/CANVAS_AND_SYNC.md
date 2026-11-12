@@ -119,7 +119,7 @@ Every save contains:
 - Unique mutation ID, reused only when retrying exactly the same request.
 - Versioned document snapshot and its referenced uploaded asset IDs.
 
-In one write transaction, the server checks authentication, active account, page ownership, current unexpired lease/epoch, expected revision, payload constraints, and asset ownership. It then commits the document, retained asset links, incremented revision, and a save receipt. Emit change events only after commit.
+In one write transaction, the server checks authentication, active account, full workspace access, current unexpired lease/epoch, expected revision, payload constraints, and asset permission within the target workspace. It then commits the document, retained asset links, incremented revision, and a save receipt. Emit change events only after commit.
 
 A retry with the same mutation ID and same request digest returns the original acknowledgment without applying it again. Reusing an ID with different content is an error. Receipts are proposed to last 24 hours; after expiration, a stale expected revision must still reject a replay. Authorization is checked before returning any receipt, even if the editor no longer owns the lease.
 
@@ -205,7 +205,7 @@ Before committing to Konva, verify:
 
 Proposed performance goals on a recorded representative desktop: median pan/zoom frame time at or below 16.7 ms and 95th percentile below 33.3 ms after visible assets load; local transform feedback within 50 ms; ordinary save acknowledgment within one second on the home-server path excluding upload, debounce, and external-network delays. Report actual fixture sizes, hardware, browser versions, memory, network, and image-decoding costs rather than presenting these targets as guarantees.
 
-Test save retry after a committed-but-lost acknowledgment, edits during an in-flight save, disconnect with pending uploads, lease expiry, simultaneous acquisition/takeover, disconnected old-editor reconnect, session revocation, server restart, page deletion, and read-only refresh while a recovery copy exists. Verify that stale saves never overwrite accepted work and that user content cannot cross ownership boundaries.
+Test save retry after a committed-but-lost acknowledgment, edits during an in-flight save, disconnect with pending uploads, lease expiry, simultaneous acquisition/takeover, disconnected old-editor reconnect, session revocation, server restart, page deletion, and read-only refresh while a recovery copy exists. Verify stale saves never overwrite accepted work and that content cannot cross workspace permission boundaries.
 
 ## Implementation notes
 
@@ -216,3 +216,9 @@ The prototype uses Konva with a renderer-independent persisted model. In-memory 
 An optional image `crop` stores `{x, y, width, height}` as fractions of the original image. Missing crop means the full source. Bounds are validated on the client and server. Rendering converts the crop to pixels in whichever original/variant is decoded. Required variant resolution accounts for the retained fraction, so a narrow crop does not magnify a low-resolution preview. Applying a crop adjusts the element bounds while retaining the source pixels at their existing world positions, including rotation. Reset reverses that calculation. Originals and other placements remain unchanged. Crop edits use normal document history, autosave, duplication and recovery.
 
 Text `verticalAlign` defaults to `top` for existing documents. The renderer uses [Konva vertical alignment](https://konvajs.org/api/Konva.Text.html); the textarea overlay measures wrapping with matching font metrics and applies the corresponding top padding. New font sizes and corner-resize results are integers; legacy fractional sizes are rounded for display and input.
+
+### Shared page control and comments
+
+Lease acquisition/status reports `permission` (`owner`, `full`, `comment`, `read`). Viewing roles load the document with `editable=false` and cannot take over. A full member acquires control only when free or via explicit takeover. Role downgrade/removal increments epochs and clears only leases held by the affected account. Server saves always recheck membership inside the same transaction as document/receipt updates.
+
+Discussion pins and replies use their own endpoints and tables; they never contend for the document writer lease or increment canvas revision. Any permitted reader can view threads, while comment/full roles can post independently of which user holds control. Only workspace owners and thread creators manage threads. SSE notifies current members; comments also poll every five seconds. Revocation removes the rendered document while preserving any existing local unsaved recovery state.

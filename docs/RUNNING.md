@@ -58,7 +58,7 @@ Enter the credential, first administrator email/password, public application URL
 
 SMTP supports required STARTTLS or implicit TLS with certificate verification. Common ports are 587 (STARTTLS) and 465 (TLS), but use your provider's settings. Enter a permitted sender address. The app makes no changes to DNS or your email provider.
 
-Administrators can invite users, resend invitations, trigger resets, deactivate/reactivate users, delete users, and assign roles. At least one active administrator must remain. Administration does not grant access to another user's workspaces/images.
+Administrators can invite users, resend invitations, trigger resets, deactivate/reactivate users, delete users, and assign roles. At least one active administrator must remain. Administration grants no workspace access; another owner can explicitly share a workspace with an administrator just like any user.
 
 Invitations last seven days; reset links last one hour. Resending supersedes older links. Login sessions last 30 days unless revoked. Passwords must contain 15–128 characters. Email sending is queued in SQLite and retries failures; user management shows delivery problems. Check SMTP settings and resend after fixing a terminal failure. Stored SMTP passwords are not returned to the browser; a blank password on settings update retains the existing secret.
 
@@ -113,7 +113,7 @@ docker compose -f deploy/compose.yaml run --rm mindflow migrate
 
 The command discovers the embedded domain catalog, applies pending migrations and exits. The four top-level schemas have no migration dependencies on one another. It starts no HTTP server and requires no account or SMTP setup. Repeated runs are safe. Keep one application/migration process against the SQLite file at a time.
 
-History is independent: `goose_account_version`, `goose_workspace_version`, `goose_email_version` and `goose_installation_version`. Subdomains share their parent's schema and history. Initial development scripts were replaced during domain consolidation; databases from the previous layout are not supported. Start this revision with a fresh development database. The app never deletes an existing database automatically.
+History is independent: `goose_account_version`, `goose_workspace_version`, `goose_email_version` and `goose_installation_version`. Subdomains share their parent's schema and history. Initial development scripts were replaced during domain consolidation; databases from the previous layout are not supported. Existing consolidated databases upgrade in place; only the earlier pre-consolidation layout needs a fresh development database. The app never deletes an existing database automatically.
 
 For a new migration, append an `Up`/`Down` Goose SQL file under `internal/<domain>/storage/migrations`; do not edit already applied files. Each migration package exposes its embedded `Files()`. When adding a domain migration package, run `make generate` (or `go generate ./internal/mindflow/storage`) to discover and link it automatically. Then run `make generate` for sqlc bindings and commit the SQL and generated files together. The binary embeds SQL, so release containers need no migration-directory mount or standalone Goose executable.
 
@@ -152,3 +152,14 @@ The image job uses the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TO
 In Select mode, hovering over movable elements shows a grab cursor and dragging shows a grabbing cursor. Text properties support whole-number font sizes (1–2,000) and horizontal/vertical alignment.
 
 To crop, select one image, open Selection properties and choose **Crop image**. Draw or adjust the rectangle or trim percentages, then Apply. Cancel discards the draft. Reset crop followed by Apply restores the full original. Crops support undo/redo and retain the original file.
+
+
+## Sharing and comments
+
+Click **Private** beside the workspace name to share with an existing active user's email. Choose Read-only, Comment or Full access. The badge becomes **Shared**; only the owner manages its membership menu. Members find the workspace in their workspace list. Sharing sends no email invitations and creates no public link; account invitations remain administrator-managed. Removing the last member makes the workspace private again.
+
+Use **Add comment** in the toolbox and click a canvas point to write a comment. Hover/focus a pin to read and reply. The thread creator or workspace owner can Resolve/Reopen/Delete the thread. Resolved pins can be shown using **Show resolved comments**. Commenting remains available to comment/full roles even while another user owns the canvas edit lease.
+
+This update appends workspace migration 2 and upgrades existing databases automatically. Existing workspaces remain private. Shared image uploads remain with the workspace owner's content if the uploader's account is deleted. Workspace/page copies start without memberships or comment threads.
+
+The multi-user browser tests create disposable invited accounts and read invitation tokens from the temporary fixture's queued email in SQLite using Node's built-in SQLite API. They exercise the actual invite acceptance UI; no token lookup route is exposed by the application and no real email is sent.

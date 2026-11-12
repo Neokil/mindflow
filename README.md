@@ -1,6 +1,6 @@
 # mindflow
 
-A minimalistic, self-hosted infinite canvas for images, shapes, text, and freehand drawing. Private workspaces, tabbed pages, and a quiet interface inspired by Apple applications.
+A minimalistic, self-hosted infinite canvas for images, shapes, text, and freehand drawing. Private-by-default workspaces with sharing and comment threads, tabbed pages, and a quiet interface inspired by Apple applications.
 
 ## Run locally
 
@@ -49,10 +49,10 @@ make test-e2e
 make verify-container
 ```
 
-Go lint and sqlc tools install automatically into `.cache/tools` at pinned versions. Backend behavior and controllers live in nested domains; only top-level domains own storage, with independent schemas and no cross-domain table access; see [domain boundaries](docs/ARCHITECTURE.md#3-domain-packages-and-collaboration). Run `make generate` after adding migration packages or changing SQL, and commit the generated files. Account, workspace, email and installation each have an independent Goose history table. This development revision requires a fresh database after the schema reset. Run `MINDFLOW_DATA=./data go run ./cmd/mindflow migrate` to apply all discovered migrations explicitly; server startup applies them too.
+Go lint and sqlc tools install automatically into `.cache/tools` at pinned versions. Backend behavior and controllers live in nested domains; only top-level domains own storage, with independent schemas and no cross-domain table access; see [domain boundaries](docs/ARCHITECTURE.md#3-domain-packages-and-collaboration). Run `make generate` after adding migration packages or changing SQL, and commit the generated files. Account, workspace, email and installation each have an independent Goose history table. Existing databases using the consolidated domain schemas upgrade in place, including workspace sharing migration 2; only the earlier pre-consolidation development layout requires a fresh database. Run `MINDFLOW_DATA=./data go run ./cmd/mindflow migrate` to apply all discovered migrations explicitly; server startup applies them too.
 
 The first browser-test run requires `cd web && npx playwright install chromium firefox`. Tests use temporary data and never contact a real email provider. Container verification requires Docker, Python 3 and OpenSSL; it runs an isolated HTTPS proxy and TLS SMTP fixture, then checks persistence and snapshot restore. GitHub Actions runs lint, tests, Chrome/Firefox acceptance, dependency auditing and container verification on pushes and pull requests. Successful main/version-tag builds publish `neokil/mindflow` using the Docker Hub secrets; see [publishing and tags](docs/RUNNING.md#docker-hub-publishing).
 
 Product/design documents: [requirements](docs/REQUIREMENTS.md), [architecture](docs/ARCHITECTURE.md), [canvas and saving](docs/CANVAS_AND_SYNC.md), [deployment design](docs/DEPLOYMENT.md), [implementation and validation](docs/IMPLEMENTATION.md), and [API contract](api/openapi.yaml).
 
-Workspace sharing, export, and Linwood Butterfly import remain deferred.
+Export and Linwood Butterfly import remain deferred. Workspace owners can share with existing users as read-only, comment or full access. Full-access users share one writer per page with explicit takeover.

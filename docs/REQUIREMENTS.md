@@ -6,7 +6,7 @@ Status: agreed product scope for the first release, based on the requirements in
 
 mindflow is a minimalistic, self-hosted web application for arranging images, shapes, text, and freehand drawings on infinite canvases. Its interface should feel at home alongside current Apple applications: restrained, clear, and focused on the canvas.
 
-The first release serves the owner and invited users on desktop browsers. Each user's content is private. The application is intended to run on the owner's server, preferably as an app on TrueNAS; deployment details remain undecided.
+The first release serves the owner and invited users on desktop browsers. Workspaces are private by default and can be shared explicitly. The application is intended to run on the owner's server, preferably as an app on TrueNAS; deployment details remain undecided.
 
 ## First-release scope
 
@@ -57,19 +57,36 @@ Deleting a user requires explicit confirmation and permanently deletes their wor
 
 ### Content isolation
 
-Every workspace, page, and associated asset belongs to its owning user. Users can only access their own content. Administrator status does not grant access to another user's workspaces, files, or canvas content, including through direct links or application requests.
+Every workspace, page, and associated asset has an owning user. Users can access their own content and workspaces explicitly shared with them. Administrator status does not grant access to another user's workspaces, files, or canvas content, including through direct links or application requests.
 
 This is an application access rule. Infrastructure operators' access to server storage is outside the scope of the product permission model.
 
 ## Workspaces and pages
 
-After signing in, a user sees a list of the workspaces they created.
+After signing in, a user sees owned workspaces and workspaces shared with them.
 
 Users can create, open, rename, duplicate, and delete workspaces. Opening a workspace displays its pages as tabs at the top of the editor. Users can create, rename, duplicate, delete, switch between, and reorder pages.
 
 Each page has its own canvas. Switching tabs must not discard pending changes. Duplicating a page copies its content into an independently editable page. Duplicating a workspace copies its pages and content into an independently editable workspace. Editing or deleting an original must not break its duplicate.
 
 Destructive workspace and page deletion should require confirmation.
+
+## Workspace sharing and comments
+
+New workspaces are private. Clicking the Private/Shared badge opens sharing settings. Only the owner can grant, change or revoke access, using the email of an existing active mindflow account. Sharing creates no public links and grants no administrator bypass.
+
+| Access | Capabilities |
+| --- | --- |
+| Read-only | View workspace pages, image originals/variants and discussions. |
+| Comment | Read-only capabilities plus placing comment pins and replying. |
+| Full access | Comment capabilities plus editing canvas content, managing pages and taking editor control. |
+| Owner | Full capabilities plus managing sharing and workspace rename, duplication and deletion. |
+
+Full-access users compete for one persisted editor lease per page. A second opener sees a read-only canvas and can explicitly take control, fencing the previous writer. Comment participation does not require the canvas edit lease. Revocation blocks subsequent page, image and comment requests; downgrades/remove fence the affected writer without disturbing other users' leases.
+
+The toolbox includes Add comment. Clicking a canvas point opens a composer; posting adds a point with initials derived from the author's account email. Hovering or focusing a pin opens the thread. Comment/full members can reply to unresolved threads. Only the thread creator or workspace owner can resolve, reopen or delete the whole thread. Resolved pins are hidden by default and can be shown. Removing a thread removes its replies. Comments persist separately from canvas snapshots and do not participate in canvas undo/redo.
+
+Account deletion removes that user's owned workspaces, memberships, authored threads and replies. Image uploads made while editing a shared workspace belong to the workspace owner so collaborator deletion does not break retained content. Workspace/page duplication copies the canvas but starts without sharing grants or discussions.
 
 ## Canvas navigation and selection
 
@@ -191,7 +208,7 @@ The first release is ready when the following user journeys work:
 2. **Invite:** An administrator invites a user by email. The recipient sets a password through the invitation link and can sign in. Unknown visitors cannot self-register.
 3. **Recover access:** A user requests a password-reset email and resets their password. An administrator can resend an invite or trigger a reset email.
 4. **Manage accounts:** An administrator can deactivate and delete accounts. Deactivation blocks existing sessions; confirmed deletion removes all content belonging to the deleted user.
-5. **Keep content private:** A second user, including an administrator, cannot access the first user's content through the UI, direct asset links, or application requests.
+5. **Keep content private:** A second user, including an administrator, cannot access content through the UI, asset links or application requests without an explicit workspace grant.
 6. **Organize work:** A user can create, rename, duplicate, and delete workspaces and pages, and reorder page tabs. Copies remain independent of their originals.
 7. **Navigate:** A user can pan in every direction, zoom around the cursor using scroll input, and select elements using a freehand lasso.
 8. **Compose:** A user can insert images through all three supported methods, position them with the cursor, add each initial shape type, format text, and draw pen strokes.
@@ -204,7 +221,7 @@ The first release is ready when the following user journeys work:
 
 These features are explicitly deferred:
 
-- Shared workspaces and collaboration; simultaneous editing is not included initially.
+- Simultaneous canvas writers; the current collaboration model uses one writer per page with takeover.
 - Export, with formats to be decided later.
 - Import from Linwood Butterfly (`butterfly.linwood.dev`); compatibility and import fidelity require future investigation.
 - Additional shape types.

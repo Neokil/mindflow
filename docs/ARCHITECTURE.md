@@ -33,7 +33,7 @@ flowchart LR
 
 The Go process serves the compiled frontend, a same-origin JSON API, protected image endpoints, and a server-sent event stream. It also runs bounded background work for image variants and email delivery. No Node.js runtime, separate frontend server, database server, Redis, or external object store is needed in production.
 
-Run exactly one application instance against the database. This is a deliberate single-server architecture. Shared workspaces, horizontal scaling, and multi-writer collaboration are outside this release.
+Run exactly one application instance against the database. This is a deliberate single-server architecture. Workspace sharing and comments are supported with one writer per page. Horizontal scaling and simultaneous canvas writers are outside this release.
 
 Use Go's `net/http` and `ServeMux` for routing, `database/sql` for database access, and embedded frontend assets. Method and path routing are supported by the standard library. [Go routing documentation](https://go.dev/blog/routing-enhancements)
 
@@ -53,13 +53,15 @@ The top-level domains are `account`, `workspace`, `email` and `installation`. Ea
 | `workspace` | Workspace lifecycle. Owns workspace, page, canvas, editor and image data. |
 | `workspace/page` | Page ordering, creation, duplication, deletion and recovery copies. |
 | `workspace/page/canvas` | Documents, validation, image references and idempotent saving. |
+| `workspace/sharing` | Owner-managed membership roles, account lookup through an interface and targeted lease invalidation. |
+| `workspace/page/comment` | Positioned discussion threads, replies and creator/owner management. |
 | `workspace/page/editor` | Editor leases, takeover and stale-writer fencing. |
 | `workspace/image` | Originals, variants, protected delivery and preview jobs. |
 | `email` | SMTP delivery, its own mail queue, retries, cancellation and delivery status. |
 | `installation` | First-run setup, public URL and SMTP settings. |
 | `notification` | Owner-scoped realtime events and SSE; no persisted schema. |
 
-Foreign keys stay inside a top-level domain. Account sessions/tokens reference users; workspace pages, image references, leases and preview jobs reference other workspace-owned tables. Workspace ownership and editor session IDs are opaque references to the account domain, without cross-domain FKs. Ownership remains checked against the authenticated account on requests. Authentication validates the account and session before invoking workspace operations.
+Foreign keys stay inside a top-level domain. Account sessions/tokens reference users; workspace pages, image references, leases and preview jobs reference other workspace-owned tables. Workspace ownership and editor session IDs are opaque references to the account domain, without cross-domain FKs. Ownership or explicit membership is checked against the authenticated account on requests. Authentication validates the account and session before invoking workspace operations.
 
 No domain's SQL reads or writes another domain's tables. sqlc compiles each domain's queries against only its own migration directory. In particular, account listings obtain mail errors through the `CredentialMail` interface. Email owns `mail_jobs`; workspace owns `image_jobs`. No job table is shared between these domains. Account invitation/reset tokens share an account-owned table distinguished by purpose.
 
@@ -77,7 +79,9 @@ internal/account/
     migrations/migrations.go, migrations/00001_initial.sql
 internal/workspace/
   workspaces.go, service.go, http.go
+  sharing/
   page/
+    comment/
     canvas/
     editor/
   image/
@@ -186,7 +190,9 @@ Use `/api/v1` with JSON requests/responses, except multipart uploads, image byte
 | Pages | List/create within workspace, get/update metadata/delete, duplicate, reorder. |
 | Document | `GET/PUT /pages/{id}/document`; revision and mutation identity required on PUT. |
 | Editor control | Acquire, renew, release, and explicit takeover under `/pages/{id}/lease`. |
-| Assets | Upload, owner-scoped metadata, protected original/variant retrieval. |
+| Assets | Workspace-scoped upload, membership-checked metadata and original/variant retrieval. |
+| Sharing | Owner-only list/upsert/remove under `/workspaces/{id}/members`. |
+| Comments | Read/create under `/pages/{id}/comments`; replies, resolve/reopen and delete under `/comments/{id}`. |
 | Recovery copy | `POST /pages/{id}/recovery-copy`, or a new page in another owned workspace if the source is gone. |
 | Events | `GET /events`, scoped to the authenticated user's sessions/content. |
 
@@ -252,3 +258,15 @@ Prototype exit criteria and synchronization tests are specified in [CANVAS_AND_S
 ## Implementation notes
 
 Konva/react-konva was adopted after browser validation. The current database connection is serialized for both reads and writes; a read pool remains an optimization option. Image processing is bounded, decoded images are shared in memory with a 64 MiB/64-entry cache budget, and all authenticated content remains uncached by HTTP intermediaries. Actual dependency versions and validation limits are recorded in [IMPLEMENTATION.md](IMPLEMENTATION.md).
+
+## Workspace sharing and discussion implementation
+
+Workspace migration `00002_sharing_comments.sql` adds `workspace_members`, `comment_threads`, `comment_messages`, asset workspace scope and a lease holder account ID. It preserves existing documents and image bytes; existing workspaces have no members and stay private. All new tables, views and queries belong to workspace storage. No new schema dependency or cross-domain FK is introduced.
+
+`workspace_access` combines ownership and explicit roles; `asset_access` grants access to originals/variants through ownership, scoped uploads or retaining page links. A shared member cannot retrieve unrelated images owned by the workspace owner or attach them by guessing IDs. Full-access checks run inside save/page-mutation transactions. Shared uploads and preview jobs use the workspace owner's data lifetime. Account deletion clears memberships, authored discussion and held leases through the workspace-owned cleanup collaborator.
+
+Sharing resolves an exact active email through the account domain and rechecks it within the grant transaction. Downgrades/removals update membership and invalidate only that account's leases atomically. Every save rechecks current permissions and fencing. Lease responses include the caller's permission so the UI distinguishes a viewing role from an editor waiting for control. Revoked pages are removed from the rendered canvas after the server rejects access; in-memory unsaved recovery may be retained.
+
+Comments are separate from the versioned canvas JSON and editor lease. Bodies are plain text, attributed from the authenticated session, bounded to 10,000 bytes, with up to 1,000 threads per page and 500 messages per thread. Replies require comment/full access and an unresolved thread. Only the creator or workspace owner can manage a readable thread. Comment changes do not alter document revision or canvas history.
+
+After committed changes, the product composition resolves event recipients through workspace storage and forwards page, lease, comment and image events to current participants. Revocations additionally notify the removed user; deleted workspaces notify former participants captured before deletion. API authorization remains authoritative, with polling as a fallback. SharingDialog and CommentsLayer are separate frontend components. Pins stay at world coordinates while their readable labels/popovers stay at screen size.
