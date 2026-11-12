@@ -117,6 +117,8 @@ func orient(src image.Image, o int) image.Image {
 	return dst
 }
 func (a *App) uploadAsset(w http.ResponseWriter, r *http.Request) (any, error) {
+	a.mediaMu.Lock()
+	defer a.mediaMu.Unlock()
 	r.Body = http.MaxBytesReader(w, r.Body, 21<<20)
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
 		return nil, problem(413, "upload_limit", "Choose an image up to 20 MB.")
@@ -213,7 +215,11 @@ func variantBucket(ow, oh int, rw, rh float64) int {
 	target := long * scale
 	for _, b := range []int{128, 256, 512, 1024, 2048, 4096, 8192} {
 		if float64(b) >= target {
-			if float64(b)/long >= .8 {
+			// One stable asset-specific bucket bridges the gap between the
+			// power-of-two sizes and the strict 20% reduction threshold.
+			cap := int(math.Ceil(long*.8)) - 1
+			b = min(b, cap)
+			if float64(b) < target || b < 1 {
 				return 0
 			}
 			return b
@@ -255,13 +261,22 @@ func (a *App) requestVariant(w http.ResponseWriter, r *http.Request) (any, error
 	return map[string]bool{"ok": true}, a.queueVariant(who(r).ID, r.PathValue("id"), v.Width, v.Height)
 }
 func (a *App) enqueueImageVariants(owner string, d Document) {
+	targets := map[string][2]float64{}
 	for _, e := range d.Elements {
 		if e.Type == "image" {
-			_ = a.queueVariant(owner, e.AssetID, e.Width, e.Height)
+			target := targets[e.AssetID]
+			target[0] = math.Max(target[0], e.Width)
+			target[1] = math.Max(target[1], e.Height)
+			targets[e.AssetID] = target
 		}
+	}
+	for id, target := range targets {
+		_ = a.queueVariant(owner, id, target[0], target[1])
 	}
 }
 func (a *App) runVariant(ctx context.Context) {
+	a.mediaMu.Lock()
+	defer a.mediaMu.Unlock()
 	var id, owner, asset, payload string
 	var attempts int
 	if err := a.DB.QueryRowContext(ctx, "SELECT id,user_id,asset_id,payload,attempts FROM jobs WHERE kind='variant' AND attempts<3 AND run_at<=? ORDER BY run_at LIMIT 1", now()).Scan(&id, &owner, &asset, &payload, &attempts); err != nil {
@@ -295,6 +310,7 @@ func (a *App) runVariant(ctx context.Context) {
 		}
 		if err == nil {
 			tx, e := a.DB.BeginTx(ctx, nil)
+			err = e
 			if e == nil {
 				defer tx.Rollback()
 				var exists int

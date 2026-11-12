@@ -151,6 +151,8 @@ func (a *App) events(w http.ResponseWriter, r *http.Request) (any, error) {
 	defer tick.Stop()
 	for {
 		select {
+		case <-a.done:
+			return nil, nil
 		case <-r.Context().Done():
 			return nil, nil
 		case data := <-sub.events:

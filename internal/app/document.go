@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
 type Element struct {
@@ -52,6 +53,9 @@ var colorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$`)
 func validColor(c string) bool { return c == "transparent" || colorPattern.MatchString(c) }
 func finite(v float64) bool    { return !math.IsNaN(v) && !math.IsInf(v, 0) }
 func validateDocument(d Document) error {
+	if d.Elements == nil {
+		return bad("Document elements must be an array.")
+	}
 	if d.SchemaVersion != 1 {
 		return bad("Unsupported document format.")
 	}
@@ -235,6 +239,9 @@ func (a *App) saveDocument(w http.ResponseWriter, r *http.Request) (any, error) 
 	if _, err = tx.Exec("UPDATE pages SET document=?,revision=?,updated_at=? WHERE id=?", string(raw), revision, now(), id); err != nil {
 		return nil, err
 	}
+	if _, err = tx.Exec("UPDATE workspaces SET updated_at=? WHERE id=(SELECT workspace_id FROM pages WHERE id=?)", now(), id); err != nil {
+		return nil, err
+	}
 	if _, err = tx.Exec("INSERT INTO save_receipts(page_id,client_id,mutation_id,digest,revision,expires_at) VALUES(?,?,?,?,?,?)", id, v.ClientID, v.MutationID, hash, revision, now()+86400); err != nil {
 		return nil, err
 	}
@@ -291,7 +298,7 @@ func (a *App) recoveryCopy(w http.ResponseWriter, r *http.Request) (any, error) 
 	return map[string]string{"id": id}, nil
 }
 func validName(s string) error {
-	if strings.TrimSpace(s) == "" || len(s) > 200 {
+	if strings.TrimSpace(s) == "" || utf8.RuneCountInString(s) > 200 {
 		return bad("Use a name between 1 and 200 characters.")
 	}
 	return nil

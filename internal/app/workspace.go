@@ -109,19 +109,26 @@ func (a *App) renameWorkspace(w http.ResponseWriter, r *http.Request) (any, erro
 	if err := validName(v.Name); err != nil {
 		return nil, err
 	}
-	res, err := a.DB.Exec("UPDATE workspaces SET name=?,revision=revision+1,updated_at=? WHERE id=? AND owner_id=? AND revision=?", strings.TrimSpace(v.Name), now(), r.PathValue("id"), who(r).ID, v.Revision)
+	tx, err := a.DB.BeginTx(r.Context(), nil)
 	if err != nil {
 		return nil, err
 	}
-	if n, _ := res.RowsAffected(); n != 1 {
-		return nil, problem(409, "metadata_conflict", "Workspace changed or is unavailable. Refresh and retry.")
+	defer tx.Rollback()
+	var revision int
+	if err = tx.QueryRow("SELECT revision FROM workspaces WHERE id=? AND owner_id=?", r.PathValue("id"), who(r).ID).Scan(&revision); err != nil {
+		return nil, err
+	}
+	if revision != v.Revision {
+		return nil, problem(409, "metadata_conflict", "Workspace changed. Refresh and retry.")
+	}
+	if _, err = tx.Exec("UPDATE workspaces SET name=?,revision=revision+1,updated_at=? WHERE id=?", strings.TrimSpace(v.Name), now(), r.PathValue("id")); err != nil {
+		return nil, err
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, err
 	}
 	a.publish(who(r).ID, "workspace", r.PathValue("id"))
 	return map[string]bool{"ok": true}, nil
-}
-func cleanupAssets(tx *sql.Tx) error {
-	_, err := tx.Exec("DELETE FROM assets WHERE created_at<? AND NOT EXISTS(SELECT 1 FROM page_assets WHERE page_assets.asset_id=assets.id)", now()-86400)
-	return err
 }
 func (a *App) deleteWorkspace(w http.ResponseWriter, r *http.Request) (any, error) {
 	var v struct {

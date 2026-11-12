@@ -17,6 +17,9 @@ type Config struct {
 	Bootstrap string
 }
 type App struct {
+	done        chan struct{}
+	closeOnce   sync.Once
+	mediaMu     sync.Mutex
 	Log         *slog.Logger
 	hashMu      sync.Mutex
 	limitMu     sync.Mutex
@@ -30,7 +33,7 @@ type App struct {
 }
 
 func New(db *sql.DB, config Config) *App {
-	a := &App{DB: db, Config: config, Mux: http.NewServeMux(), Log: slog.Default(), limits: make(map[string]rateWindow), subscribers: make(map[string]subscriber)}
+	a := &App{DB: db, Config: config, Mux: http.NewServeMux(), Log: slog.Default(), limits: make(map[string]rateWindow), subscribers: make(map[string]subscriber), done: make(chan struct{})}
 	a.dummyHash, _ = hashPassword("dummy password never used")
 	a.identityRoutes()
 	a.workspaceRoutes()
@@ -81,3 +84,6 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
+
+// Close stops long-lived event streams during graceful shutdown.
+func (a *App) Close() { a.closeOnce.Do(func() { close(a.done) }) }
