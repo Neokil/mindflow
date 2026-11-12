@@ -1,0 +1,40 @@
+version: "2"
+run:
+  timeout: 5m
+linters:
+  default: all
+  settings:
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    # Typed internal errors intentionally pass through domain and HTTP boundaries.
+    # External errors are wrapped with operation context.
+    wrapcheck:
+      ignore-package-globs:
+        - mindflow/internal/*
+    tagliatelle:
+      case:
+        rules:
+          json: camel
+        extended-rules:
+          json:
+            case: camel
+            initialism-overrides:
+              URL: true
+  disable:
+    - funlen
+    - lll
+    - depguard
+    - exhaustruct
+    - exhaustruct_v5
+    - dupl
+    - cyclop
+    - maintidx
+    - canonicalheader
+    - wsl
+    - wsl_v5
+    - gomodguard
+formatters:
+  enable:
+    - gofumpt
+    - goimports

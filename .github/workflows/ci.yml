@@ -27,6 +27,7 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
         working-directory: web
+      - run: make tools
       - run: make lint
       - run: make test
       - run: npm audit --audit-level=high
