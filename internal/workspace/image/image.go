@@ -187,7 +187,7 @@ func (a *Service) QueueVariant(ctx context.Context, owner, resourceID string, wi
 	if err != nil {
 		return wrap("encode variant request", err)
 	}
-	_, err = a.repository.ImageQueueVariant(ctx, storage.ImageQueueVariantParams{ID: newID(), UserID: owner, AssetID: resourceID, DedupKey: fmt.Sprintf("variant:%s:%d", resourceID, bucket), Payload: string(payload), RunAt: time.Now().Unix()})
+	_, err = a.repository.ImageQueueVariant(ctx, storage.ImageQueueVariantParams{ID: newID(), UserID: assetDimensionsRow.OwnerID, AssetID: resourceID, DedupKey: fmt.Sprintf("variant:%s:%d", resourceID, bucket), Payload: string(payload), RunAt: time.Now().Unix()})
 
 	return err
 }
@@ -280,6 +280,12 @@ func (a *Service) storePreview(ctx context.Context, job storage.ImageDueVariantR
 
 // UploadAsset validates and stores the original image for the caller.
 func (a *Service) UploadAsset(ctx context.Context, actor session.Principal, raw []byte) (AssetInfo, error) {
+	return a.UploadWorkspaceAsset(ctx, actor, "", raw)
+}
+
+// UploadWorkspaceAsset retains originals under the target workspace owner's lifetime.
+func (a *Service) UploadWorkspaceAsset(ctx context.Context, actor session.Principal, workspaceID string, raw []byte) (_ AssetInfo, err error) {
+	defer func() { err = repositoryError(err) }()
 	a.mediaMu.Lock()
 	defer a.mediaMu.Unlock()
 	config, format, err := image.DecodeConfig(bytes.NewReader(raw))
@@ -304,7 +310,7 @@ func (a *Service) UploadAsset(ctx context.Context, actor session.Principal, raw 
 	mime := "image/" + format
 	hash := sha256.Sum256(raw)
 	resourceID := newID()
-	_, err = a.repository.ImageCreateAsset(ctx, storage.ImageCreateAssetParams{ID: resourceID, OwnerID: actor.ID, Original: raw, Mime: mime, Width: width, Height: height, Digest: hex.EncodeToString(hash[:]), CreatedAt: time.Now().Unix()})
+	err = a.repository.CreateScopedAsset(ctx, actor.ID, workspaceID, storage.ImageCreateAssetParams{ID: resourceID, OwnerID: actor.ID, Original: raw, Mime: mime, Width: width, Height: height, Digest: hex.EncodeToString(hash[:]), CreatedAt: time.Now().Unix()})
 	if err != nil {
 		return AssetInfo{}, err
 	}

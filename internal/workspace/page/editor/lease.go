@@ -13,7 +13,7 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 	if len(command.ClientID) < 8 || len(command.ClientID) > maxIdentifierLength {
 		return LeaseResult{}, invalid("Invalid editor identity.")
 	}
-	if command.Action != "acquire" && command.Action != "takeover" && command.Action != leaseRenew && command.Action != "release" {
+	if command.Action != "acquire" && command.Action != leaseTakeover && command.Action != leaseRenew && command.Action != "release" {
 		return LeaseResult{}, invalid("Invalid editor action.")
 	}
 	caller := actor
@@ -22,9 +22,20 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 		return LeaseResult{}, wrap("canvas_repository.go", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
+	access, err := a.repository.Within(transaction).RequirePage(ctx, resourceID, caller.ID, false)
+	if err != nil {
+		return LeaseResult{}, err
+	}
 	page, err := a.repository.OwnedPageWithin(ctx, transaction, resourceID, caller.ID)
 	if err != nil {
 		return LeaseResult{}, err
+	}
+	if !storage.CanEdit(access.Role) {
+		if command.Action == leaseTakeover || command.Action == leaseRenew {
+			return LeaseResult{}, &storage.AccessError{}
+		}
+
+		return LeaseResult{Permission: access.Role, Revision: page.Revision}, nil
 	}
 	_, err = a.repository.Within(transaction).EditorEnsureLease(ctx, page.ID)
 	if err != nil {
@@ -48,7 +59,7 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 	epoch, expires, client = state.Epoch, state.ExpiresAt, state.ClientID
 	session = state.SessionID
 	if changed {
-		err = a.repository.SaveLeaseWithin(ctx, transaction, page.ID, session, client, epoch, expires)
+		err = a.repository.SaveLeaseWithin(ctx, transaction, page.ID, session, client, caller.ID, epoch, expires)
 		if err != nil {
 			return LeaseResult{}, err
 		}
@@ -61,13 +72,17 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 		a.publish(caller.ID, "lease", page.ID)
 	}
 
-	return LeaseResult{Editable: session == caller.SessionID && client == command.ClientID && expires > time.Now().Unix(), Epoch: epoch, ExpiresAt: expires, Revision: page.Revision}, nil
+	return LeaseResult{Permission: access.Role, Editable: session == caller.SessionID && client == command.ClientID && expires > time.Now().Unix(), Epoch: epoch, ExpiresAt: expires, Revision: page.Revision}, nil
 }
 
 // LeaseStatus reports editor control and revision for an owned page.
 func (a *Service) LeaseStatus(ctx context.Context, actor session.Principal, resourceID string, clientID string) (_ LeaseResult, err error) {
 	defer func() { err = repositoryError(err) }()
 
+	access, err := a.repository.RequirePage(ctx, resourceID, actor.ID, false)
+	if err != nil {
+		return LeaseResult{}, err
+	}
 	var rev int
 	ownedPageRevisionRow, err := a.repository.EditorOwnedPageRevision(ctx, storage.EditorOwnedPageRevisionParams{ID: resourceID, OwnerID: actor.ID})
 	rev = ownedPageRevisionRow
@@ -87,5 +102,5 @@ func (a *Service) LeaseStatus(ctx context.Context, actor session.Principal, reso
 		return LeaseResult{}, err
 	}
 
-	return LeaseResult{Editable: session == actor.SessionID && client == clientID && expires > time.Now().Unix(), Epoch: epoch, ExpiresAt: expires, Revision: rev}, nil
+	return LeaseResult{Permission: access.Role, Editable: storage.CanEdit(access.Role) && session == actor.SessionID && client == clientID && expires > time.Now().Unix(), Epoch: epoch, ExpiresAt: expires, Revision: rev}, nil
 }

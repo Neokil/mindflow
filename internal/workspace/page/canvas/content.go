@@ -57,6 +57,10 @@ func (a *Service) SaveDocument(ctx context.Context, actor session.Principal, res
 		return SaveReceipt{}, wrap("canvas_repository.go", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
+	_, accessErr := a.repository.Within(transaction).RequirePage(ctx, resourceID, actor.ID, true)
+	if accessErr != nil {
+		return SaveReceipt{}, accessErr
+	}
 	var revision int
 	ownedPageRevisionRow, err := a.repository.Within(transaction).CanvasOwnedPageRevision(ctx, storage.CanvasOwnedPageRevisionParams{ID: resourceID, OwnerID: page.ID})
 	revision = ownedPageRevisionRow
@@ -119,7 +123,7 @@ func (a *Service) ValidateAssetsWithin(ctx context.Context, transaction *storage
 		}
 		seen[entry.AssetID] = true
 		var count int
-		countOwnedAssetRow, err := a.images.CountOwnedWithin(ctx, transaction, owner, entry.AssetID)
+		countOwnedAssetRow, err := a.images.CountOwnedWithin(ctx, transaction, owner, pageID, entry.AssetID)
 		count = int(countOwnedAssetRow)
 		if err != nil {
 			return err

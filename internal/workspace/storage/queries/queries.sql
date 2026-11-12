@@ -1,5 +1,5 @@
 -- name: WorkspaceListWorkspaces :many
-SELECT w.id,w.name,w.revision,w.updated_at,(SELECT count(*) FROM pages p WHERE p.workspace_id=w.id) AS page_count FROM workspaces w WHERE w.owner_id=? ORDER BY w.updated_at DESC,w.id;
+SELECT w.id,w.name,w.revision,w.updated_at,wa.role,EXISTS(SELECT 1 FROM workspace_members m WHERE m.workspace_id=w.id) AS shared,(SELECT count(*) FROM pages p WHERE p.workspace_id=w.id) AS page_count FROM workspaces w JOIN workspace_access wa ON wa.workspace_id=w.id WHERE wa.user_id=? ORDER BY w.updated_at DESC,w.id;
 
 -- name: WorkspaceCreateWorkspace :execresult
 INSERT INTO workspaces(id,owner_id,name,created_at,updated_at) VALUES(?,?,?,?,?);
@@ -23,7 +23,7 @@ UPDATE workspaces SET revision=revision+1 WHERE id=?;
 UPDATE workspaces SET updated_at=? WHERE id=(SELECT workspace_id FROM pages WHERE pages.id=?);
 
 -- name: PageOwnedWorkspace :one
-SELECT id FROM workspaces WHERE id=? AND owner_id=?;
+SELECT id FROM workspaces WHERE id=? AND id IN (SELECT workspace_id FROM workspace_access WHERE user_id=sqlc.arg(owner_id));
 
 -- name: PageCreateRecoveryPage :execresult
 INSERT INTO pages(id,workspace_id,name,position,document,revision,updated_at) SELECT ?,?,?,COALESCE(MAX(position),-1)+1,?,1,? FROM pages WHERE pages.workspace_id=?;
@@ -50,16 +50,16 @@ INSERT INTO pages(id,workspace_id,name,position,document,updated_at) SELECT ?,?,
 SELECT document FROM pages WHERE id=?;
 
 -- name: PageOwnedPage :one
-SELECT p.id,p.workspace_id,p.name,p.position,p.revision,p.metadata_revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?;
+SELECT p.id,p.workspace_id,p.name,p.position,p.revision,p.metadata_revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.id IN (SELECT workspace_id FROM workspace_access WHERE user_id=sqlc.arg(owner_id));
 
 -- name: PagePagesToCopy :many
 SELECT id,name FROM pages WHERE pages.workspace_id=? ORDER BY position;
 
 -- name: CanvasGetDocument :one
-SELECT p.document,p.revision,p.metadata_revision,p.name,p.workspace_id FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?;
+SELECT p.document,p.revision,p.metadata_revision,p.name,p.workspace_id FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.id IN (SELECT workspace_id FROM workspace_access WHERE user_id=sqlc.arg(owner_id));
 
 -- name: CanvasOwnedPageRevision :one
-SELECT p.revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?;
+SELECT p.revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.id IN (SELECT workspace_id FROM workspace_access WHERE user_id=sqlc.arg(owner_id));
 
 -- name: CanvasSaveReceipt :one
 SELECT digest,revision FROM save_receipts WHERE page_id=? AND client_id=? AND mutation_id=? AND expires_at>?;
@@ -80,10 +80,10 @@ INSERT INTO page_assets(page_id,asset_id) SELECT ?,asset_id FROM page_assets WHE
 DELETE FROM save_receipts WHERE expires_at<=unixepoch();
 
 -- name: EditorOwnedPage :one
-SELECT p.id,p.workspace_id,p.name,p.position,p.revision,p.metadata_revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?;
+SELECT p.id,p.workspace_id,p.name,p.position,p.revision,p.metadata_revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.id IN (SELECT workspace_id FROM workspace_access WHERE user_id=sqlc.arg(owner_id));
 
 -- name: EditorOwnedPageRevision :one
-SELECT p.revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?;
+SELECT p.revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.id IN (SELECT workspace_id FROM workspace_access WHERE user_id=sqlc.arg(owner_id));
 
 -- name: EditorPageLease :one
 SELECT session_id,client_id,epoch,expires_at FROM page_leases WHERE page_id=?;
@@ -92,22 +92,22 @@ SELECT session_id,client_id,epoch,expires_at FROM page_leases WHERE page_id=?;
 INSERT OR IGNORE INTO page_leases(page_id) VALUES(?);
 
 -- name: EditorUpdateLease :execresult
-UPDATE page_leases SET session_id=?,client_id=?,epoch=?,expires_at=? WHERE page_id=?;
+UPDATE page_leases SET session_id=?,client_id=?,epoch=?,expires_at=?,holder_user_id=? WHERE page_id=?;
 
 -- name: EditorExpireLeases :execresult
-UPDATE page_leases SET epoch=epoch+1,expires_at=0,session_id=NULL,client_id='';
+UPDATE page_leases SET epoch=epoch+1,expires_at=0,session_id=NULL,client_id='',holder_user_id='';
 
 -- name: ImageCountOwnedAsset :one
 SELECT count(*) FROM assets WHERE id=? AND owner_id=?;
 
 -- name: ImageAssetMetadata :one
-SELECT id,width,height,mime FROM assets WHERE id=? AND owner_id=?;
+SELECT id,width,height,mime FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=sqlc.arg(owner_id));
 
 -- name: ImageVariantBuckets :many
 SELECT bucket FROM asset_variants WHERE asset_id=? ORDER BY bucket;
 
 -- name: ImageAssetDimensions :one
-SELECT width,height FROM assets WHERE id=? AND owner_id=?;
+SELECT width,height,owner_id FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=sqlc.arg(owner_id));
 
 -- name: ImageCountVariants :one
 SELECT count(*) FROM asset_variants WHERE asset_id=? AND bucket=?;
@@ -119,7 +119,7 @@ INSERT OR IGNORE INTO image_jobs(id,user_id,asset_id,dedup_key,payload,run_at) V
 SELECT id,user_id,asset_id,payload,attempts FROM image_jobs WHERE attempts<3 AND run_at<=? ORDER BY run_at LIMIT 1;
 
 -- name: ImageOriginalImage :one
-SELECT original,width,height FROM assets WHERE id=? AND owner_id=?;
+SELECT original,width,height FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=sqlc.arg(owner_id));
 
 -- name: ImageDeleteJob :execresult
 DELETE FROM image_jobs WHERE id=?;
@@ -134,10 +134,10 @@ UPDATE image_jobs SET attempts=attempts+1,run_at=?,last_error='Image preview gen
 INSERT INTO assets(id,owner_id,original,mime,width,height,digest,created_at) VALUES(?,?,?,?,?,?,?,?);
 
 -- name: ImageImageVariant :one
-SELECT v.data,v.mime,v.width,v.height FROM asset_variants v JOIN assets a ON a.id=v.asset_id WHERE a.id=? AND a.owner_id=? AND v.bucket=?;
+SELECT v.data,v.mime,v.width,v.height FROM asset_variants v JOIN assets a ON a.id=v.asset_id WHERE a.id=? AND a.id IN (SELECT asset_id FROM asset_access WHERE user_id=sqlc.arg(owner_id)) AND v.bucket=?;
 
 -- name: ImageGetImage :one
-SELECT original,mime,width,height FROM assets WHERE id=? AND owner_id=?;
+SELECT original,mime,width,height FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=sqlc.arg(owner_id));
 
 -- name: ImageDeleteWorkspaceAssets :execresult
 DELETE FROM assets WHERE owner_id=? AND id IN(SELECT pa.asset_id FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE p.workspace_id=?) AND NOT EXISTS(SELECT 1 FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=assets.id AND p.workspace_id<>?);
@@ -156,3 +156,78 @@ DELETE FROM workspaces WHERE owner_id=?;
 
 -- name: WorkspaceDeleteOwnerImages :exec
 DELETE FROM assets WHERE owner_id=?;
+
+-- name: AccessWorkspace :one
+SELECT w.id AS workspace_id,w.owner_id,wa.role FROM workspaces w JOIN workspace_access wa ON wa.workspace_id=w.id WHERE w.id=? AND wa.user_id=?;
+
+-- name: AccessPage :one
+SELECT w.id AS workspace_id,w.owner_id,wa.role FROM pages p JOIN workspaces w ON w.id=p.workspace_id JOIN workspace_access wa ON wa.workspace_id=w.id WHERE p.id=? AND wa.user_id=?;
+
+-- name: SharingMembers :many
+SELECT user_id,email,role FROM workspace_members WHERE workspace_id=? ORDER BY email;
+
+-- name: SharingSetMember :exec
+INSERT INTO workspace_members(workspace_id,user_id,email,role) VALUES(?,?,?,?) ON CONFLICT(workspace_id,user_id) DO UPDATE SET role=excluded.role,email=excluded.email;
+
+-- name: SharingRemoveMember :exec
+DELETE FROM workspace_members WHERE workspace_id=? AND user_id=?;
+
+-- name: SharingAudience :many
+SELECT user_id FROM workspace_access WHERE workspace_id=?;
+
+-- name: SharingInvalidateLeases :exec
+UPDATE page_leases SET epoch=epoch+1,expires_at=0,session_id=NULL,client_id='',holder_user_id='' WHERE holder_user_id=? AND page_id IN(SELECT id FROM pages WHERE workspace_id=?);
+
+-- name: SharingScopeAsset :exec
+UPDATE assets SET workspace_id=? WHERE id=?;
+
+-- name: SharingAssetForPage :one
+SELECT count(*) FROM assets a JOIN pages p ON p.id=sqlc.arg(page_id) JOIN workspaces w ON w.id=p.workspace_id WHERE a.id=sqlc.arg(id) AND ((a.owner_id=sqlc.arg(owner_id) AND a.owner_id=w.owner_id) OR a.workspace_id=w.id OR EXISTS(SELECT 1 FROM page_assets pa JOIN pages linked ON linked.id=pa.page_id WHERE pa.asset_id=a.id AND linked.workspace_id=w.id));
+
+-- name: SharingPageOwner :one
+SELECT w.owner_id FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=?;
+
+-- name: SharingAssetWorkspaces :many
+SELECT a.workspace_id FROM assets a WHERE a.id=? AND a.workspace_id IS NOT NULL UNION SELECT p.workspace_id FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=?;
+
+-- name: SharingRemoveUserMemberships :exec
+DELETE FROM workspace_members WHERE user_id=?;
+
+-- name: CommentThreads :many
+SELECT id,page_id,author_id,author_email,x,y,resolved,created_at FROM comment_threads WHERE page_id=? ORDER BY created_at,id;
+
+-- name: CommentMessages :many
+SELECT id,thread_id,author_id,author_email,body,created_at FROM comment_messages WHERE thread_id=? ORDER BY created_at,id;
+
+-- name: CommentThread :one
+SELECT id,page_id,author_id,resolved FROM comment_threads WHERE id=?;
+
+-- name: CommentCreateThread :exec
+INSERT INTO comment_threads(id,page_id,author_id,author_email,x,y,created_at) VALUES(?,?,?,?,?,?,?);
+
+-- name: CommentCreateMessage :exec
+INSERT INTO comment_messages(id,thread_id,author_id,author_email,body,created_at) VALUES(?,?,?,?,?,?);
+
+-- name: CommentResolve :exec
+UPDATE comment_threads SET resolved=? WHERE id=?;
+
+-- name: CommentDelete :exec
+DELETE FROM comment_threads WHERE id=?;
+
+-- name: CommentDeleteUserThreads :exec
+DELETE FROM comment_threads WHERE author_id=?;
+
+-- name: CommentDeleteUserMessages :exec
+DELETE FROM comment_messages WHERE author_id=?;
+
+-- name: PageWorkspace :one
+SELECT workspace_id FROM pages WHERE id=?;
+
+-- name: CommentCountThreads :one
+SELECT count(*) FROM comment_threads WHERE page_id=?;
+
+-- name: CommentCountMessages :one
+SELECT count(*) FROM comment_messages WHERE thread_id=?;
+
+-- name: SharingInvalidateUserLeases :exec
+UPDATE page_leases SET epoch=epoch+1,expires_at=0,session_id=NULL,client_id='',holder_user_id='' WHERE holder_user_id=?;

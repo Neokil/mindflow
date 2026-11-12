@@ -49,7 +49,7 @@ func (a *httpHandler) uploadAsset(w http.ResponseWriter, request *http.Request) 
 		return nil, failure("upload_limit", "Choose an image up to 20 MB.")
 	}
 
-	return a.service.UploadAsset(request.Context(), a.routes.CurrentSession(request), raw)
+	return a.service.UploadWorkspaceAsset(request.Context(), a.routes.CurrentSession(request), request.FormValue("workspaceId"), raw)
 }
 
 func (a *httpHandler) getAsset(writer http.ResponseWriter, r *http.Request) (any, error) {

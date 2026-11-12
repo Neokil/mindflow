@@ -17,7 +17,7 @@ func (a *Service) ListWorkspaces(ctx context.Context, actor session.Principal) (
 	}
 	out := make([]Workspace, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, Workspace{ID: row.ID, Name: row.Name, Revision: row.Revision, UpdatedAt: row.UpdatedAt, PageCount: int(row.PageCount)})
+		out = append(out, Workspace{Role: row.Role, Shared: row.Shared, ID: row.ID, Name: row.Name, Revision: row.Revision, UpdatedAt: row.UpdatedAt, PageCount: int(row.PageCount)})
 	}
 
 	return out, nil
@@ -111,6 +111,10 @@ func (a *Service) DeleteWorkspace(ctx context.Context, actor session.Principal, 
 	if rev != command.Revision {
 		return Completed{}, failure("metadata_conflict", "Workspace changed. Refresh and retry.")
 	}
+	recipients, audienceErr := a.repository.Within(transaction).SharingAudience(ctx, resourceID)
+	if audienceErr != nil {
+		return Completed{}, audienceErr
+	}
 	_, err = a.images.DeleteWorkspaceAssetsWithin(ctx, transaction, actor.ID, resourceID)
 	if err != nil {
 		return Completed{}, err
@@ -123,7 +127,9 @@ func (a *Service) DeleteWorkspace(ctx context.Context, actor session.Principal, 
 	if err != nil {
 		return Completed{}, wrap("workspace.DeleteWorkspace", err)
 	}
-	a.publish(actor.ID, "workspace", resourceID)
+	for _, recipient := range recipients {
+		a.publish(recipient, "workspace", resourceID)
+	}
 
 	return Completed{OK: true}, nil
 }
@@ -174,7 +180,11 @@ func (a *Service) ReorderPages(ctx context.Context, actor session.Principal, res
 	defer func() { _ = transaction.Rollback() }()
 	var rev int
 	wid := resourceID
-	workspaceRevisionRow, err := a.repository.Within(transaction).WorkspaceWorkspaceRevision(ctx, storage.WorkspaceWorkspaceRevisionParams{ID: wid, OwnerID: actor.ID})
+	access, err := a.repository.Within(transaction).RequireWorkspace(ctx, wid, actor.ID, true)
+	if err != nil {
+		return Completed{}, err
+	}
+	workspaceRevisionRow, err := a.repository.Within(transaction).WorkspaceWorkspaceRevision(ctx, storage.WorkspaceWorkspaceRevisionParams{ID: wid, OwnerID: access.OwnerID})
 	rev = workspaceRevisionRow
 	if err != nil {
 		return Completed{}, err

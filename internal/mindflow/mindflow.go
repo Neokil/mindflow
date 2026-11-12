@@ -17,7 +17,9 @@ import (
 	"mindflow/internal/workspace"
 	"mindflow/internal/workspace/page"
 	"mindflow/internal/workspace/page/canvas"
+	"mindflow/internal/workspace/page/comment"
 	"mindflow/internal/workspace/page/editor"
+	"mindflow/internal/workspace/sharing"
 	"net/http"
 	"strings"
 	"sync"
@@ -48,6 +50,8 @@ type App struct {
 	passwordResets *passwordreset.Service
 	mail           *email.Service
 	workspace      *workspace.Service
+	sharing        *sharing.Service
+	comments       *comment.Service
 	pages          *page.Service
 	canvases       *canvas.Service
 	editors        *editor.Service
@@ -71,14 +75,30 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	service.passwordResets = passwordreset.NewService(data.Accounts, accounts, service.mail, service.installation)
 	service.authentication = authentication.NewService(accounts, service.sessions, config.Dev)
 	service.notifications = notification.NewService(service.authentication)
-	service.images = imageasset.NewService(data.Workspaces, service.notifications.Publish)
-	service.editors, err = editor.NewService(ctx, data.Workspaces, service.notifications.Publish)
+	publish := func(userID, kind, resourceID string) {
+		service.notifications.Publish(userID, kind, resourceID)
+		recipients, audienceErr := data.Workspaces.EventAudience(ctx, kind, resourceID)
+		if audienceErr != nil {
+			service.Log.Error("resolve workspace event recipients", "error", audienceErr)
+
+			return
+		}
+		for _, recipient := range recipients {
+			if recipient != userID {
+				service.notifications.Publish(recipient, kind, resourceID)
+			}
+		}
+	}
+	service.sharing = sharing.NewService(data.Workspaces, accounts, publish)
+	service.comments = comment.NewService(data.Workspaces, publish)
+	service.images = imageasset.NewService(data.Workspaces, publish)
+	service.editors, err = editor.NewService(ctx, data.Workspaces, publish)
 	if err != nil {
 		return nil, err
 	}
-	service.canvases = canvas.NewService(data.Workspaces, service.images, service.editors, data.Workspaces, service.notifications.Publish)
-	service.pages = page.NewService(data.Workspaces, service.canvases, service.images, service.notifications.Publish)
-	service.workspace = workspace.NewService(data.Workspaces, service.pages, service.images, service.notifications.Publish)
+	service.canvases = canvas.NewService(data.Workspaces, service.images, service.editors, data.Workspaces, publish)
+	service.pages = page.NewService(data.Workspaces, service.canvases, service.images, publish)
+	service.workspace = workspace.NewService(data.Workspaces, service.pages, service.images, publish)
 	service.accounts.RegisterHTTP(service)
 	service.authentication.RegisterHTTP(service)
 	service.installation.RegisterHTTP(service)
@@ -86,6 +106,8 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	service.passwordResets.RegisterHTTP(service)
 	service.mail.RegisterHTTP(service)
 	service.workspace.RegisterHTTP(service)
+	service.sharing.RegisterHTTP(service)
+	service.comments.RegisterHTTP(service)
 	service.pages.RegisterHTTP(service)
 	service.canvases.RegisterHTTP(service)
 	service.editors.RegisterHTTP(service)

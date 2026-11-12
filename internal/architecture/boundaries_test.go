@@ -101,7 +101,7 @@ func TestSQLReadsWritesAndForeignKeysStayWithinDomain(t *testing.T) {
 	t.Parallel()
 	ownership := map[string][]string{
 		"account":      {"users", "sessions", "account_tokens"},
-		"workspace":    {"workspaces", "pages", "page_assets", "save_receipts", "page_leases", "assets", "asset_variants", "image_jobs"},
+		"workspace":    {"workspaces", "pages", "page_assets", "save_receipts", "page_leases", "assets", "asset_variants", "image_jobs", "workspace_members", "workspace_access", "asset_access", "comment_threads", "comment_messages"},
 		"email":        {"mail_jobs"},
 		"installation": {"app_settings"},
 	}
@@ -118,7 +118,7 @@ func TestSQLReadsWritesAndForeignKeysStayWithinDomain(t *testing.T) {
 			}
 			sql := regexp.MustCompile(`(?m)^--.*$`).ReplaceAllString(string(data), "")
 			for _, match := range tableReference.FindAllStringSubmatch(sql, -1) {
-				if !slices.Contains(tables, match[1]) {
+				if !strings.EqualFold(match[1], "SET") && !slices.Contains(tables, match[1]) {
 					t.Errorf("%s accesses foreign table %s in %s", domain, match[1], file)
 				}
 			}

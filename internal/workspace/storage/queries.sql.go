@@ -10,6 +10,50 @@ import (
 	"database/sql"
 )
 
+const accessPage = `-- name: AccessPage :one
+SELECT w.id AS workspace_id,w.owner_id,wa.role FROM pages p JOIN workspaces w ON w.id=p.workspace_id JOIN workspace_access wa ON wa.workspace_id=w.id WHERE p.id=? AND wa.user_id=?
+`
+
+type AccessPageParams struct {
+	ID     string
+	UserID string
+}
+
+type AccessPageRow struct {
+	WorkspaceID string
+	OwnerID     string
+	Role        string
+}
+
+func (q *Queries) AccessPage(ctx context.Context, arg AccessPageParams) (AccessPageRow, error) {
+	row := q.db.QueryRowContext(ctx, accessPage, arg.ID, arg.UserID)
+	var i AccessPageRow
+	err := row.Scan(&i.WorkspaceID, &i.OwnerID, &i.Role)
+	return i, err
+}
+
+const accessWorkspace = `-- name: AccessWorkspace :one
+SELECT w.id AS workspace_id,w.owner_id,wa.role FROM workspaces w JOIN workspace_access wa ON wa.workspace_id=w.id WHERE w.id=? AND wa.user_id=?
+`
+
+type AccessWorkspaceParams struct {
+	ID     string
+	UserID string
+}
+
+type AccessWorkspaceRow struct {
+	WorkspaceID string
+	OwnerID     string
+	Role        string
+}
+
+func (q *Queries) AccessWorkspace(ctx context.Context, arg AccessWorkspaceParams) (AccessWorkspaceRow, error) {
+	row := q.db.QueryRowContext(ctx, accessWorkspace, arg.ID, arg.UserID)
+	var i AccessWorkspaceRow
+	err := row.Scan(&i.WorkspaceID, &i.OwnerID, &i.Role)
+	return i, err
+}
+
 const canvasAttachAsset = `-- name: CanvasAttachAsset :execresult
 INSERT OR IGNORE INTO page_assets(page_id,asset_id) VALUES(?,?)
 `
@@ -70,7 +114,7 @@ func (q *Queries) CanvasDeleteExpiredReceipts(ctx context.Context) error {
 }
 
 const canvasGetDocument = `-- name: CanvasGetDocument :one
-SELECT p.document,p.revision,p.metadata_revision,p.name,p.workspace_id FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?
+SELECT p.document,p.revision,p.metadata_revision,p.name,p.workspace_id FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.id IN (SELECT workspace_id FROM workspace_access WHERE user_id=?2)
 `
 
 type CanvasGetDocumentParams struct {
@@ -100,7 +144,7 @@ func (q *Queries) CanvasGetDocument(ctx context.Context, arg CanvasGetDocumentPa
 }
 
 const canvasOwnedPageRevision = `-- name: CanvasOwnedPageRevision :one
-SELECT p.revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?
+SELECT p.revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.id IN (SELECT workspace_id FROM workspace_access WHERE user_id=?2)
 `
 
 type CanvasOwnedPageRevisionParams struct {
@@ -163,6 +207,214 @@ func (q *Queries) CanvasSaveReceipt(ctx context.Context, arg CanvasSaveReceiptPa
 	return i, err
 }
 
+const commentCountMessages = `-- name: CommentCountMessages :one
+SELECT count(*) FROM comment_messages WHERE thread_id=?
+`
+
+func (q *Queries) CommentCountMessages(ctx context.Context, threadID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, commentCountMessages, threadID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const commentCountThreads = `-- name: CommentCountThreads :one
+SELECT count(*) FROM comment_threads WHERE page_id=?
+`
+
+func (q *Queries) CommentCountThreads(ctx context.Context, pageID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, commentCountThreads, pageID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const commentCreateMessage = `-- name: CommentCreateMessage :exec
+INSERT INTO comment_messages(id,thread_id,author_id,author_email,body,created_at) VALUES(?,?,?,?,?,?)
+`
+
+type CommentCreateMessageParams struct {
+	ID          string
+	ThreadID    string
+	AuthorID    string
+	AuthorEmail string
+	Body        string
+	CreatedAt   int64
+}
+
+func (q *Queries) CommentCreateMessage(ctx context.Context, arg CommentCreateMessageParams) error {
+	_, err := q.db.ExecContext(ctx, commentCreateMessage,
+		arg.ID,
+		arg.ThreadID,
+		arg.AuthorID,
+		arg.AuthorEmail,
+		arg.Body,
+		arg.CreatedAt,
+	)
+	return err
+}
+
+const commentCreateThread = `-- name: CommentCreateThread :exec
+INSERT INTO comment_threads(id,page_id,author_id,author_email,x,y,created_at) VALUES(?,?,?,?,?,?,?)
+`
+
+type CommentCreateThreadParams struct {
+	ID          string
+	PageID      string
+	AuthorID    string
+	AuthorEmail string
+	X           float64
+	Y           float64
+	CreatedAt   int64
+}
+
+func (q *Queries) CommentCreateThread(ctx context.Context, arg CommentCreateThreadParams) error {
+	_, err := q.db.ExecContext(ctx, commentCreateThread,
+		arg.ID,
+		arg.PageID,
+		arg.AuthorID,
+		arg.AuthorEmail,
+		arg.X,
+		arg.Y,
+		arg.CreatedAt,
+	)
+	return err
+}
+
+const commentDelete = `-- name: CommentDelete :exec
+DELETE FROM comment_threads WHERE id=?
+`
+
+func (q *Queries) CommentDelete(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, commentDelete, id)
+	return err
+}
+
+const commentDeleteUserMessages = `-- name: CommentDeleteUserMessages :exec
+DELETE FROM comment_messages WHERE author_id=?
+`
+
+func (q *Queries) CommentDeleteUserMessages(ctx context.Context, authorID string) error {
+	_, err := q.db.ExecContext(ctx, commentDeleteUserMessages, authorID)
+	return err
+}
+
+const commentDeleteUserThreads = `-- name: CommentDeleteUserThreads :exec
+DELETE FROM comment_threads WHERE author_id=?
+`
+
+func (q *Queries) CommentDeleteUserThreads(ctx context.Context, authorID string) error {
+	_, err := q.db.ExecContext(ctx, commentDeleteUserThreads, authorID)
+	return err
+}
+
+const commentMessages = `-- name: CommentMessages :many
+SELECT id,thread_id,author_id,author_email,body,created_at FROM comment_messages WHERE thread_id=? ORDER BY created_at,id
+`
+
+func (q *Queries) CommentMessages(ctx context.Context, threadID string) ([]CommentMessage, error) {
+	rows, err := q.db.QueryContext(ctx, commentMessages, threadID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CommentMessage{}
+	for rows.Next() {
+		var i CommentMessage
+		if err := rows.Scan(
+			&i.ID,
+			&i.ThreadID,
+			&i.AuthorID,
+			&i.AuthorEmail,
+			&i.Body,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const commentResolve = `-- name: CommentResolve :exec
+UPDATE comment_threads SET resolved=? WHERE id=?
+`
+
+type CommentResolveParams struct {
+	Resolved int
+	ID       string
+}
+
+func (q *Queries) CommentResolve(ctx context.Context, arg CommentResolveParams) error {
+	_, err := q.db.ExecContext(ctx, commentResolve, arg.Resolved, arg.ID)
+	return err
+}
+
+const commentThread = `-- name: CommentThread :one
+SELECT id,page_id,author_id,resolved FROM comment_threads WHERE id=?
+`
+
+type CommentThreadRow struct {
+	ID       string
+	PageID   string
+	AuthorID string
+	Resolved int
+}
+
+func (q *Queries) CommentThread(ctx context.Context, id string) (CommentThreadRow, error) {
+	row := q.db.QueryRowContext(ctx, commentThread, id)
+	var i CommentThreadRow
+	err := row.Scan(
+		&i.ID,
+		&i.PageID,
+		&i.AuthorID,
+		&i.Resolved,
+	)
+	return i, err
+}
+
+const commentThreads = `-- name: CommentThreads :many
+SELECT id,page_id,author_id,author_email,x,y,resolved,created_at FROM comment_threads WHERE page_id=? ORDER BY created_at,id
+`
+
+func (q *Queries) CommentThreads(ctx context.Context, pageID string) ([]CommentThread, error) {
+	rows, err := q.db.QueryContext(ctx, commentThreads, pageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CommentThread{}
+	for rows.Next() {
+		var i CommentThread
+		if err := rows.Scan(
+			&i.ID,
+			&i.PageID,
+			&i.AuthorID,
+			&i.AuthorEmail,
+			&i.X,
+			&i.Y,
+			&i.Resolved,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const editorEnsureLease = `-- name: EditorEnsureLease :execresult
 INSERT OR IGNORE INTO page_leases(page_id) VALUES(?)
 `
@@ -172,7 +424,7 @@ func (q *Queries) EditorEnsureLease(ctx context.Context, pageID string) (sql.Res
 }
 
 const editorExpireLeases = `-- name: EditorExpireLeases :execresult
-UPDATE page_leases SET epoch=epoch+1,expires_at=0,session_id=NULL,client_id=''
+UPDATE page_leases SET epoch=epoch+1,expires_at=0,session_id=NULL,client_id='',holder_user_id=''
 `
 
 func (q *Queries) EditorExpireLeases(ctx context.Context) (sql.Result, error) {
@@ -180,7 +432,7 @@ func (q *Queries) EditorExpireLeases(ctx context.Context) (sql.Result, error) {
 }
 
 const editorOwnedPage = `-- name: EditorOwnedPage :one
-SELECT p.id,p.workspace_id,p.name,p.position,p.revision,p.metadata_revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?
+SELECT p.id,p.workspace_id,p.name,p.position,p.revision,p.metadata_revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.id IN (SELECT workspace_id FROM workspace_access WHERE user_id=?2)
 `
 
 type EditorOwnedPageParams struct {
@@ -212,7 +464,7 @@ func (q *Queries) EditorOwnedPage(ctx context.Context, arg EditorOwnedPageParams
 }
 
 const editorOwnedPageRevision = `-- name: EditorOwnedPageRevision :one
-SELECT p.revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?
+SELECT p.revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.id IN (SELECT workspace_id FROM workspace_access WHERE user_id=?2)
 `
 
 type EditorOwnedPageRevisionParams struct {
@@ -251,15 +503,16 @@ func (q *Queries) EditorPageLease(ctx context.Context, pageID string) (EditorPag
 }
 
 const editorUpdateLease = `-- name: EditorUpdateLease :execresult
-UPDATE page_leases SET session_id=?,client_id=?,epoch=?,expires_at=? WHERE page_id=?
+UPDATE page_leases SET session_id=?,client_id=?,epoch=?,expires_at=?,holder_user_id=? WHERE page_id=?
 `
 
 type EditorUpdateLeaseParams struct {
-	SessionID sql.NullString
-	ClientID  string
-	Epoch     int64
-	ExpiresAt int64
-	PageID    string
+	SessionID    sql.NullString
+	ClientID     string
+	Epoch        int64
+	ExpiresAt    int64
+	HolderUserID string
+	PageID       string
 }
 
 func (q *Queries) EditorUpdateLease(ctx context.Context, arg EditorUpdateLeaseParams) (sql.Result, error) {
@@ -268,12 +521,13 @@ func (q *Queries) EditorUpdateLease(ctx context.Context, arg EditorUpdateLeasePa
 		arg.ClientID,
 		arg.Epoch,
 		arg.ExpiresAt,
+		arg.HolderUserID,
 		arg.PageID,
 	)
 }
 
 const imageAssetDimensions = `-- name: ImageAssetDimensions :one
-SELECT width,height FROM assets WHERE id=? AND owner_id=?
+SELECT width,height,owner_id FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=?2)
 `
 
 type ImageAssetDimensionsParams struct {
@@ -282,19 +536,20 @@ type ImageAssetDimensionsParams struct {
 }
 
 type ImageAssetDimensionsRow struct {
-	Width  int
-	Height int
+	Width   int
+	Height  int
+	OwnerID string
 }
 
 func (q *Queries) ImageAssetDimensions(ctx context.Context, arg ImageAssetDimensionsParams) (ImageAssetDimensionsRow, error) {
 	row := q.db.QueryRowContext(ctx, imageAssetDimensions, arg.ID, arg.OwnerID)
 	var i ImageAssetDimensionsRow
-	err := row.Scan(&i.Width, &i.Height)
+	err := row.Scan(&i.Width, &i.Height, &i.OwnerID)
 	return i, err
 }
 
 const imageAssetMetadata = `-- name: ImageAssetMetadata :one
-SELECT id,width,height,mime FROM assets WHERE id=? AND owner_id=?
+SELECT id,width,height,mime FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=?2)
 `
 
 type ImageAssetMetadataParams struct {
@@ -485,7 +740,7 @@ func (q *Queries) ImageDueVariant(ctx context.Context, runAt int64) (ImageDueVar
 }
 
 const imageGetImage = `-- name: ImageGetImage :one
-SELECT original,mime,width,height FROM assets WHERE id=? AND owner_id=?
+SELECT original,mime,width,height FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=?2)
 `
 
 type ImageGetImageParams struct {
@@ -513,7 +768,7 @@ func (q *Queries) ImageGetImage(ctx context.Context, arg ImageGetImageParams) (I
 }
 
 const imageImageVariant = `-- name: ImageImageVariant :one
-SELECT v.data,v.mime,v.width,v.height FROM asset_variants v JOIN assets a ON a.id=v.asset_id WHERE a.id=? AND a.owner_id=? AND v.bucket=?
+SELECT v.data,v.mime,v.width,v.height FROM asset_variants v JOIN assets a ON a.id=v.asset_id WHERE a.id=? AND a.id IN (SELECT asset_id FROM asset_access WHERE user_id=?3) AND v.bucket=?
 `
 
 type ImageImageVariantParams struct {
@@ -542,7 +797,7 @@ func (q *Queries) ImageImageVariant(ctx context.Context, arg ImageImageVariantPa
 }
 
 const imageOriginalImage = `-- name: ImageOriginalImage :one
-SELECT original,width,height FROM assets WHERE id=? AND owner_id=?
+SELECT original,width,height FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=?2)
 `
 
 type ImageOriginalImageParams struct {
@@ -738,7 +993,7 @@ func (q *Queries) PageListPages(ctx context.Context, workspaceID string) ([]Page
 }
 
 const pageOwnedPage = `-- name: PageOwnedPage :one
-SELECT p.id,p.workspace_id,p.name,p.position,p.revision,p.metadata_revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?
+SELECT p.id,p.workspace_id,p.name,p.position,p.revision,p.metadata_revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.id IN (SELECT workspace_id FROM workspace_access WHERE user_id=?2)
 `
 
 type PageOwnedPageParams struct {
@@ -770,7 +1025,7 @@ func (q *Queries) PageOwnedPage(ctx context.Context, arg PageOwnedPageParams) (P
 }
 
 const pageOwnedWorkspace = `-- name: PageOwnedWorkspace :one
-SELECT id FROM workspaces WHERE id=? AND owner_id=?
+SELECT id FROM workspaces WHERE id=? AND id IN (SELECT workspace_id FROM workspace_access WHERE user_id=?2)
 `
 
 type PageOwnedWorkspaceParams struct {
@@ -855,6 +1110,218 @@ func (q *Queries) PageRenamePage(ctx context.Context, arg PageRenamePageParams) 
 	return q.db.ExecContext(ctx, pageRenamePage, arg.Name, arg.ID)
 }
 
+const pageWorkspace = `-- name: PageWorkspace :one
+SELECT workspace_id FROM pages WHERE id=?
+`
+
+func (q *Queries) PageWorkspace(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, pageWorkspace, id)
+	var workspace_id string
+	err := row.Scan(&workspace_id)
+	return workspace_id, err
+}
+
+const sharingAssetForPage = `-- name: SharingAssetForPage :one
+SELECT count(*) FROM assets a JOIN pages p ON p.id=?1 JOIN workspaces w ON w.id=p.workspace_id WHERE a.id=?2 AND ((a.owner_id=?3 AND a.owner_id=w.owner_id) OR a.workspace_id=w.id OR EXISTS(SELECT 1 FROM page_assets pa JOIN pages linked ON linked.id=pa.page_id WHERE pa.asset_id=a.id AND linked.workspace_id=w.id))
+`
+
+type SharingAssetForPageParams struct {
+	PageID  string
+	ID      string
+	OwnerID string
+}
+
+func (q *Queries) SharingAssetForPage(ctx context.Context, arg SharingAssetForPageParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, sharingAssetForPage, arg.PageID, arg.ID, arg.OwnerID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const sharingAssetWorkspaces = `-- name: SharingAssetWorkspaces :many
+SELECT a.workspace_id FROM assets a WHERE a.id=? AND a.workspace_id IS NOT NULL UNION SELECT p.workspace_id FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=?
+`
+
+type SharingAssetWorkspacesParams struct {
+	ID      string
+	AssetID string
+}
+
+func (q *Queries) SharingAssetWorkspaces(ctx context.Context, arg SharingAssetWorkspacesParams) ([]sql.NullString, error) {
+	rows, err := q.db.QueryContext(ctx, sharingAssetWorkspaces, arg.ID, arg.AssetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []sql.NullString{}
+	for rows.Next() {
+		var workspace_id sql.NullString
+		if err := rows.Scan(&workspace_id); err != nil {
+			return nil, err
+		}
+		items = append(items, workspace_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const sharingAudience = `-- name: SharingAudience :many
+SELECT user_id FROM workspace_access WHERE workspace_id=?
+`
+
+func (q *Queries) SharingAudience(ctx context.Context, workspaceID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, sharingAudience, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const sharingInvalidateLeases = `-- name: SharingInvalidateLeases :exec
+UPDATE page_leases SET epoch=epoch+1,expires_at=0,session_id=NULL,client_id='',holder_user_id='' WHERE holder_user_id=? AND page_id IN(SELECT id FROM pages WHERE workspace_id=?)
+`
+
+type SharingInvalidateLeasesParams struct {
+	HolderUserID string
+	WorkspaceID  string
+}
+
+func (q *Queries) SharingInvalidateLeases(ctx context.Context, arg SharingInvalidateLeasesParams) error {
+	_, err := q.db.ExecContext(ctx, sharingInvalidateLeases, arg.HolderUserID, arg.WorkspaceID)
+	return err
+}
+
+const sharingInvalidateUserLeases = `-- name: SharingInvalidateUserLeases :exec
+UPDATE page_leases SET epoch=epoch+1,expires_at=0,session_id=NULL,client_id='',holder_user_id='' WHERE holder_user_id=?
+`
+
+func (q *Queries) SharingInvalidateUserLeases(ctx context.Context, holderUserID string) error {
+	_, err := q.db.ExecContext(ctx, sharingInvalidateUserLeases, holderUserID)
+	return err
+}
+
+const sharingMembers = `-- name: SharingMembers :many
+SELECT user_id,email,role FROM workspace_members WHERE workspace_id=? ORDER BY email
+`
+
+type SharingMembersRow struct {
+	UserID string
+	Email  string
+	Role   string
+}
+
+func (q *Queries) SharingMembers(ctx context.Context, workspaceID string) ([]SharingMembersRow, error) {
+	rows, err := q.db.QueryContext(ctx, sharingMembers, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SharingMembersRow{}
+	for rows.Next() {
+		var i SharingMembersRow
+		if err := rows.Scan(&i.UserID, &i.Email, &i.Role); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const sharingPageOwner = `-- name: SharingPageOwner :one
+SELECT w.owner_id FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=?
+`
+
+func (q *Queries) SharingPageOwner(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, sharingPageOwner, id)
+	var owner_id string
+	err := row.Scan(&owner_id)
+	return owner_id, err
+}
+
+const sharingRemoveMember = `-- name: SharingRemoveMember :exec
+DELETE FROM workspace_members WHERE workspace_id=? AND user_id=?
+`
+
+type SharingRemoveMemberParams struct {
+	WorkspaceID string
+	UserID      string
+}
+
+func (q *Queries) SharingRemoveMember(ctx context.Context, arg SharingRemoveMemberParams) error {
+	_, err := q.db.ExecContext(ctx, sharingRemoveMember, arg.WorkspaceID, arg.UserID)
+	return err
+}
+
+const sharingRemoveUserMemberships = `-- name: SharingRemoveUserMemberships :exec
+DELETE FROM workspace_members WHERE user_id=?
+`
+
+func (q *Queries) SharingRemoveUserMemberships(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, sharingRemoveUserMemberships, userID)
+	return err
+}
+
+const sharingScopeAsset = `-- name: SharingScopeAsset :exec
+UPDATE assets SET workspace_id=? WHERE id=?
+`
+
+type SharingScopeAssetParams struct {
+	WorkspaceID sql.NullString
+	ID          string
+}
+
+func (q *Queries) SharingScopeAsset(ctx context.Context, arg SharingScopeAssetParams) error {
+	_, err := q.db.ExecContext(ctx, sharingScopeAsset, arg.WorkspaceID, arg.ID)
+	return err
+}
+
+const sharingSetMember = `-- name: SharingSetMember :exec
+INSERT INTO workspace_members(workspace_id,user_id,email,role) VALUES(?,?,?,?) ON CONFLICT(workspace_id,user_id) DO UPDATE SET role=excluded.role,email=excluded.email
+`
+
+type SharingSetMemberParams struct {
+	WorkspaceID string
+	UserID      string
+	Email       string
+	Role        string
+}
+
+func (q *Queries) SharingSetMember(ctx context.Context, arg SharingSetMemberParams) error {
+	_, err := q.db.ExecContext(ctx, sharingSetMember,
+		arg.WorkspaceID,
+		arg.UserID,
+		arg.Email,
+		arg.Role,
+	)
+	return err
+}
+
 const workspaceCreateWorkspace = `-- name: WorkspaceCreateWorkspace :execresult
 INSERT INTO workspaces(id,owner_id,name,created_at,updated_at) VALUES(?,?,?,?,?)
 `
@@ -917,7 +1384,7 @@ func (q *Queries) WorkspaceIncrementWorkspaceRevision(ctx context.Context, id st
 }
 
 const workspaceListWorkspaces = `-- name: WorkspaceListWorkspaces :many
-SELECT w.id,w.name,w.revision,w.updated_at,(SELECT count(*) FROM pages p WHERE p.workspace_id=w.id) AS page_count FROM workspaces w WHERE w.owner_id=? ORDER BY w.updated_at DESC,w.id
+SELECT w.id,w.name,w.revision,w.updated_at,wa.role,EXISTS(SELECT 1 FROM workspace_members m WHERE m.workspace_id=w.id) AS shared,(SELECT count(*) FROM pages p WHERE p.workspace_id=w.id) AS page_count FROM workspaces w JOIN workspace_access wa ON wa.workspace_id=w.id WHERE wa.user_id=? ORDER BY w.updated_at DESC,w.id
 `
 
 type WorkspaceListWorkspacesRow struct {
@@ -925,11 +1392,13 @@ type WorkspaceListWorkspacesRow struct {
 	Name      string
 	Revision  int
 	UpdatedAt int64
+	Role      string
+	Shared    bool
 	PageCount int64
 }
 
-func (q *Queries) WorkspaceListWorkspaces(ctx context.Context, ownerID string) ([]WorkspaceListWorkspacesRow, error) {
-	rows, err := q.db.QueryContext(ctx, workspaceListWorkspaces, ownerID)
+func (q *Queries) WorkspaceListWorkspaces(ctx context.Context, userID string) ([]WorkspaceListWorkspacesRow, error) {
+	rows, err := q.db.QueryContext(ctx, workspaceListWorkspaces, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -942,6 +1411,8 @@ func (q *Queries) WorkspaceListWorkspaces(ctx context.Context, ownerID string) (
 			&i.Name,
 			&i.Revision,
 			&i.UpdatedAt,
+			&i.Role,
+			&i.Shared,
 			&i.PageCount,
 		); err != nil {
 			return nil, err

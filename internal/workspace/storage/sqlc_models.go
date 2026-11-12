@@ -3,3 +3,23 @@
 //   sqlc v1.31.1
 
 package storage
+
+type CommentMessage struct {
+	ID          string
+	ThreadID    string
+	AuthorID    string
+	AuthorEmail string
+	Body        string
+	CreatedAt   int64
+}
+
+type CommentThread struct {
+	ID          string
+	PageID      string
+	AuthorID    string
+	AuthorEmail string
+	X           float64
+	Y           float64
+	Resolved    int
+	CreatedAt   int64
+}

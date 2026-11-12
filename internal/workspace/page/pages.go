@@ -43,6 +43,10 @@ func (a *Service) CreatePage(ctx context.Context, actor session.Principal, resou
 		return Created{}, wrap("workspace_repository.go", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
+	_, accessErr := a.repository.Within(transaction).RequireWorkspace(ctx, resourceID, actor.ID, true)
+	if accessErr != nil {
+		return Created{}, accessErr
+	}
 	var wid string
 	ownedWorkspaceRow, err := a.repository.Within(transaction).PageOwnedWorkspace(ctx, storage.PageOwnedWorkspaceParams{ID: resourceID, OwnerID: actor.ID})
 	wid = ownedWorkspaceRow
@@ -118,7 +122,7 @@ func (a *Service) DeletePage(ctx context.Context, actor session.Principal, resou
 	if page.MetadataRevision != command.Revision {
 		return Completed{}, failure("metadata_conflict", "Page changed. Refresh and retry.")
 	}
-	_, err = a.images.DeletePageAssetsWithin(ctx, transaction, actor.ID, page.ID)
+	_, err = a.images.DeletePageAssetsWithin(ctx, transaction, page.ID)
 	if err != nil {
 		return Completed{}, err
 	}
@@ -181,6 +185,10 @@ func (a *Service) RecoveryCopy(ctx context.Context, actor session.Principal, com
 		return Created{}, wrap("canvas_repository.go", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
+	_, accessErr := a.repository.Within(transaction).RequireWorkspace(ctx, command.WorkspaceID, actor.ID, true)
+	if accessErr != nil {
+		return Created{}, accessErr
+	}
 	var wid string
 	ownedWorkspaceRow, err := a.repository.Within(transaction).PageOwnedWorkspace(ctx, storage.PageOwnedWorkspaceParams{ID: command.WorkspaceID, OwnerID: actor.ID})
 	wid = ownedWorkspaceRow
@@ -251,9 +259,13 @@ func copyName(name string) string {
 	return string(r) + " copy"
 }
 
-func (a *Service) loadOwnedPage(ctx context.Context, tx *storage.Transaction, id, owner string) (Page, error) {
+func (a *Service) loadOwnedPage(ctx context.Context, transaction *storage.Transaction, resourceID, owner string) (Page, error) {
+	_, accessErr := a.repository.Within(transaction).RequirePage(ctx, resourceID, owner, true)
+	if accessErr != nil {
+		return Page{}, accessErr
+	}
 	var page Page
-	ownedPageRow, err := a.repository.Within(tx).PageOwnedPage(ctx, storage.PageOwnedPageParams{ID: id, OwnerID: owner})
+	ownedPageRow, err := a.repository.Within(transaction).PageOwnedPage(ctx, storage.PageOwnedPageParams{ID: resourceID, OwnerID: owner})
 	page.ID = ownedPageRow.ID
 	page.WorkspaceID = ownedPageRow.WorkspaceID
 	page.Name = ownedPageRow.Name

@@ -32,6 +32,10 @@ sql:
         emit_empty_slices: true
         omit_unused_structs: true
         overrides:
+          - column: comment_threads.created_at
+            go_type: int64
+          - column: comment_messages.created_at
+            go_type: int64
           - column: image_jobs.user_id
             go_type: string
           - column: image_jobs.asset_id

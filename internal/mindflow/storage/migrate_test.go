@@ -62,7 +62,7 @@ func extended(t *testing.T, name, sql string) []storage.MigrationSetForTest {
 			}
 			files[entry.Name()] = &fstest.MapFile{Data: data}
 		}
-		files["00002_test.sql"] = &fstest.MapFile{Data: []byte(sql)}
+		files["00003_test.sql"] = &fstest.MapFile{Data: []byte(sql)}
 		catalog[index].Files = files
 
 		return catalog
@@ -87,7 +87,7 @@ func TestIndependentVersionsAndIdempotency(t *testing.T) {
 	for _, domain := range storage.MigrationCatalogForTest() {
 		expected := int64(1)
 		if domain.Name == "workspace" {
-			expected = 2
+			expected = 3
 		}
 		actual := version(t, database, domain.Name)
 		if actual != expected {
@@ -103,7 +103,7 @@ func TestFailedMigrationRollsBackAndCanRetry(t *testing.T) {
 	if database.MigrateForTest(t.Context(), bad) == nil {
 		t.Fatal("invalid migration succeeded")
 	}
-	if version(t, database, "workspace") != 1 {
+	if version(t, database, "workspace") != 2 {
 		t.Fatal("failed migration advanced history")
 	}
 	assertTable(t, database, "failed_upgrade_probe", false)
@@ -172,5 +172,49 @@ func TestEachDomainMigratesWithoutOtherSchemas(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestSharingUpgradePreservesPrivateWorkspaceData(t *testing.T) {
+	t.Parallel()
+	database, err := storage.Open(t.Context(), filepath.Join(t.TempDir(), "before-sharing.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = database.Close() }()
+	catalog := storage.MigrationCatalogForTest()
+	for index, domain := range catalog {
+		if domain.Name != "workspace" {
+			continue
+		}
+		initial, readErr := fs.ReadFile(domain.Files, "00001_initial.sql")
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		catalog[index].Files = fstest.MapFS{"00001_initial.sql": &fstest.MapFile{Data: initial}}
+	}
+	err = database.MigrateForTest(t.Context(), catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = database.SQLForTest().ExecContext(t.Context(), `INSERT INTO workspaces(id,owner_id,name,created_at,updated_at) VALUES('kept-workspace','opaque-owner','Keep me',1,1);
+ INSERT INTO pages(id,workspace_id,name,position,document,updated_at) VALUES('kept-page','kept-workspace','Keep page',0,'{"kept":true}',1);
+ INSERT INTO assets(id,owner_id,original,mime,width,height,digest,created_at) VALUES('kept-asset','opaque-owner',x'000102','image/png',1,1,'digest',1);`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = database.Migrate(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var name, document, role string
+	var original []byte
+	var members int
+	err = database.SQLForTest().QueryRowContext(t.Context(), `SELECT w.name,p.document,a.original,wa.role,(SELECT count(*) FROM workspace_members) FROM workspaces w JOIN pages p ON p.workspace_id=w.id CROSS JOIN assets a JOIN workspace_access wa ON wa.workspace_id=w.id WHERE w.id='kept-workspace'`).Scan(&name, &document, &original, &role, &members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if name != "Keep me" || document != "{\"kept\":true}" || string(original) != "\x00\x01\x02" || role != "owner" || members != 0 {
+		t.Fatal("sharing upgrade changed content or made a private workspace shared")
 	}
 }

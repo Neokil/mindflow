@@ -18,7 +18,7 @@ import (
 
 func (c *testClient) workspace() (string, string) {
 	c.t.Helper()
-	w := c.ok("POST", "/api/v1/workspaces", map[string]string{"name": "Ideas"})
+	w := c.ok("POST", "/api/v1/workspaces", map[string]string{nameField: "Ideas"})
 	var value struct {
 		ID     string `json:"id"`
 		PageID string `json:"pageId"`
@@ -33,7 +33,7 @@ func (c *testClient) workspace() (string, string) {
 
 func (c *testClient) acquire(page, client, action string) editor.LeaseResult {
 	c.t.Helper()
-	w := c.ok("POST", "/api/v1/pages/"+page+"/lease", map[string]any{"clientId": client, "action": action})
+	w := c.ok("POST", "/api/v1/pages/"+page+"/lease", map[string]any{clientIDField: client, actionField: action})
 	var lease editor.LeaseResult
 	checkErr33 := json.Unmarshal(w.Body.Bytes(), &lease)
 	if checkErr33 != nil {
@@ -85,7 +85,7 @@ func TestLeaseFencingIdempotencyAndRecovery(t *testing.T) {
 	}
 	req.BaseRevision = 1
 	client.ok("PUT", "/api/v1/pages/"+page+"/document", req)
-	client.ok("POST", "/api/v1/pages/recovery-copy", map[string]any{"workspaceId": wid, "name": "Recovered", "document": doc})
+	client.ok("POST", "/api/v1/pages/recovery-copy", map[string]any{"workspaceId": wid, nameField: "Recovered", "document": doc})
 	var count int
 	checkErr79 := client.db.QueryRowContext(t.Context(), "SELECT count(*) FROM pages WHERE workspace_id=?", wid).Scan(&count)
 	if checkErr79 != nil {
@@ -152,7 +152,7 @@ func TestPrivateAssetsDuplicationAndUserCascade(t *testing.T) {
 	asset := client.uploadImage()
 	lease := client.acquire(page, "owner-tab", "acquire")
 	doc := emptyDocument()
-	doc.Elements = append(doc.Elements, canvas.Element{ID: "image1", Type: "image", X: 0, Y: 0, Width: 100, Height: 100, AssetID: asset.ID})
+	doc.Elements = append(doc.Elements, canvas.Element{ID: "image1", Type: imageElementKind, X: 0, Y: 0, Width: 100, Height: 100, AssetID: asset.ID})
 	client.ok("PUT", "/api/v1/pages/"+page+"/document", canvas.SaveDocumentCommand{Epoch: lease.Epoch, ClientID: "owner-tab", MutationID: "image-save", Document: doc})
 	client.a.RunVariantForTest(t.Context())
 	meta := client.ok("GET", "/api/v1/assets/"+asset.ID+"/meta", nil)

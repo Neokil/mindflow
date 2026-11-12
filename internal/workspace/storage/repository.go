@@ -88,8 +88,8 @@ func (a *Repository) LeaseWithin(ctx context.Context, transaction *Transaction, 
 }
 
 // SaveLeaseWithin persists the policy result using SQL null for unowned control.
-func (a *Repository) SaveLeaseWithin(ctx context.Context, transaction *Transaction, pageID, sessionID, clientID string, epoch, expires int64) error {
-	_, err := a.Within(transaction).EditorUpdateLease(ctx, EditorUpdateLeaseParams{PageID: pageID, SessionID: sql.NullString{String: sessionID, Valid: sessionID != ""}, ClientID: clientID, Epoch: epoch, ExpiresAt: expires})
+func (a *Repository) SaveLeaseWithin(ctx context.Context, transaction *Transaction, pageID, sessionID, clientID, userID string, epoch, expires int64) error {
+	_, err := a.Within(transaction).EditorUpdateLease(ctx, EditorUpdateLeaseParams{HolderUserID: userID, PageID: pageID, SessionID: sql.NullString{String: sessionID, Valid: sessionID != ""}, ClientID: clientID, Epoch: epoch, ExpiresAt: expires})
 
 	return err
 }
@@ -114,7 +114,11 @@ func (a *Repository) DeleteWorkspaceAssetsWithin(ctx context.Context, transactio
 }
 
 // DeletePageAssetsWithin deletes originals referenced only by this page.
-func (a *Repository) DeletePageAssetsWithin(ctx context.Context, transaction *Transaction, owner, id string) (int64, error) {
+func (a *Repository) DeletePageAssetsWithin(ctx context.Context, transaction *Transaction, id string) (int64, error) {
+	owner, ownerErr := a.Within(transaction).SharingPageOwner(ctx, id)
+	if ownerErr != nil {
+		return 0, ownerErr
+	}
 	result, err := a.Within(transaction).ImageDeletePageAssets(ctx, ImageDeletePageAssetsParams{OwnerID: owner, PageID: id, PageID_2: id})
 
 	return affectedRows(result, err)
@@ -123,7 +127,23 @@ func (a *Repository) DeletePageAssetsWithin(ctx context.Context, transaction *Tr
 // DeleteOwnerWithin deletes this owner's complete workspace data in the caller transaction.
 func (a *Repository) DeleteOwnerWithin(ctx context.Context, transaction *Transaction, ownerID string) error {
 	queries := a.Within(transaction)
-	err := queries.WorkspaceDeleteOwnerWorkspaces(ctx, ownerID)
+	err := queries.SharingInvalidateUserLeases(ctx, ownerID)
+	if err != nil {
+		return err
+	}
+	err = queries.SharingRemoveUserMemberships(ctx, ownerID)
+	if err != nil {
+		return err
+	}
+	err = queries.CommentDeleteUserThreads(ctx, ownerID)
+	if err != nil {
+		return err
+	}
+	err = queries.CommentDeleteUserMessages(ctx, ownerID)
+	if err != nil {
+		return err
+	}
+	err = queries.WorkspaceDeleteOwnerWorkspaces(ctx, ownerID)
 	if err != nil {
 		return err
 	}

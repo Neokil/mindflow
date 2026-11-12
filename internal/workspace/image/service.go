@@ -27,8 +27,8 @@ func NewService(repository *storage.Repository, publish func(string, string, str
 func finite(value float64) bool { return !math.IsNaN(value) && !math.IsInf(value, 0) }
 
 // CountOwnedWithin checks image ownership in the caller transaction.
-func (a *Service) CountOwnedWithin(ctx context.Context, transaction *storage.Transaction, owner, id string) (int64, error) {
-	return a.repository.Within(transaction).ImageCountOwnedAsset(ctx, storage.ImageCountOwnedAssetParams{ID: id, OwnerID: owner})
+func (a *Service) CountOwnedWithin(ctx context.Context, transaction *storage.Transaction, owner, pageID, id string) (int64, error) {
+	return a.repository.Within(transaction).SharingAssetForPage(ctx, storage.SharingAssetForPageParams{ID: id, OwnerID: owner, PageID: pageID})
 }
 
 // DeleteWorkspaceAssetsWithin removes images referenced only by the deleted workspace.
@@ -37,8 +37,8 @@ func (a *Service) DeleteWorkspaceAssetsWithin(ctx context.Context, transaction *
 }
 
 // DeletePageAssetsWithin removes images referenced only by the deleted page.
-func (a *Service) DeletePageAssetsWithin(ctx context.Context, transaction *storage.Transaction, owner, id string) (int64, error) {
-	return a.repository.DeletePageAssetsWithin(ctx, transaction, owner, id)
+func (a *Service) DeletePageAssetsWithin(ctx context.Context, transaction *storage.Transaction, id string) (int64, error) {
+	return a.repository.DeletePageAssetsWithin(ctx, transaction, id)
 }
 
 // Cleanup removes this domain's expired records.

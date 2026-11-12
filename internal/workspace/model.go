@@ -7,6 +7,8 @@ import (
 
 // Workspace is an owned collection of ordered pages.
 type Workspace struct {
+	Role      string `json:"role"`
+	Shared    bool   `json:"shared"`
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Revision  int    `json:"revision"`

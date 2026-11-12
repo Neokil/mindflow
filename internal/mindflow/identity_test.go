@@ -166,7 +166,7 @@ func TestInvitationResetAndDeactivation(t *testing.T) {
 
 	client := fixture(t)
 	client.setup()
-	client.ok("POST", "/api/v1/admin/users", map[string]string{emailField: "friend@example.com", roleField: "user"})
+	client.ok("POST", "/api/v1/admin/users", map[string]string{emailField: "friend@example.com", roleField: userRole})
 	old := client.token("friend@example.com", "invite")
 	var uid string
 	checkErr148 := client.db.QueryRowContext(t.Context(), "SELECT id FROM users WHERE email='friend@example.com'").Scan(&uid)
@@ -251,7 +251,7 @@ func TestAccountDeletionCleansIndependentDomainsAtomically(t *testing.T) {
 	t.Parallel()
 	client := fixture(t)
 	client.setup()
-	client.ok("POST", "/api/v1/admin/users", map[string]string{emailField: "delete@example.com", roleField: "user"})
+	client.ok("POST", "/api/v1/admin/users", map[string]string{emailField: "delete@example.com", roleField: userRole})
 	var userID string
 	err := client.db.QueryRowContext(t.Context(), "SELECT id FROM users WHERE email='delete@example.com'").Scan(&userID)
 	if err != nil {

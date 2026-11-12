@@ -8,10 +8,11 @@ type LeaseState struct {
 
 // LeaseResult reports editor eligibility and the current document revision.
 type LeaseResult struct {
-	Editable  bool  `json:"editable"`
-	Epoch     int64 `json:"epoch"`
-	ExpiresAt int64 `json:"expiresAt"`
-	Revision  int   `json:"revision"`
+	Permission string `json:"permission"`
+	Editable   bool   `json:"editable"`
+	Epoch      int64  `json:"epoch"`
+	ExpiresAt  int64  `json:"expiresAt"`
+	Revision   int    `json:"revision"`
 }
 
 // CanEdit checks whether a session still holds a live lease.
@@ -43,7 +44,7 @@ func (l LeaseState) Advance(sessionID string, command LeaseCommand, atValue int6
 		l.ExpiresAt = atValue + LeaseSeconds
 
 		return l, true, nil
-	case "takeover":
+	case leaseTakeover:
 		l.Epoch++
 		l.SessionID = sessionID
 		l.ClientID = command.ClientID

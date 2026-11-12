@@ -8,3 +8,5 @@ const (
 
 // LeaseSeconds is the lifetime renewed by an active editor.
 const LeaseSeconds int64 = 60
+
+const leaseTakeover = "takeover"
