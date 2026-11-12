@@ -73,6 +73,45 @@ export default function CanvasScene({
     );
     tr.getLayer()?.batchDraw();
   }, [selection, document, camera.zoom, editing, editable]);
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    stage.container().style.cursor = "";
+    // Recheck after Konva redraws when text editing or a tool change ends.
+    const frame = requestAnimationFrame(() => {
+      const point = stage.getPointerPosition();
+      const hit = point && stage.getIntersection(point);
+      if (
+        editable &&
+        tool === "select" &&
+        !placement &&
+        !editing &&
+        hit?.findAncestor(".canvas-element", true)
+      )
+        stage.container().style.cursor = "grab";
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [editable, tool, placement, editing, stageRef]);
+  function updateCursor(event: Konva.KonvaEventObject<MouseEvent>) {
+    const container = stageRef.current?.container();
+    if (
+      !container ||
+      event.target.getParent()?.getClassName() === "Transformer"
+    )
+      return;
+    container.style.cursor =
+      isPanning() || drag.current
+        ? "grabbing"
+        : event.evt.metaKey || event.evt.ctrlKey
+          ? "grab"
+          : editable &&
+              tool === "select" &&
+              !placement &&
+              !editing &&
+              event.target.findAncestor(".canvas-element", true)
+            ? "grab"
+            : "";
+  }
   function commitTransform() {
     const anchor = transformAnchor.current;
     const corner =
@@ -117,10 +156,24 @@ export default function CanvasScene({
       y={camera.y}
       scaleX={camera.zoom}
       scaleY={camera.zoom}
-      onMouseDown={onPointerDown}
-      onMouseMove={onPointerMove}
-      onMouseUp={onPointerUp}
-      onMouseLeave={onPointerUp}
+      onMouseDown={(event) => {
+        onPointerDown(event);
+        updateCursor(event);
+      }}
+      onMouseOver={updateCursor}
+      onMouseMove={(event) => {
+        updateCursor(event);
+        onPointerMove();
+      }}
+      onMouseUp={(event) => {
+        onPointerUp();
+        updateCursor(event);
+      }}
+      onMouseLeave={() => {
+        onPointerUp();
+        const container = stageRef.current?.container();
+        if (container) container.style.cursor = "";
+      }}
       onWheel={(event) => {
         event.evt.preventDefault();
         onZoom(event.evt.deltaY, event.evt.deltaMode);
@@ -143,6 +196,7 @@ export default function CanvasScene({
             <Group
               key={e.id}
               id={e.id}
+              name="canvas-element"
               ref={(node) => {
                 if (node) nodes.current.set(e.id, node);
                 else nodes.current.delete(e.id);
@@ -168,6 +222,8 @@ export default function CanvasScene({
                 if (e.type === "text") onTextEdit(e);
               }}
               onDragStart={(event) => {
+                const container = stageRef.current?.container();
+                if (container) container.style.cursor = "grabbing";
                 if (isPanning()) {
                   event.target.stopDrag();
                   return;
@@ -202,6 +258,8 @@ export default function CanvasScene({
                   nodes.current.get(id)?.position({ x: p.x + dx, y: p.y + dy });
               }}
               onDragEnd={() => {
+                const container = stageRef.current?.container();
+                if (container) container.style.cursor = "grab";
                 const g = drag.current;
                 if (!g) return;
                 drag.current = undefined;
