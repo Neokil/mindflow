@@ -1,6 +1,6 @@
 services:
   mindflow:
-    image: mindflow:0.1.0
+    image: neokil/mindflow:edge
     build:
       context: ..
     ports:

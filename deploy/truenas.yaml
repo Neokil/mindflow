@@ -1,8 +1,8 @@
-# Replace the image registry and dataset path before installing this YAML.
-# Build/push your own image from this repository; no public image is published yet.
+# Replace the dataset path before installing this YAML.
+# Use a published version tag for a stable deployment; edge follows main.
 services:
   mindflow:
-    image: YOUR_REGISTRY/mindflow:0.1.0
+    image: neokil/mindflow:edge
     ports:
       - "8080:8080"
     volumes:
