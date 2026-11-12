@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   fullyContained,
   lassoSelection,
+  snap,
   worldPoint,
   zoomAt,
-  snap,
 } from "./geometry";
 import type { CanvasElement } from "./model";
 const rect: CanvasElement = {

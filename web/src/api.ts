@@ -58,3 +58,5 @@ export type SMTP = {
   name: string;
 };
 export type Settings = { publicURL: string; smtp: SMTP };
+
+export type ServerEvent = { type: string; id?: string; sequence: number };

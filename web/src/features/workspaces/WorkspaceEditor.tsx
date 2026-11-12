@@ -1,296 +1,38 @@
-import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
 import {
-  Plus,
-  FolderOpen,
-  ArrowUpRight,
-  MoreHorizontal,
-  Copy,
-  Pencil,
-  Trash2,
   ArrowLeft,
-  ChevronDown,
   Check,
+  ChevronDown,
   CloudOff,
-  LockKeyhole,
+  Copy,
+  FolderOpen,
   GripVertical,
+  LockKeyhole,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
   X,
-  Layers3,
 } from "lucide-react";
-import { api } from "./api";
-import type { Workspace, Page } from "./model";
-import { PageSession } from "./session";
-import Canvas from "./Canvas";
-import { Empty, ErrorMessage, Modal, Spinner } from "./ui";
-export function NameDialog({
-  title,
-  initial = "",
-  action,
-  close,
-}: {
-  title: string;
-  initial?: string;
-  action: (name: string) => Promise<void>;
-  close: () => void;
-}) {
-  const [name, setName] = useState(initial),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      await action(name.trim());
-      close();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <Modal title={title} close={close}>
-      <form onSubmit={submit}>
-        <label>
-          Name
-          <input
-            aria-label="Name"
-            autoFocus
-            required
-            maxLength={200}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="A name for your ideas"
-          />
-        </label>
-        <ErrorMessage message={error} />
-        <div className="form-actions">
-          <button className="secondary" type="button" onClick={close}>
-            Cancel
-          </button>
-          <button className="primary" disabled={busy || !name.trim()}>
-            {busy ? <Spinner /> : "Save"}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-export function Dashboard({ open }: { open: (w: Workspace) => void }) {
-  const [items, setItems] = useState<Workspace[]>([]),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState("");
-  const [dialog, setDialog] = useState<{
-    title: string;
-    initial?: string;
-    action: (name: string) => Promise<void>;
-  }>();
-  const [menu, setMenu] = useState<string>();
-  async function load() {
-    setItems(await api("/workspaces"));
-  }
-  useEffect(() => {
-    void load()
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-    const fn = (event: Event) => {
-      const type = (event as CustomEvent).detail?.type;
-      if (!type || type === "workspace" || type === "connected")
-        void load().catch(() => {});
-    };
-    window.addEventListener("mindflow:event", fn);
-    return () => window.removeEventListener("mindflow:event", fn);
-  }, []);
-  function create() {
-    setDialog({
-      title: "A new workspace",
-      action: async (name) => {
-        const result = await api<{ id: string }>("/workspaces", "POST", {
-          name,
-        });
-        const all = await api<Workspace[]>("/workspaces");
-        setItems(all);
-        open(all.find((w) => w.id === result.id)!);
-      },
-    });
-  }
-  async function mutate(fn: () => Promise<unknown>) {
-    try {
-      await fn();
-      await load();
-      setMenu(undefined);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
-  return (
-    <main className="workspace-list">
-      <div className="workspace-heading">
-        <div>
-          <span className="eyebrow">YOUR PRIVATE SPACE</span>
-          <h1>Workspaces</h1>
-          <p className="muted">
-            A home for every idea. A little room to let it grow.
-          </p>
-        </div>
-        <button className="primary" onClick={create}>
-          <Plus size={17} />
-          New workspace
-        </button>
-      </div>
-      <ErrorMessage message={error} />
-      {loading ? (
-        <Spinner />
-      ) : items.length === 0 ? (
-        <Empty
-          icon={<Layers3 size={27} strokeWidth={1.4} />}
-          title="Make room for an idea."
-        >
-          Create your first workspace to collect inspiration,
-          <br />
-          connect thoughts, and see what takes shape.
-          <br />
-          <button
-            className="primary"
-            style={{ marginTop: 25 }}
-            onClick={create}
-          >
-            <Plus size={16} />
-            Create a workspace
-          </button>
-        </Empty>
-      ) : (
-        <>
-          <div className="list-label">
-            ALL WORKSPACES <span>{items.length}</span>
-          </div>
-          <div className="workspace-grid">
-            {items.map((w, i) => (
-              <article className="workspace-card" key={w.id}>
-                <button
-                  className={`workspace-preview preview-${i % 4}`}
-                  onClick={() => open(w)}
-                  aria-label={`Open ${w.name}`}
-                >
-                  <div className="preview-stack">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                  <span className="preview-open">
-                    <ArrowUpRight size={18} />
-                  </span>
-                </button>
-                <div className="workspace-card-footer">
-                  <button className="workspace-title" onClick={() => open(w)}>
-                    <strong>{w.name}</strong>
-                    <span>
-                      {w.pageCount} {w.pageCount === 1 ? "page" : "pages"}
-                      <span className="info-dot">·</span>
-                      {new Date(w.updatedAt * 1000).toLocaleDateString(
-                        undefined,
-                        { month: "short", day: "numeric" },
-                      )}
-                    </span>
-                  </button>
-                  <div className="menu-anchor">
-                    <button
-                      className="icon-button"
-                      aria-label={`Options for ${w.name}`}
-                      onClick={() => setMenu(menu === w.id ? undefined : w.id)}
-                    >
-                      <MoreHorizontal size={19} />
-                    </button>
-                    {menu === w.id && (
-                      <>
-                        <button
-                          className="menu-dismiss"
-                          aria-label="Close workspace menu"
-                          onClick={() => setMenu(undefined)}
-                        />
-                        <div className="dropdown">
-                          <button
-                            onClick={() => {
-                              setMenu(undefined);
-                              setDialog({
-                                title: "Rename workspace",
-                                initial: w.name,
-                                action: async (name) => {
-                                  await api(`/workspaces/${w.id}`, "PATCH", {
-                                    name,
-                                    revision: w.revision,
-                                  });
-                                  await load();
-                                },
-                              });
-                            }}
-                          >
-                            <Pencil size={14} />
-                            Rename
-                          </button>
-                          <button
-                            onClick={() =>
-                              mutate(() =>
-                                api(
-                                  `/workspaces/${w.id}/duplicate`,
-                                  "POST",
-                                  {},
-                                ),
-                              )
-                            }
-                          >
-                            <Copy size={14} />
-                            Duplicate
-                          </button>
-                          <button
-                            className="danger"
-                            onClick={() => {
-                              if (
-                                confirm(`Delete “${w.name}” and all its pages?`)
-                              )
-                                void mutate(() =>
-                                  api(`/workspaces/${w.id}`, "DELETE", {
-                                    revision: w.revision,
-                                    confirm: true,
-                                  }),
-                                );
-                            }}
-                          >
-                            <Trash2 size={14} />
-                            Delete
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))}
-            <button className="workspace-card new-card" onClick={create}>
-              <span>
-                <Plus size={24} />
-              </span>
-              Start something new
-            </button>
-          </div>
-        </>
-      )}
-      <div className="workspace-bottom">
-        <LockKeyhole size={12} />
-        Only you can see your workspaces.
-      </div>
-      {dialog && <NameDialog {...dialog} close={() => setDialog(undefined)} />}
-    </main>
-  );
-}
-export function WorkspaceEditor({
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ServerEvent } from "../../api";
+import { api } from "../../api";
+import type { Page, Workspace } from "../../model";
+import { PageSession } from "../../session";
+import { Empty, ErrorMessage, Modal, Spinner } from "../../ui";
+import Canvas from "../editor/Canvas";
+import NameDialog from "./NameDialog";
+export default function WorkspaceEditor({
   workspace: initial,
   back,
   dirtyChanged,
+  onAuthenticationRequired,
+  serverEvent,
 }: {
   workspace: Workspace;
   back: () => void;
   dirtyChanged: (dirty: boolean) => void;
+  onAuthenticationRequired: () => void;
+  serverEvent: ServerEvent;
 }) {
   const [workspace, setWorkspace] = useState(initial),
     [pages, setPages] = useState<Page[]>([]),
@@ -313,28 +55,30 @@ export function WorkspaceEditor({
   const dragTab = useRef<string | undefined>(undefined);
   const workspaceId = workspace.id;
   const session = pageId ? sessions.current.get(pageId) : undefined;
-  async function load() {
+  const load = useCallback(async () => {
     const list = await api<Page[]>(`/workspaces/${workspaceId}/pages`);
     setPages(list);
     const all = await api<Workspace[]>("/workspaces");
     const current = all.find((w) => w.id === workspaceId);
     if (current) setWorkspace(current);
     setPageId((previous) => previous || list[0]?.id);
-  }
+  }, [workspaceId]);
   useEffect(() => {
+    const openSessions = sessions.current;
+    const subscriptions = unsubscribers.current;
     void load()
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
     return () => {
-      for (const unsub of unsubscribers.current.values()) unsub();
-      for (const s of sessions.current.values()) s.dispose();
-      sessions.current.clear();
+      for (const unsub of subscriptions.values()) unsub();
+      for (const s of openSessions.values()) s.dispose();
+      openSessions.clear();
       dirtyChanged(false);
     };
-  }, [workspaceId]);
+  }, [load, dirtyChanged]);
   useEffect(() => {
     if (!pageId || sessions.current.has(pageId)) return;
-    const s = new PageSession(pageId);
+    const s = new PageSession(pageId, api, onAuthenticationRequired);
     sessions.current.set(pageId, s);
     unsubscribers.current.set(
       pageId,
@@ -345,30 +89,32 @@ export function WorkspaceEditor({
     );
     void s.open();
     render((n) => n + 1);
-  }, [pageId]);
+  }, [pageId, dirtyChanged, onAuthenticationRequired]);
   useEffect(() => {
-    const listener = (event: Event) => {
-      const type = (event as CustomEvent).detail?.type;
-      for (const s of sessions.current.values()) void s.sync();
-      if (!type || type === "workspace" || type === "connected")
-        void load().catch(() => {});
-      if (type === "asset" || !type) setRefresh((n) => n + 1);
+    for (const session of sessions.current.values()) void session.sync();
+    if (serverEvent.type === "workspace" || serverEvent.type === "connected")
+      void load().catch(() => {});
+    if (serverEvent.type === "asset") setRefresh((value) => value + 1);
+  }, [serverEvent, load]);
+  useEffect(() => {
+    const online = () => {
+      for (const session of sessions.current.values()) void session.sync();
+      void load().catch(() => {});
+      setRefresh((value) => value + 1);
     };
-    window.addEventListener("mindflow:event", listener);
-    window.addEventListener("online", listener);
     const offline = () => {
-      for (const s of sessions.current.values()) {
-        s.status = "Disconnected";
-        s.notify();
+      for (const session of sessions.current.values()) {
+        session.status = "Disconnected";
+        session.notify();
       }
     };
+    window.addEventListener("online", online);
     window.addEventListener("offline", offline);
     return () => {
-      window.removeEventListener("mindflow:event", listener);
-      window.removeEventListener("online", listener);
+      window.removeEventListener("online", online);
       window.removeEventListener("offline", offline);
     };
-  }, [workspaceId]);
+  }, [load]);
   useEffect(() => {
     const listener = (e: BeforeUnloadEvent) => {
       if ([...sessions.current.values()].some((s) => s.unsaved)) {

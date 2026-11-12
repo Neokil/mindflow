@@ -1,6 +1,6 @@
 import { api, APIError } from "./api";
-import { clone, emptyDocument, uid } from "./model";
 import type { CanvasDocument } from "./model";
+import { clone, emptyDocument, uid } from "./model";
 export type Lease = {
   editable: boolean;
   epoch: number;
@@ -61,6 +61,7 @@ export class PageSession {
   constructor(
     public id: string,
     private request: Transport = api,
+    private onAuthenticationRequired: () => void = () => {},
   ) {}
   get dirty() {
     return this.generation !== this.acknowledged;
@@ -78,12 +79,8 @@ export class PageSession {
     for (const fn of this.listeners) fn();
   };
   private authFailure(e: unknown) {
-    if (
-      e instanceof APIError &&
-      e.status === 401 &&
-      typeof window !== "undefined"
-    )
-      window.dispatchEvent(new Event("mindflow:reauth"));
+    if (e instanceof APIError && e.status === 401)
+      this.onAuthenticationRequired();
   }
   async open() {
     try {

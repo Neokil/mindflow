@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { PageSession } from "./session";
-import type { Transport } from "./session";
-import { emptyDocument } from "./model";
 import { APIError } from "./api";
+import { emptyDocument } from "./model";
+import type { Transport } from "./session";
+import { PageSession } from "./session";
 let sessions: PageSession[] = [];
 beforeEach(() => {
   vi.stubGlobal("navigator", { onLine: true });
@@ -82,11 +82,19 @@ it("retries an uncertain save with the same mutation identity", async () => {
 });
 it("allows a corrected edit to replace a rejected snapshot", async () => {
   let count = 0;
-  const bodies: any[] = [];
+  const bodies: {
+    mutationId: string;
+    document: ReturnType<typeof emptyDocument>;
+  }[] = [];
   const transport = vi.fn(
     async (_path: string, method?: string, body?: unknown) => {
       if (method !== "PUT") return {};
-      bodies.push(body);
+      bodies.push(
+        body as {
+          mutationId: string;
+          document: ReturnType<typeof emptyDocument>;
+        },
+      );
       if (++count === 1)
         throw new APIError(400, "validation_failed", "Rejected");
       return { revision: 1 };
@@ -108,15 +116,16 @@ it("automatically resumes an unmodified page after its offline lease expires", a
   let attempts = 0;
   const epochs: number[] = [];
   const transport = vi.fn(
-    async (_path: string, method?: string, body?: any) => {
+    async (_path: string, method?: string, body?: unknown) => {
+      const command = body as { epoch: number; action?: string } | undefined;
       if (method === "PUT") {
-        epochs.push(body.epoch);
+        epochs.push(command!.epoch);
         attempts++;
         if (attempts === 1) throw new TypeError("offline");
         if (attempts === 2) throw new APIError(409, "lease_lost", "Expired");
         return { revision: 1 };
       }
-      if (body?.action === "acquire")
+      if (command?.action === "acquire")
         return { editable: true, epoch: 2, revision: 0, expiresAt: 9999999999 };
       return { editable: false, epoch: 1, revision: 0, expiresAt: 0 };
     },

@@ -1,15 +1,25 @@
-import { useEffect, useRef, useState } from "react";
 import { LogOut, Settings, SunMoon } from "lucide-react";
-import { api, setCSRF, APIError } from "./api";
-import type { User } from "./api";
-import Auth from "./Auth";
-import { Dashboard, WorkspaceEditor } from "./Workspaces";
-import type { Workspace } from "./model";
-import Admin from "./Admin";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ServerEvent, User } from "./api";
+import { api, APIError, setCSRF } from "./api";
+import Admin from "./features/accounts/Admin";
+import Auth from "./features/accounts/Auth";
+import Dashboard from "./features/workspaces/Dashboard";
+import WorkspaceEditor from "./features/workspaces/WorkspaceEditor";
 import { clearMedia, invalidateMedia } from "./media";
+import type { Workspace } from "./model";
 import { localImages } from "./session";
-import { Brand, Spinner, ErrorMessage } from "./ui";
+import { Brand, ErrorMessage, Spinner } from "./ui";
 export default function App() {
+  const [serverEvent, setServerEvent] = useState<ServerEvent>({
+    type: "connected",
+    sequence: 0,
+  });
+  const [authenticationGeneration, setAuthenticationGeneration] = useState(0);
+  const requireAuthentication = useCallback(() => setReauth(true), []);
+  const updateDirty = useCallback((value: boolean) => {
+    dirty.current = value;
+  }, []);
   const [workspace, setWorkspace] = useState<Workspace>();
   const dirty = useRef(false);
   const [reauth, setReauth] = useState(false);
@@ -42,41 +52,45 @@ export default function App() {
       }
     })();
   }, []);
+  const appearancePreference = user?.appearance || "system";
+  const userID = user?.id;
   useEffect(() => {
     const query = matchMedia("(prefers-color-scheme: dark)");
     const update = () => {
       document.documentElement.dataset.theme =
-        user?.appearance === "system" || !user
+        appearancePreference === "system"
           ? query.matches
             ? "dark"
             : "light"
-          : user.appearance;
+          : appearancePreference;
     };
     update();
     query.addEventListener("change", update);
     return () => query.removeEventListener("change", update);
-  }, [user?.appearance]);
+  }, [appearancePreference]);
   useEffect(() => {
-    const source = user ? new EventSource("/api/v1/events") : undefined;
+    const source = userID ? new EventSource("/api/v1/events") : undefined;
     if (source) {
       source.onmessage = (event) => {
         try {
           const detail = JSON.parse(event.data);
           if (detail.type === "asset") invalidateMedia(detail.id);
-          window.dispatchEvent(new CustomEvent("mindflow:event", { detail }));
+          if (typeof detail.type === "string")
+            setServerEvent((previous) => ({
+              type: detail.type,
+              id: typeof detail.id === "string" ? detail.id : undefined,
+              sequence: previous.sequence + 1,
+            }));
         } catch {
           /* Reconnect polling remains authoritative. */
         }
       };
       source.addEventListener("expired", () => setReauth(true));
     }
-    const onReauth = () => setReauth(true);
-    window.addEventListener("mindflow:reauth", onReauth);
     return () => {
       source?.close();
-      window.removeEventListener("mindflow:reauth", onReauth);
     };
-  }, [user?.id]);
+  }, [userID, authenticationGeneration]);
   async function appearance() {
     if (!user) return;
     const next =
@@ -172,12 +186,12 @@ export default function App() {
             key={workspace.id}
             workspace={workspace}
             back={() => setWorkspace(undefined)}
-            dirtyChanged={(value) => {
-              dirty.current = value;
-            }}
+            dirtyChanged={updateDirty}
+            onAuthenticationRequired={requireAuthentication}
+            serverEvent={serverEvent}
           />
         ) : (
-          <Dashboard open={setWorkspace} />
+          <Dashboard open={setWorkspace} serverEvent={serverEvent} />
         )}
       </>
       {admin && <Admin close={() => setAdmin(false)} self={user} />}
@@ -196,7 +210,11 @@ export default function App() {
             }
             setUser(u);
             setReauth(false);
-            window.dispatchEvent(new Event("mindflow:event"));
+            setAuthenticationGeneration((generation) => generation + 1);
+            setServerEvent((previous) => ({
+              type: "connected",
+              sequence: previous.sequence + 1,
+            }));
           }}
         />
       )}

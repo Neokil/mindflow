@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
-import type { CanvasDocument } from "../src/model";
+import type { CanvasDocument, Workspace } from "../src/model";
 const email = "owner@test.invalid",
   password = "a private test passphrase";
 async function login(page: Page) {
@@ -332,7 +332,7 @@ test("large page remains interactive with 3000 elements and image placements", a
   const name = `Large canvas ${info.project.name} ${Date.now()}`;
   await create(page, name);
   const all = await (await page.request.get("/api/v1/workspaces")).json();
-  const ws = all.find((w: any) => w.name === name);
+  const ws = all.find((w: Workspace) => w.name === name);
   const pages = await (
     await page.request.get(`/api/v1/workspaces/${ws.id}/pages`)
   ).json();
@@ -427,20 +427,37 @@ test("large page remains interactive with 3000 elements and image placements", a
   ).toBeVisible();
   await page.getByRole("button", { name: "Take control", exact: true }).click();
   await expect(page.getByTestId("element-count")).toHaveText("3000 elements");
-  const imageReady = page.waitForResponse(response => response.url().includes(`/assets/${asset.id}`) && response.request().resourceType() === "image");
+  const imageReady = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/assets/${asset.id}`) &&
+      response.request().resourceType() === "image",
+  );
   await page.getByRole("button", { name: "Fit content", exact: true }).click();
   await (await imageReady).finished();
   // Exclude initial transfer/decoding: the design's frame target is for loaded content.
-  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   // Measure real animation frames during user input; one image source is reused
   // at 200 different placements, so this is not a 200-unique-originals memory test.
   await page.evaluate(() => {
-    (window as any).__frames = [];
+    (window as Window & { __frames: number[]; __measure: boolean }).__frames =
+      [];
     let previous = performance.now();
-    (window as any).__measure = true;
+    (window as Window & { __frames: number[]; __measure: boolean }).__measure =
+      true;
     const tick = (time: number) => {
-      if (!(window as any).__measure) return;
-      (window as any).__frames.push(time - previous);
+      if (
+        !(window as Window & { __frames: number[]; __measure: boolean })
+          .__measure
+      )
+        return;
+      (
+        window as Window & { __frames: number[]; __measure: boolean }
+      ).__frames.push(time - previous);
       previous = time;
       requestAnimationFrame(tick);
     };
@@ -455,8 +472,10 @@ test("large page remains interactive with 3000 elements and image placements", a
   await page.mouse.up();
   await page.keyboard.up("Control");
   const frames = await page.evaluate(() => {
-    (window as any).__measure = false;
-    return (window as any).__frames as number[];
+    (window as Window & { __frames: number[]; __measure: boolean }).__measure =
+      false;
+    return (window as Window & { __frames: number[]; __measure: boolean })
+      .__frames as number[];
   });
   const sorted = frames.slice(1).sort((a, b) => a - b);
   const median = sorted[Math.floor(sorted.length * 0.5)],

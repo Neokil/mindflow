@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { LoaderCircle, Orbit, X } from "lucide-react";
 import type { ReactNode } from "react";
-import { X, Orbit, LoaderCircle } from "lucide-react";
+import { useEffect, useRef } from "react";
 export function Brand({ small = false }: { small?: boolean }) {
   return (
     <span className={`brand ${small ? "small" : ""}`}>

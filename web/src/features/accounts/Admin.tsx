@@ -1,16 +1,16 @@
-import { useEffect, useState } from "react";
 import {
   Mail,
   Plus,
   RotateCcw,
+  Settings as SettingsIcon,
   Trash2,
   Users,
-  Settings as SettingsIcon,
 } from "lucide-react";
-import { api } from "./api";
-import type { User, Settings } from "./api";
-import { ErrorMessage, Modal, Spinner } from "./ui";
-import { SMTPFields } from "./Auth";
+import { useEffect, useState } from "react";
+import type { Settings, User } from "../../api";
+import { api } from "../../api";
+import { ErrorMessage, Modal, Spinner } from "../../ui";
+import SMTPFields from "./SMTPFields";
 export default function Admin({
   close,
   self,
