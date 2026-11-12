@@ -87,20 +87,20 @@ func (a *Repositories) RunWorkers(ctx context.Context) {
 func (a *Repositories) runMail(ctx context.Context) {
 	var id, payload string
 	var attempts int
-	if err := a.DB.QueryRowContext(ctx, "SELECT id,payload,attempts FROM jobs WHERE kind='mail' AND run_at<=? AND attempts<8 ORDER BY run_at LIMIT 1", now()).Scan(&id, &payload, &attempts); err != nil {
+	if err := a.db.QueryRowContext(ctx, "SELECT id,payload,attempts FROM jobs WHERE kind='mail' AND run_at<=? AND attempts<8 ORDER BY run_at LIMIT 1", now()).Scan(&id, &payload, &attempts); err != nil {
 		return
 	}
 	var job mailJob
 	if json.Unmarshal([]byte(payload), &job) != nil {
-		_, _ = a.DB.ExecContext(ctx, "DELETE FROM jobs WHERE id=?", id)
+		_, _ = a.db.ExecContext(ctx, "DELETE FROM jobs WHERE id=?", id)
 		return
 	}
 	var valid int
-	if err := a.DB.QueryRowContext(ctx, "SELECT count(*) FROM account_tokens t JOIN users u ON u.id=t.user_id WHERE t.token_hash=? AND t.expires_at>? AND u.status IN ('active','invited')", job.TokenHash, now()).Scan(&valid); err != nil {
+	if err := a.db.QueryRowContext(ctx, "SELECT count(*) FROM account_tokens t JOIN users u ON u.id=t.user_id WHERE t.token_hash=? AND t.expires_at>? AND u.status IN ('active','invited')", job.TokenHash, now()).Scan(&valid); err != nil {
 		return
 	}
 	if valid == 0 {
-		_, _ = a.DB.ExecContext(ctx, "DELETE FROM jobs WHERE id=?", id)
+		_, _ = a.db.ExecContext(ctx, "DELETE FROM jobs WHERE id=?", id)
 		return
 	}
 	s, err := a.settings(ctx)
@@ -108,17 +108,17 @@ func (a *Repositories) runMail(ctx context.Context) {
 		err = sendMail(ctx, s.SMTP, job.To, job.Subject, job.Body)
 	}
 	if err == nil {
-		_, _ = a.DB.ExecContext(ctx, "DELETE FROM jobs WHERE id=?", id)
+		_, _ = a.db.ExecContext(ctx, "DELETE FROM jobs WHERE id=?", id)
 		return
 	}
 	// Deliberately do not store server error text that could echo credentials or links.
 	attempts++
 	if attempts >= 8 {
-		_, _ = a.DB.ExecContext(ctx, "UPDATE jobs SET attempts=?,payload='{}',last_error='Email delivery failed. Check SMTP settings and resend.' WHERE id=?", attempts, id)
+		_, _ = a.db.ExecContext(ctx, "UPDATE jobs SET attempts=?,payload='{}',last_error='Email delivery failed. Check SMTP settings and resend.' WHERE id=?", attempts, id)
 		return
 	}
 	delay := int64(15 * (1 << min(attempts, 8)))
-	_, _ = a.DB.ExecContext(ctx, "UPDATE jobs SET attempts=?,run_at=?,last_error='Email delivery failed; retry scheduled.' WHERE id=?", attempts, now()+delay, id)
+	_, _ = a.db.ExecContext(ctx, "UPDATE jobs SET attempts=?,run_at=?,last_error='Email delivery failed; retry scheduled.' WHERE id=?", attempts, now()+delay, id)
 }
 
 func (a *Repositories) SendMail(ctx context.Context, c SMTPConfig, to, subject, body string) error {

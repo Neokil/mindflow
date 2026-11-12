@@ -24,11 +24,11 @@ func (a *Repositories) AssetMeta(ctx context.Context, actor domain.Principal, id
 	defer mapRepositoryError(&err)
 
 	var v assetInfo
-	if err := a.DB.QueryRowContext(ctx, "SELECT id,width,height,mime FROM assets WHERE id=? AND owner_id=?", id, actor.ID).Scan(&v.ID, &v.Width, &v.Height, &v.MIME); err != nil {
+	if err := a.db.QueryRowContext(ctx, "SELECT id,width,height,mime FROM assets WHERE id=? AND owner_id=?", id, actor.ID).Scan(&v.ID, &v.Width, &v.Height, &v.MIME); err != nil {
 		return domain.AssetInfo{}, err
 	}
 	v.Variants = []int{}
-	rows, err := a.DB.QueryContext(ctx, "SELECT bucket FROM asset_variants WHERE asset_id=? ORDER BY bucket", v.ID)
+	rows, err := a.db.QueryContext(ctx, "SELECT bucket FROM asset_variants WHERE asset_id=? ORDER BY bucket", v.ID)
 	if err != nil {
 		return domain.AssetInfo{}, err
 	}
@@ -142,7 +142,7 @@ func orient(src image.Image, o int) image.Image {
 }
 func (a *Repositories) queueVariant(ctx context.Context, owner, id string, width, height float64) error {
 	var ow, oh int
-	if err := a.DB.QueryRowContext(ctx, "SELECT width,height FROM assets WHERE id=? AND owner_id=?", id, owner).Scan(&ow, &oh); err != nil {
+	if err := a.db.QueryRowContext(ctx, "SELECT width,height FROM assets WHERE id=? AND owner_id=?", id, owner).Scan(&ow, &oh); err != nil {
 		return err
 	}
 	bucket := variantBucket(ow, oh, width, height)
@@ -150,14 +150,14 @@ func (a *Repositories) queueVariant(ctx context.Context, owner, id string, width
 		return nil
 	}
 	var n int
-	if err := a.DB.QueryRowContext(ctx, "SELECT count(*) FROM asset_variants WHERE asset_id=? AND bucket=?", id, bucket).Scan(&n); err != nil {
+	if err := a.db.QueryRowContext(ctx, "SELECT count(*) FROM asset_variants WHERE asset_id=? AND bucket=?", id, bucket).Scan(&n); err != nil {
 		return err
 	}
 	if n > 0 {
 		return nil
 	}
 	payload, _ := json.Marshal(map[string]int{"bucket": bucket})
-	_, err := a.DB.ExecContext(ctx, "INSERT OR IGNORE INTO jobs(id,user_id,asset_id,kind,dedup_key,payload,run_at) VALUES(?,?,?,'variant',?,?,?)", randomID(), owner, id, fmt.Sprintf("variant:%s:%d", id, bucket), string(payload), now())
+	_, err := a.db.ExecContext(ctx, "INSERT OR IGNORE INTO jobs(id,user_id,asset_id,kind,dedup_key,payload,run_at) VALUES(?,?,?,'variant',?,?,?)", randomID(), owner, id, fmt.Sprintf("variant:%s:%d", id, bucket), string(payload), now())
 	return err
 }
 func (a *Repositories) enqueueImageVariants(ctx context.Context, owner string, d Document) {
@@ -179,7 +179,7 @@ func (a *Repositories) RunVariant(ctx context.Context) {
 	defer a.mediaMu.Unlock()
 	var id, owner, asset, payload string
 	var attempts int
-	if err := a.DB.QueryRowContext(ctx, "SELECT id,user_id,asset_id,payload,attempts FROM jobs WHERE kind='variant' AND attempts<3 AND run_at<=? ORDER BY run_at LIMIT 1", now()).Scan(&id, &owner, &asset, &payload, &attempts); err != nil {
+	if err := a.db.QueryRowContext(ctx, "SELECT id,user_id,asset_id,payload,attempts FROM jobs WHERE kind='variant' AND attempts<3 AND run_at<=? ORDER BY run_at LIMIT 1", now()).Scan(&id, &owner, &asset, &payload, &attempts); err != nil {
 		return
 	}
 	var v struct {
@@ -188,8 +188,8 @@ func (a *Repositories) RunVariant(ctx context.Context) {
 	_ = json.Unmarshal([]byte(payload), &v)
 	var raw []byte
 	var width, height int
-	if err := a.DB.QueryRowContext(ctx, "SELECT original,width,height FROM assets WHERE id=? AND owner_id=?", asset, owner).Scan(&raw, &width, &height); err != nil {
-		_, _ = a.DB.ExecContext(ctx, "DELETE FROM jobs WHERE id=?", id)
+	if err := a.db.QueryRowContext(ctx, "SELECT original,width,height FROM assets WHERE id=? AND owner_id=?", asset, owner).Scan(&raw, &width, &height); err != nil {
+		_, _ = a.db.ExecContext(ctx, "DELETE FROM jobs WHERE id=?", id)
 		return
 	}
 	src, _, err := image.Decode(bytes.NewReader(raw))
@@ -209,7 +209,7 @@ func (a *Repositories) RunVariant(ctx context.Context) {
 			err = png.Encode(&buffer, dst)
 		}
 		if err == nil {
-			tx, e := a.DB.BeginTx(ctx, nil)
+			tx, e := a.db.BeginTx(ctx, nil)
 			err = e
 			if e == nil {
 				defer tx.Rollback()
@@ -232,7 +232,7 @@ func (a *Repositories) RunVariant(ctx context.Context) {
 			}
 		}
 	}
-	_, _ = a.DB.ExecContext(ctx, "UPDATE jobs SET attempts=attempts+1,run_at=?,last_error='Image preview generation failed.' WHERE id=?", now()+60, id)
+	_, _ = a.db.ExecContext(ctx, "UPDATE jobs SET attempts=attempts+1,run_at=?,last_error='Image preview generation failed.' WHERE id=?", now()+60, id)
 }
 func (a *Repositories) UploadAsset(ctx context.Context, actor domain.Principal, raw []byte) (domain.AssetInfo, error) {
 	a.mediaMu.Lock()
@@ -258,11 +258,11 @@ func (a *Repositories) UploadAsset(ctx context.Context, actor domain.Principal, 
 	mime := "image/" + format
 	hash := sha256.Sum256(raw)
 	id := randomID()
-	_, err = a.DB.ExecContext(ctx, "INSERT INTO assets(id,owner_id,original,mime,width,height,digest,created_at) VALUES(?,?,?,?,?,?,?,?)", id, actor.ID, raw, mime, width, height, hex.EncodeToString(hash[:]), now())
+	_, err = a.db.ExecContext(ctx, "INSERT INTO assets(id,owner_id,original,mime,width,height,digest,created_at) VALUES(?,?,?,?,?,?,?,?)", id, actor.ID, raw, mime, width, height, hex.EncodeToString(hash[:]), now())
 	if err != nil {
 		return domain.AssetInfo{}, err
 	}
-	return assetInfo{id, width, height, mime, []int{}}, nil
+	return assetInfo{ID: id, Width: width, Height: height, MIME: mime, Variants: []int{}}, nil
 
 }
 func (a *Repositories) GetAsset(ctx context.Context, actor domain.Principal, id string, bucket int) (blob domain.Blob, err error) {
@@ -271,10 +271,10 @@ func (a *Repositories) GetAsset(ctx context.Context, actor domain.Principal, id 
 	var mime string
 	var width, height int
 	if bucket > 0 {
-		_ = a.DB.QueryRowContext(ctx, `SELECT v.data,v.mime,v.width,v.height FROM asset_variants v JOIN assets a ON a.id=v.asset_id WHERE a.id=? AND a.owner_id=? AND v.bucket=?`, id, actor.ID, bucket).Scan(&raw, &mime, &width, &height)
+		_ = a.db.QueryRowContext(ctx, `SELECT v.data,v.mime,v.width,v.height FROM asset_variants v JOIN assets a ON a.id=v.asset_id WHERE a.id=? AND a.owner_id=? AND v.bucket=?`, id, actor.ID, bucket).Scan(&raw, &mime, &width, &height)
 	}
 	if len(raw) == 0 {
-		if err := a.DB.QueryRowContext(ctx, "SELECT original,mime,width,height FROM assets WHERE id=? AND owner_id=?", id, actor.ID).Scan(&raw, &mime, &width, &height); err != nil {
+		if err := a.db.QueryRowContext(ctx, "SELECT original,mime,width,height FROM assets WHERE id=? AND owner_id=?", id, actor.ID).Scan(&raw, &mime, &width, &height); err != nil {
 			return blob, err
 		}
 	}

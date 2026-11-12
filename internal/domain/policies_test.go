@@ -1,7 +1,9 @@
 package domain
 
 import (
+	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -45,5 +47,19 @@ func TestAdministratorAndInvitationRules(t *testing.T) {
 	role, status, err := ChangeAccount("user", "inactive", "admin", "active")
 	if err != nil || role != "admin" || status != "active" {
 		t.Fatal("valid account update refused")
+	}
+}
+
+func TestCredentialsCannotBeSerializedIntoResponses(t *testing.T) {
+	for _, value := range []any{Principal{SessionID: "raw-session", CSRF: "private-csrf"}, LoginResult{CSRF: "public-csrf", Cookie: "raw-cookie"}} {
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, secret := range []string{"raw-session", "private-csrf", "raw-cookie"} {
+			if strings.Contains(string(encoded), secret) {
+				t.Fatalf("serialized credential %s", secret)
+			}
+		}
 	}
 }

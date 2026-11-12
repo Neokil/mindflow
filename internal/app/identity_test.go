@@ -165,3 +165,24 @@ func TestInvitationResetAndDeactivation(t *testing.T) {
 }
 
 func emptyDocument() domain.Document { return domain.NewDocument() }
+
+func TestSMTPPasswordIsRedacted(t *testing.T) {
+	c := fixture(t)
+	c.setup()
+	settings := setupBody()["settings"].(Settings)
+	settings.SMTP.Password = "smtp-secret-never-returned"
+	raw, err := json.Marshal(settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = c.db.Exec("UPDATE app_settings SET config=? WHERE id=1", string(raw)); err != nil {
+		t.Fatal(err)
+	}
+	response := c.ok("GET", "/api/v1/admin/settings", nil)
+	if strings.Contains(response.Body.String(), settings.SMTP.Password) {
+		t.Fatal("SMTP password exposed")
+	}
+	if !strings.Contains(response.Body.String(), `"passwordConfigured":true`) {
+		t.Fatal("missing configured-password indicator")
+	}
+}

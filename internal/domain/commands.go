@@ -82,6 +82,7 @@ type RequestVariantCommand struct {
 	Height float64 `json:"height"`
 }
 type LoginResult struct {
-	User         User
-	CSRF, Cookie string
+	User   User   `json:"user"`
+	CSRF   string `json:"csrf"`
+	Cookie string `json:"-"`
 }

@@ -16,7 +16,7 @@ func (a *Repositories) GetDocument(ctx context.Context, actor domain.Principal, 
 	var raw string
 	var revision, metadata int
 	var name, workspace string
-	err = a.DB.QueryRowContext(ctx, `SELECT p.document,p.revision,p.metadata_revision,p.name,p.workspace_id FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?`, id, actor.ID).Scan(&raw, &revision, &metadata, &name, &workspace)
+	err = a.db.QueryRowContext(ctx, `SELECT p.document,p.revision,p.metadata_revision,p.name,p.workspace_id FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?`, id, actor.ID).Scan(&raw, &revision, &metadata, &name, &workspace)
 	if err != nil {
 		return application.PageSnapshot{}, err
 	}
@@ -39,7 +39,7 @@ func (a *Repositories) SaveDocument(ctx context.Context, actor domain.Principal,
 	requestRaw, _ := json.Marshal(v)
 	hash := digest(string(requestRaw))
 	p := actor
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.SaveReceipt{}, err
 	}
@@ -106,7 +106,7 @@ func (a *Repositories) RecoveryCopy(ctx context.Context, actor domain.Principal,
 	if err := validName(v.Name); err != nil {
 		return application.Created{}, err
 	}
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Created{}, err
 	}
@@ -144,7 +144,7 @@ func (a *Repositories) Lease(ctx context.Context, actor domain.Principal, id str
 		return domain.LeaseResult{}, bad("Invalid editor action.")
 	}
 	p := actor
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return domain.LeaseResult{}, err
 	}
@@ -186,13 +186,13 @@ func (a *Repositories) LeaseStatus(ctx context.Context, actor domain.Principal, 
 	defer mapRepositoryError(&err)
 
 	var rev int
-	if err := a.DB.QueryRowContext(ctx, "SELECT p.revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?", id, actor.ID).Scan(&rev); err != nil {
+	if err := a.db.QueryRowContext(ctx, "SELECT p.revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?", id, actor.ID).Scan(&rev); err != nil {
 		return domain.LeaseResult{}, err
 	}
 	var session sql.NullString
 	var client string
 	var epoch, expires int64
-	err = a.DB.QueryRowContext(ctx, "SELECT session_id,client_id,epoch,expires_at FROM page_leases WHERE page_id=?", id).Scan(&session, &client, &epoch, &expires)
+	err = a.db.QueryRowContext(ctx, "SELECT session_id,client_id,epoch,expires_at FROM page_leases WHERE page_id=?", id).Scan(&session, &client, &epoch, &expires)
 	if err != nil && err != sql.ErrNoRows {
 		return domain.LeaseResult{}, err
 	}

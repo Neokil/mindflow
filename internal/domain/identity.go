@@ -29,8 +29,8 @@ type User struct {
 }
 type Principal struct {
 	User
-	SessionID string
-	CSRF      string
+	SessionID string `json:"-"`
+	CSRF      string `json:"-"`
 }
 
 func NormalizeEmail(s string) (string, error) {

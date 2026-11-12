@@ -3,7 +3,7 @@ package store
 import "context"
 
 func (a *Repositories) cleanup(ctx context.Context) {
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return
 	}

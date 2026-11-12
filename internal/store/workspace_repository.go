@@ -13,7 +13,7 @@ import (
 func (a *Repositories) ListWorkspaces(ctx context.Context, actor domain.Principal) (result []domain.Workspace, err error) {
 	defer mapRepositoryError(&err)
 
-	rows, err := a.DB.QueryContext(ctx, `SELECT w.id,w.name,w.revision,w.updated_at,(SELECT count(*) FROM pages p WHERE p.workspace_id=w.id) FROM workspaces w WHERE w.owner_id=? ORDER BY w.updated_at DESC,w.id`, actor.ID)
+	rows, err := a.db.QueryContext(ctx, `SELECT w.id,w.name,w.revision,w.updated_at,(SELECT count(*) FROM pages p WHERE p.workspace_id=w.id) FROM workspaces w WHERE w.owner_id=? ORDER BY w.updated_at DESC,w.id`, actor.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (a *Repositories) CreateWorkspace(ctx context.Context, actor domain.Princip
 		return application.WorkspaceCreated{}, err
 	}
 	id := randomID()
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.WorkspaceCreated{}, err
 	}
@@ -63,7 +63,7 @@ func (a *Repositories) RenameWorkspace(ctx context.Context, actor domain.Princip
 	if err := validName(v.Name); err != nil {
 		return application.Completed{}, err
 	}
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Completed{}, err
 	}
@@ -91,7 +91,7 @@ func (a *Repositories) DeleteWorkspace(ctx context.Context, actor domain.Princip
 	if !v.Confirm {
 		return application.Completed{}, bad("Confirm workspace deletion.")
 	}
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Completed{}, err
 	}
@@ -119,7 +119,7 @@ func (a *Repositories) DeleteWorkspace(ctx context.Context, actor domain.Princip
 func (a *Repositories) DuplicateWorkspace(ctx context.Context, actor domain.Principal, resourceID string) (result application.Created, err error) {
 	defer mapRepositoryError(&err)
 
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Created{}, err
 	}
@@ -169,10 +169,10 @@ func (a *Repositories) ListPages(ctx context.Context, actor domain.Principal, re
 	defer mapRepositoryError(&err)
 
 	var id string
-	if err := a.DB.QueryRowContext(ctx, "SELECT id FROM workspaces WHERE id=? AND owner_id=?", resourceID, actor.ID).Scan(&id); err != nil {
+	if err := a.db.QueryRowContext(ctx, "SELECT id FROM workspaces WHERE id=? AND owner_id=?", resourceID, actor.ID).Scan(&id); err != nil {
 		return nil, err
 	}
-	rows, err := a.DB.QueryContext(ctx, "SELECT id,workspace_id,name,position,revision,metadata_revision FROM pages WHERE workspace_id=? ORDER BY position,id", id)
+	rows, err := a.db.QueryContext(ctx, "SELECT id,workspace_id,name,position,revision,metadata_revision FROM pages WHERE workspace_id=? ORDER BY position,id", id)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func (a *Repositories) CreatePage(ctx context.Context, actor domain.Principal, r
 	if err := validName(v.Name); err != nil {
 		return application.Created{}, err
 	}
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Created{}, err
 	}
@@ -221,7 +221,7 @@ func (a *Repositories) RenamePage(ctx context.Context, actor domain.Principal, i
 	if err := validName(v.Name); err != nil {
 		return application.Completed{}, err
 	}
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Completed{}, err
 	}
@@ -249,7 +249,7 @@ func (a *Repositories) DeletePage(ctx context.Context, actor domain.Principal, i
 	if !v.Confirm {
 		return application.Completed{}, bad("Confirm page deletion.")
 	}
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Completed{}, err
 	}
@@ -277,7 +277,7 @@ func (a *Repositories) DeletePage(ctx context.Context, actor domain.Principal, i
 func (a *Repositories) DuplicatePage(ctx context.Context, actor domain.Principal, resourceID string) (result application.Created, err error) {
 	defer mapRepositoryError(&err)
 
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Created{}, err
 	}
@@ -300,7 +300,7 @@ func (a *Repositories) DuplicatePage(ctx context.Context, actor domain.Principal
 func (a *Repositories) ReorderPages(ctx context.Context, actor domain.Principal, id string, v domain.ReorderPagesCommand) (result application.Completed, err error) {
 	defer mapRepositoryError(&err)
 
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Completed{}, err
 	}

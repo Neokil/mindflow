@@ -37,7 +37,7 @@ func (a *Repositories) Setup(ctx context.Context, actor domain.Principal, v doma
 	if err != nil {
 		return application.Completed{}, err
 	}
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Completed{}, err
 	}
@@ -63,7 +63,7 @@ func (a *Repositories) SetupTestEmail(ctx context.Context, actor domain.Principa
 	defer mapRepositoryError(&err)
 
 	var init int
-	if err := a.DB.QueryRowContext(ctx, "SELECT initialized FROM app_settings WHERE id=1").Scan(&init); err != nil {
+	if err := a.db.QueryRowContext(ctx, "SELECT initialized FROM app_settings WHERE id=1").Scan(&init); err != nil {
 		return application.Completed{}, err
 	}
 	if init != 0 || a.Config.Bootstrap == "" || subtle.ConstantTimeCompare([]byte(v.Credential), []byte(a.Config.Bootstrap)) != 1 {
@@ -88,7 +88,7 @@ func (a *Repositories) Login(ctx context.Context, actor domain.Principal, v doma
 	email := strings.ToLower(strings.TrimSpace(v.Email))
 	var u User
 	var hash string
-	err = a.DB.QueryRowContext(ctx, "SELECT id,email,role,status,appearance,password_hash FROM users WHERE email=?", email).Scan(&u.ID, &u.Email, &u.Role, &u.Status, &u.Appearance, &hash)
+	err = a.db.QueryRowContext(ctx, "SELECT id,email,role,status,appearance,password_hash FROM users WHERE email=?", email).Scan(&u.ID, &u.Email, &u.Role, &u.Status, &u.Appearance, &hash)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return domain.LoginResult{}, err
 	}
@@ -102,7 +102,7 @@ func (a *Repositories) Login(ctx context.Context, actor domain.Principal, v doma
 		return domain.LoginResult{}, domain.Fault("invalid_login", "Email or password is incorrect, or the account is unavailable.")
 	}
 	id, secret, csrf := randomID(), randomID(), randomID()
-	_, err = a.DB.ExecContext(ctx, "INSERT INTO sessions(id,user_id,verifier_hash,csrf,expires_at) VALUES(?,?,?,?,?)", id, u.ID, digest(secret), csrf, now()+30*86400)
+	_, err = a.db.ExecContext(ctx, "INSERT INTO sessions(id,user_id,verifier_hash,csrf,expires_at) VALUES(?,?,?,?,?)", id, u.ID, digest(secret), csrf, now()+30*86400)
 	if err != nil {
 		return domain.LoginResult{}, err
 	}
@@ -112,7 +112,7 @@ func (a *Repositories) Login(ctx context.Context, actor domain.Principal, v doma
 func (a *Repositories) ListUsers(ctx context.Context, actor domain.Principal) (result []application.UserDelivery, err error) {
 	defer mapRepositoryError(&err)
 
-	rows, err := a.DB.QueryContext(ctx, `SELECT u.id,u.email,u.role,u.status,u.appearance, COALESCE((SELECT last_error FROM jobs WHERE user_id=u.id AND kind='mail' ORDER BY run_at DESC LIMIT 1),'') FROM users u ORDER BY created_at`)
+	rows, err := a.db.QueryContext(ctx, `SELECT u.id,u.email,u.role,u.status,u.appearance, COALESCE((SELECT last_error FROM jobs WHERE user_id=u.id AND kind='mail' ORDER BY run_at DESC LIMIT 1),'') FROM users u ORDER BY created_at`)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (a *Repositories) Invite(ctx context.Context, actor domain.Principal, v dom
 	if err != nil {
 		return application.Created{}, err
 	}
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Created{}, err
 	}
@@ -184,7 +184,7 @@ func (a *Repositories) Forgot(ctx context.Context, actor domain.Principal, v dom
 	defer mapRepositoryError(&err)
 
 	var id string
-	err = a.DB.QueryRowContext(ctx, "SELECT id FROM users WHERE email=? AND status='active'", strings.ToLower(strings.TrimSpace(v.Email))).Scan(&id)
+	err = a.db.QueryRowContext(ctx, "SELECT id FROM users WHERE email=? AND status='active'", strings.ToLower(strings.TrimSpace(v.Email))).Scan(&id)
 	if err == nil {
 		if err = a.tokenForUser(ctx, id, "reset"); err != nil {
 			return application.Completed{}, err
@@ -204,7 +204,7 @@ func (a *Repositories) Redeem(ctx context.Context, actor domain.Principal, purpo
 	if err != nil {
 		return application.Completed{}, err
 	}
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Completed{}, err
 	}
@@ -235,7 +235,7 @@ func (a *Repositories) Redeem(ctx context.Context, actor domain.Principal, purpo
 func (a *Repositories) UpdateUser(ctx context.Context, actor domain.Principal, id string, v domain.UpdateUserCommand) (result application.Completed, err error) {
 	defer mapRepositoryError(&err)
 
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Completed{}, err
 	}
@@ -274,7 +274,7 @@ func (a *Repositories) DeleteUser(ctx context.Context, actor domain.Principal, i
 	if !v.Confirm {
 		return application.Completed{}, bad("Confirm permanent user deletion.")
 	}
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return application.Completed{}, err
 	}
@@ -303,13 +303,13 @@ func (a *Repositories) UpdateSettings(ctx context.Context, actor domain.Principa
 		return application.Completed{}, err
 	}
 	raw, _ := json.Marshal(v)
-	_, err = a.DB.ExecContext(ctx, "UPDATE app_settings SET config=? WHERE id=1", string(raw))
+	_, err = a.db.ExecContext(ctx, "UPDATE app_settings SET config=? WHERE id=1", string(raw))
 	return application.Completed{OK: true}, err
 
 }
 func (a *Repositories) settings(ctx context.Context) (Settings, error) {
 	var raw string
-	err := a.DB.QueryRowContext(ctx, "SELECT config FROM app_settings WHERE id=1").Scan(&raw)
+	err := a.db.QueryRowContext(ctx, "SELECT config FROM app_settings WHERE id=1").Scan(&raw)
 	var s Settings
 	if err == nil {
 		err = json.Unmarshal([]byte(raw), &s)
@@ -372,7 +372,7 @@ func (a *Repositories) tokenForUser(ctx context.Context, id, purpose string) err
 	if err != nil {
 		return err
 	}
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
