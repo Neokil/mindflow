@@ -1,26 +1,30 @@
 package app
 
 import (
+	"mindflow/internal/workspace"
 	"net/http"
-
-	"mindflow/internal/domain"
 )
 
-func (a *App) getDocument(w http.ResponseWriter, r *http.Request) (any, error) {
+func (a *App) getDocument(_ http.ResponseWriter, r *http.Request) (any, error) {
+	return a.workspace.GetDocument(r.Context(), who(r), r.PathValue("id"))
+}
 
-	return a.service.GetDocument(r.Context(), who(r), r.PathValue("id"))
-}
-func (a *App) saveDocument(w http.ResponseWriter, r *http.Request) (any, error) {
-	var v domain.SaveDocumentCommand
-	if err := decode(w, r, &v); err != nil {
+func (a *App) saveDocument(w http.ResponseWriter, request *http.Request) (any, error) {
+	var value workspace.SaveDocumentCommand
+	err := decode(w, request, &value)
+	if err != nil {
 		return nil, err
 	}
-	return a.service.SaveDocument(r.Context(), who(r), r.PathValue("id"), v)
+
+	return a.workspace.SaveDocument(request.Context(), who(request), request.PathValue("id"), value)
 }
-func (a *App) recoveryCopy(w http.ResponseWriter, r *http.Request) (any, error) {
-	var v domain.RecoveryCopyCommand
-	if err := decode(w, r, &v); err != nil {
+
+func (a *App) recoveryCopy(w http.ResponseWriter, request *http.Request) (any, error) {
+	var value workspace.RecoveryCopyCommand
+	err := decode(w, request, &value)
+	if err != nil {
 		return nil, err
 	}
-	return a.service.RecoveryCopy(r.Context(), who(r), v)
+
+	return a.workspace.RecoveryCopy(request.Context(), who(request), value)
 }

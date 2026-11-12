@@ -1,108 +1,162 @@
+// Command mindflow serves the canvas application and operator maintenance commands.
 package main
 
 import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
+	"mindflow/internal/app"
+	"mindflow/internal/authentication"
+	"mindflow/internal/database"
+	"mindflow/internal/fault"
+	"mindflow/internal/workspace"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
-
-	"mindflow/internal/app"
-	"mindflow/internal/store"
 )
 
-func main() {
-	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
-		addr := os.Getenv("MINDFLOW_ADDR")
-		if addr == "" {
-			addr = ":8080"
-		}
-		if addr[0] == ':' {
-			addr = "127.0.0.1" + addr
-		}
-		if len(addr) > 8 && addr[:8] == "0.0.0.0:" {
-			addr = "127.0.0.1:" + addr[8:]
-		}
-		c := http.Client{Timeout: 3 * time.Second}
-		r, e := c.Get("http://" + addr + "/health/ready")
-		if e != nil {
-			os.Exit(1)
-		}
-		defer r.Body.Close()
-		_, _ = io.Copy(io.Discard, r.Body)
-		if r.StatusCode != 200 {
-			os.Exit(1)
-		}
-		return
+const (
+	healthTimeout   = 3 * time.Second
+	bootstrapBytes  = 24
+	headerTimeout   = 10 * time.Second
+	readTimeout     = time.Minute
+	idleTimeout     = 90 * time.Second
+	shutdownTimeout = 30 * time.Second
+	defaultAddress  = "0.0.0.0:8080"
+)
+
+var errHealth = errors.New("application is not ready")
+
+func main() { os.Exit(runMain()) }
+
+func runMain() int {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	err := run(ctx)
+	if err != nil {
+		slog.Error("mindflow stopped", "error", err)
+
+		return 1
 	}
 
-	dir := os.Getenv("MINDFLOW_DATA")
-	if dir == "" {
-		dir = "data"
+	return 0
+}
+
+func run(ctx context.Context) error {
+	address := os.Getenv("MINDFLOW_ADDR")
+	if address == "" {
+		address = defaultAddress
 	}
-	db, err := store.Open(filepath.Join(dir, "mindflow.sqlite"))
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		return healthcheck(ctx, address)
+	}
+	directory := os.Getenv("MINDFLOW_DATA")
+	if directory == "" {
+		directory = "data"
+	}
+	connection, err := database.Open(ctx, filepath.Join(directory, "mindflow.sqlite"))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	defer db.Close()
+	defer func() { _ = connection.Close() }()
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "revoke-credentials":
-			if err = store.RevokeCredentials(db); err != nil {
-				log.Fatal(err)
+			err = authentication.RevokeCredentials(ctx, connection)
+			if err == nil {
+				err = workspace.RevokeEditorControl(ctx, connection)
 			}
-			fmt.Println("Sessions, account links, queued token emails, and editor control revoked.")
-			return
+			if err == nil {
+				slog.Info("Sessions, account links, queued token emails, and editor control revoked.")
+			}
+
+			return err
 		case "check-data":
-			if err = store.Check(db); err != nil {
-				log.Fatal(err)
+			err = database.Check(ctx, connection)
+			if err == nil {
+				slog.Info("Database integrity and foreign keys: OK")
 			}
-			fmt.Println("Database integrity and foreign keys: OK")
-			return
+
+			return err
 		default:
-			log.Fatal("unknown command")
+			return errors.ErrUnsupported
 		}
 	}
-	token := make([]byte, 24)
-	if _, err = rand.Read(token); err != nil {
-		log.Fatal(err)
-	}
-	var initialized int
-	if err = db.QueryRow("SELECT initialized FROM app_settings WHERE id=1").Scan(&initialized); err != nil {
-		log.Fatal(err)
+	token := make([]byte, bootstrapBytes)
+	_, err = rand.Read(token)
+	if err != nil {
+		return fault.Wrap("generate setup credential", err)
 	}
 	bootstrap := hex.EncodeToString(token)
-	if initialized == 0 {
-		log.Printf("First-run setup credential (operator only): %s", bootstrap)
-	}
-	addr := os.Getenv("MINDFLOW_ADDR")
-	if addr == "" {
-		addr = ":8080"
-	}
-	a, err := app.New(db, app.Config{Dev: os.Getenv("MINDFLOW_DEV") == "1", Bootstrap: bootstrap})
+	initialized, err := authentication.SetupComplete(ctx, connection)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	srv := &http.Server{Addr: addr, Handler: a, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 60 * time.Second, IdleTimeout: 90 * time.Second}
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	go a.RunWorkers(ctx)
+	if !initialized {
+		slog.Info("First-run setup credential (operator only): " + bootstrap)
+	}
+	service, err := app.New(ctx, connection, app.Config{Dev: os.Getenv("MINDFLOW_DEV") == "1", Bootstrap: bootstrap})
+	if err != nil {
+		return err
+	}
+	server := &http.Server{Addr: address, Handler: service, ReadHeaderTimeout: headerTimeout, ReadTimeout: readTimeout, IdleTimeout: idleTimeout}
+	go service.RunWorkers(ctx)
 	go func() {
 		<-ctx.Done()
-		a.Close()
-		shutdown, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		service.Close()
+		shutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
 		defer cancel()
-		_ = srv.Shutdown(shutdown)
+		_ = server.Shutdown(shutdown)
 	}()
-	log.Printf("mindflow listening on %s", addr)
-	if err = srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+	slog.Info("mindflow listening", "address", address)
+	err = server.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
 	}
+
+	return fault.Wrap("serve HTTP", err)
+}
+
+func healthcheck(ctx context.Context, address string) error {
+	if strings.HasPrefix(address, ":") {
+		address = "127.0.0.1" + address
+	}
+	_, portText, err := net.SplitHostPort(address)
+	if err != nil {
+		return fault.Wrap("healthcheck address", err)
+	}
+	port, err := strconv.Atoi(portText)
+	if err != nil {
+		return fault.Wrap("healthcheck port", err)
+	}
+	// Health checks always target this container's loopback interface.
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://127.0.0.1:%d/health/ready", port), nil) //nolint:gosec // G704: target is fixed loopback and the only variable is a parsed integer port.
+	if err != nil {
+		return fault.Wrap("healthcheck request", err)
+	}
+	client := http.Client{Timeout: healthTimeout}
+	response, err := client.Do(request) //nolint:gosec // G704: the request above is constructed for fixed loopback with a parsed integer port.
+	if err != nil {
+		return fault.Wrap("healthcheck connection", err)
+	}
+	defer func() { _ = response.Body.Close() }()
+	_, err = io.Copy(io.Discard, response.Body)
+	if err != nil {
+		return fault.Wrap("healthcheck response", err)
+	}
+	if response.StatusCode != http.StatusOK {
+		return errHealth
+	}
+
+	return nil
 }

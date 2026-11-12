@@ -1,4 +1,4 @@
-package architecture
+package architecture_test
 
 import (
 	"go/parser"
@@ -9,39 +9,41 @@ import (
 	"testing"
 )
 
-// Keep the domain and application contracts independent of their adapters.
-// The HTTP composition root may receive *sql.DB, but handlers cannot use SQL.
-func TestDependencyDirection(t *testing.T) {
-	for _, layer := range []string{"domain", "application", "app"} {
-		files, err := filepath.Glob(filepath.Join("..", layer, "*.go"))
+func TestDomainOwnsStorage(t *testing.T) {
+	t.Parallel()
+	for _, domain := range []string{"authentication", "workspace", "app"} {
+		files, err := filepath.Glob(filepath.Join("..", domain, "*.go"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		for _, file := range files {
-			if strings.HasSuffix(file, "_test.go") {
-				continue
-			}
-			tree, err := parser.ParseFile(token.NewFileSet(), file, nil, 0)
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, imp := range tree.Imports {
-				path, _ := strconv.Unquote(imp.Path.Value)
-				if layer != "app" && (path == "net/http" || path == "database/sql" || strings.HasPrefix(path, "mindflow/internal/store") || strings.HasPrefix(path, "mindflow/internal/app")) {
-					t.Errorf("%s imports an outer adapter: %s", file, path)
-				}
-				if layer == "domain" && strings.HasPrefix(path, "mindflow/internal/application") {
-					t.Errorf("domain imports application: %s", file)
-				}
-			}
-			if layer == "app" && filepath.Base(file) != "app.go" {
-				for _, imp := range tree.Imports {
-					path, _ := strconv.Unquote(imp.Path.Value)
-					if path == "database/sql" || path == "mindflow/internal/store" {
-						t.Errorf("HTTP handler imports persistence: %s (%s)", file, path)
-					}
-				}
-			}
+			checkDomainFile(t, domain, file)
+		}
+	}
+}
+
+func checkDomainFile(t *testing.T, domain, file string) {
+	t.Helper()
+	if strings.HasSuffix(file, "_test.go") {
+		return
+	}
+	tree, err := parser.ParseFile(token.NewFileSet(), file, nil, parser.ImportsOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, dependency := range tree.Imports {
+		path, unquoteErr := strconv.Unquote(dependency.Path.Value)
+		if unquoteErr != nil {
+			t.Fatal(unquoteErr)
+		}
+		if strings.HasSuffix(path, "/dbquery") && path != "mindflow/internal/"+domain+"/dbquery" {
+			t.Errorf("%s imports another domain's storage: %s", file, path)
+		}
+		if domain == "authentication" && strings.HasPrefix(path, "mindflow/internal/workspace") {
+			t.Errorf("authentication depends on workspace internals: %s", file)
+		}
+		if domain == "app" && filepath.Base(file) != "app.go" && path == "database/sql" {
+			t.Errorf("HTTP adapter accesses SQL directly: %s", file)
 		}
 	}
 }

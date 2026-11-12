@@ -1,3 +1,4 @@
+// Package web embeds the release frontend assets.
 package web
 
 import "embed"

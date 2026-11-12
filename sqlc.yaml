@@ -1,0 +1,70 @@
+version: "2"
+sql:
+  - engine: sqlite
+    schema: internal/database/schema.sql
+    queries: internal/authentication/queries
+    gen:
+      go:
+        package: dbquery
+        out: internal/authentication/dbquery
+        emit_empty_slices: true
+        omit_unused_structs: true
+        overrides:
+          - column: save_receipts.expires_at
+            go_type: int64
+          - column: page_leases.expires_at
+            go_type: int64
+          - column: page_leases.epoch
+            go_type: int64
+          - column: pages.updated_at
+            go_type: int64
+          - column: workspaces.updated_at
+            go_type: int64
+          - column: workspaces.created_at
+            go_type: int64
+          - column: assets.created_at
+            go_type: int64
+          - column: users.created_at
+            go_type: int64
+          - column: jobs.run_at
+            go_type: int64
+          - column: account_tokens.expires_at
+            go_type: int64
+          - column: sessions.expires_at
+            go_type: int64
+          - db_type: INTEGER
+            go_type: int
+  - engine: sqlite
+    schema: internal/database/schema.sql
+    queries: internal/workspace/queries
+    gen:
+      go:
+        package: dbquery
+        out: internal/workspace/dbquery
+        emit_empty_slices: true
+        omit_unused_structs: true
+        overrides:
+          - column: save_receipts.expires_at
+            go_type: int64
+          - column: page_leases.expires_at
+            go_type: int64
+          - column: page_leases.epoch
+            go_type: int64
+          - column: pages.updated_at
+            go_type: int64
+          - column: workspaces.updated_at
+            go_type: int64
+          - column: workspaces.created_at
+            go_type: int64
+          - column: assets.created_at
+            go_type: int64
+          - column: users.created_at
+            go_type: int64
+          - column: jobs.run_at
+            go_type: int64
+          - column: account_tokens.expires_at
+            go_type: int64
+          - column: sessions.expires_at
+            go_type: int64
+          - db_type: INTEGER
+            go_type: int

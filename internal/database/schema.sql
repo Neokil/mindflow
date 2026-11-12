@@ -1,0 +1,62 @@
+CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS app_settings(id INTEGER PRIMARY KEY, initialized INTEGER NOT NULL DEFAULT 0, config TEXT NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS users (
+ id TEXT NOT NULL PRIMARY KEY, email TEXT NOT NULL UNIQUE COLLATE NOCASE, password_hash TEXT NOT NULL DEFAULT '',
+ role TEXT NOT NULL CHECK(role IN ('admin','user')), status TEXT NOT NULL CHECK(status IN ('invited','active','inactive')),
+ appearance TEXT NOT NULL DEFAULT 'system', created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sessions (
+ id TEXT NOT NULL PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ verifier_hash TEXT NOT NULL, csrf TEXT NOT NULL, expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
+CREATE TABLE IF NOT EXISTS account_tokens (
+ id TEXT NOT NULL PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ purpose TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, expires_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS jobs (
+ id TEXT NOT NULL PRIMARY KEY, user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+ asset_id TEXT, kind TEXT NOT NULL, dedup_key TEXT UNIQUE, payload TEXT NOT NULL,
+ attempts INTEGER NOT NULL DEFAULT 0, run_at INTEGER NOT NULL, last_error TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS jobs_due ON jobs(run_at);
+INSERT OR IGNORE INTO schema_migrations(version) VALUES(1);
+CREATE TABLE IF NOT EXISTS workspaces (
+ id TEXT NOT NULL PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ name TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS workspaces_owner ON workspaces(owner_id);
+CREATE TABLE IF NOT EXISTS pages (
+ id TEXT NOT NULL PRIMARY KEY, workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+ name TEXT NOT NULL, position INTEGER NOT NULL, metadata_revision INTEGER NOT NULL DEFAULT 1,
+ revision INTEGER NOT NULL DEFAULT 0, document TEXT NOT NULL, updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS pages_workspace ON pages(workspace_id,position);
+CREATE TABLE IF NOT EXISTS assets (
+ id TEXT NOT NULL PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+ original BLOB NOT NULL, mime TEXT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL,
+ digest TEXT NOT NULL, created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS assets_owner ON assets(owner_id);
+CREATE TABLE IF NOT EXISTS asset_variants (
+ asset_id TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE, bucket INTEGER NOT NULL,
+ mime TEXT NOT NULL, data BLOB NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL,
+ PRIMARY KEY(asset_id,bucket)
+);
+CREATE TABLE IF NOT EXISTS page_assets (
+ page_id TEXT NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+ asset_id TEXT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+ PRIMARY KEY(page_id,asset_id)
+);
+CREATE TABLE IF NOT EXISTS page_leases (
+ page_id TEXT NOT NULL PRIMARY KEY REFERENCES pages(id) ON DELETE CASCADE,
+ session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
+ client_id TEXT NOT NULL DEFAULT '', epoch INTEGER NOT NULL DEFAULT 0, expires_at INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS save_receipts (
+ page_id TEXT NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+ client_id TEXT NOT NULL, mutation_id TEXT NOT NULL, digest TEXT NOT NULL,
+ revision INTEGER NOT NULL, expires_at INTEGER NOT NULL,
+ PRIMARY KEY(page_id,client_id,mutation_id)
+);
+INSERT OR IGNORE INTO schema_migrations(version) VALUES(2);

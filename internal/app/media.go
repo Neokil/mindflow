@@ -1,57 +1,63 @@
 package app
 
 import (
-	"fmt"
 	"io"
+	"mindflow/internal/fault"
+	"mindflow/internal/workspace"
 	"net/http"
 	"strconv"
-
-	"mindflow/internal/domain"
 )
 
-func (a *App) assetMeta(w http.ResponseWriter, r *http.Request) (any, error) {
-
-	return a.service.AssetMeta(r.Context(), who(r), r.PathValue("id"))
+func (a *App) assetMeta(_ http.ResponseWriter, r *http.Request) (any, error) {
+	return a.workspace.AssetMeta(r.Context(), who(r), r.PathValue("id"))
 }
-func (a *App) requestVariant(w http.ResponseWriter, r *http.Request) (any, error) {
-	var v domain.RequestVariantCommand
-	if err := decode(w, r, &v); err != nil {
+
+func (a *App) requestVariant(w http.ResponseWriter, request *http.Request) (any, error) {
+	var value workspace.RequestVariantCommand
+	err := decode(w, request, &value)
+	if err != nil {
 		return nil, err
 	}
-	return a.service.RequestVariant(r.Context(), who(r), r.PathValue("id"), v)
+
+	return a.workspace.RequestVariant(request.Context(), who(request), request.PathValue("id"), value)
 }
-func (a *App) uploadAsset(w http.ResponseWriter, r *http.Request) (any, error) {
-	r.Body = http.MaxBytesReader(w, r.Body, 21<<20)
-	if err := r.ParseMultipartForm(1 << 20); err != nil {
-		return nil, problem(413, "upload_limit", "Choose an image up to 20 MB.")
+
+func (a *App) uploadAsset(w http.ResponseWriter, request *http.Request) (any, error) {
+	request.Body = http.MaxBytesReader(w, request.Body, multipartRequestBytes)
+	parseMultipartFormErr := request.ParseMultipartForm(multipartMemoryBytes) //nolint:gosec // G120: MaxBytesReader bounds the complete multipart body above.
+	if parseMultipartFormErr != nil {
+		return nil, problem(http.StatusRequestEntityTooLarge, "upload_limit", "Choose an image up to 20 MB.")
 	}
-	if r.MultipartForm != nil {
-		defer r.MultipartForm.RemoveAll()
+	if request.MultipartForm != nil {
+		defer func() { _ = request.MultipartForm.RemoveAll() }()
 	}
-	file, _, err := r.FormFile("file")
+	file, _, err := request.FormFile("file")
 	if err != nil {
 		return nil, bad("Choose an image file.")
 	}
-	defer file.Close()
-	raw, err := io.ReadAll(io.LimitReader(file, (20<<20)+1))
+	defer func() { _ = file.Close() }()
+	raw, err := io.ReadAll(io.LimitReader(file, maxUploadBytes+1))
 	if err != nil {
-		return nil, err
+		return nil, fault.Wrap("media.go", err)
 	}
-	if len(raw) > 20<<20 {
-		return nil, problem(413, "upload_limit", "Choose an image up to 20 MB.")
+	if len(raw) > maxUploadBytes {
+		return nil, problem(http.StatusRequestEntityTooLarge, "upload_limit", "Choose an image up to 20 MB.")
 	}
-	return a.service.UploadAsset(r.Context(), who(r), raw)
+
+	return a.workspace.UploadAsset(request.Context(), who(request), raw)
 }
-func (a *App) getAsset(w http.ResponseWriter, r *http.Request) (any, error) {
+
+func (a *App) getAsset(writer http.ResponseWriter, r *http.Request) (any, error) {
 	bucket, _ := strconv.Atoi(r.URL.Query().Get("bucket"))
-	blob, err := a.service.GetAsset(r.Context(), who(r), r.PathValue("id"), bucket)
+	blob, err := a.workspace.GetAsset(r.Context(), who(r), r.PathValue("id"), bucket)
 	if err != nil {
 		return nil, err
 	}
-	w.Header().Set("Content-Type", blob.MIME)
-	w.Header().Set("Content-Length", fmt.Sprint(len(blob.Data)))
-	w.Header().Set("X-Image-Width", fmt.Sprint(blob.Width))
-	w.Header().Set("X-Image-Height", fmt.Sprint(blob.Height))
-	_, _ = w.Write(blob.Data)
-	return nil, nil
+	writer.Header().Set("Content-Type", blob.MIME)
+	writer.Header().Set("Content-Length", strconv.Itoa(len(blob.Data)))
+	writer.Header().Set("X-Image-Width", strconv.Itoa(blob.Width))
+	writer.Header().Set("X-Image-Height", strconv.Itoa(blob.Height))
+	_, _ = writer.Write(blob.Data)
+
+	return responseWritten{}, nil
 }

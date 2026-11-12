@@ -1,37 +1,37 @@
 package app
 
 import (
-	"context"
 	"crypto/rand"
-	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
 	"mime"
+	"mindflow/internal/authentication"
+	"mindflow/internal/fault"
 	"net"
 	"net/http"
 	"net/url"
 	"time"
-
-	"mindflow/internal/domain"
 )
 
-type principalKey struct{}
 type apiError struct {
 	Status        int
 	Code, Message string
 }
 
+// Error returns the HTTP failure message.
 func (e *apiError) Error() string                    { return e.Message }
 func problem(status int, code, message string) error { return &apiError{status, code, message} }
-func bad(message string) error                       { return domain.Invalid(message) }
+func bad(message string) error                       { return fault.Invalid(message) }
 func randomID() string {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		panic(err)
+	buffer := make([]byte, identifierBytes)
+	_, readErr := rand.Read(buffer)
+	if readErr != nil {
+		panic(readErr)
 	}
-	return hex.EncodeToString(b)
+
+	return hex.EncodeToString(buffer)
 }
 
 type rateWindow struct {
@@ -39,118 +39,117 @@ type rateWindow struct {
 	Count int
 }
 
-func who(r *http.Request) principal { p, _ := r.Context().Value(principalKey{}).(principal); return p }
-func decode(w http.ResponseWriter, r *http.Request, v any) error {
-	mediaType, _, parseError := mime.ParseMediaType(r.Header.Get("Content-Type"))
+func who(r *http.Request) authentication.Principal { return authentication.Current(r.Context()) }
+func decode(w http.ResponseWriter, request *http.Request, value any) error {
+	mediaType, _, parseError := mime.ParseMediaType(request.Header.Get("Content-Type"))
 	if parseError != nil || mediaType != "application/json" {
-		return problem(415, "content_type", "Expected application/json.")
+		return problem(http.StatusUnsupportedMediaType, "content_type", "Expected application/json.")
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, 17<<20)
-	d := json.NewDecoder(r.Body)
-	d.DisallowUnknownFields()
-	if err := d.Decode(v); err != nil {
+	request.Body = http.MaxBytesReader(w, request.Body, jsonRequestBytes)
+	document := json.NewDecoder(request.Body)
+	document.DisallowUnknownFields()
+	err := document.Decode(value)
+	if err != nil {
 		return bad("Invalid request body.")
 	}
-	if d.Decode(new(any)) != io.EOF {
+	if document.Decode(new(any)) != io.EOF {
 		return bad("Expected one JSON value.")
 	}
+
 	return nil
 }
-func (a *App) endpoint(pattern string, auth, admin bool, fn func(http.ResponseWriter, *http.Request) (any, error)) {
-	a.Mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-		var p principal
-		if auth {
-			var err error
-			p, err = a.authenticate(r)
+
+func (a *App) endpoint(pattern string, auth, admin bool, fnValue func(http.ResponseWriter, *http.Request) (any, error)) {
+	var handler http.Handler = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet && request.Method != http.MethodHead {
+			err := a.checkOrigin(request)
 			if err != nil {
-				a.fail(w, r, err)
-				return
-			}
-			r = r.WithContext(context.WithValue(r.Context(), principalKey{}, p))
-			if admin && p.Role != "admin" {
-				a.fail(w, r, problem(403, "forbidden", "Administrator access required."))
+				a.fail(writer, request, err)
+
 				return
 			}
 		}
-		if r.Method != "GET" && r.Method != "HEAD" {
-			if err := a.checkOrigin(r); err != nil {
-				a.fail(w, r, err)
-				return
-			}
-			if auth && subtle.ConstantTimeCompare([]byte(r.Header.Get("X-CSRF-Token")), []byte(p.CSRF)) != 1 {
-				a.fail(w, r, problem(403, "csrf", "Refresh the page and try again."))
-				return
-			}
-		}
-		result, err := fn(w, r)
+		response, err := fnValue(writer, request)
 		if err != nil {
-			a.fail(w, r, err)
+			a.fail(writer, request, err)
+
 			return
 		}
-		if result != nil {
-			writeJSON(w, 200, result)
+		if _, handled := response.(responseWritten); !handled && response != nil {
+			writeJSON(writer, http.StatusOK, response)
 		}
 	})
-}
-func (a *App) fail(w http.ResponseWriter, r *http.Request, err error) {
-	var ae *apiError
-	var de *domain.Error
-	if errors.As(err, &de) {
-		ae = &apiError{Status: statusFor(de.Code), Code: de.Code, Message: de.Message}
+	if admin {
+		handler = authentication.RequireAdministrator(a.fail)(handler)
 	}
-	if ae == nil && !errors.As(err, &ae) {
-		ae = &apiError{500, "server_error", "The operation could not be completed. Please retry."}
-		a.Log.Error("request failed", "request", r.Header.Get("X-Request-ID"), "error", err)
+	if auth {
+		handler = a.authentication.Middleware(a.fail)(handler)
 	}
-	writeJSON(w, ae.Status, map[string]any{"code": ae.Code, "message": ae.Message, "requestID": r.Header.Get("X-Request-ID")})
+	a.Mux.Handle(pattern, handler)
 }
+
+func (a *App) fail(writer http.ResponseWriter, request *http.Request, err error) {
+	var aeValue *apiError
+	if de, ok := errors.AsType[*fault.Error](err); ok {
+		aeValue = &apiError{Status: statusFor(de.Code), Code: de.Code, Message: de.Message}
+	}
+	if aeValue == nil && !errors.As(err, &aeValue) {
+		aeValue = &apiError{http.StatusInternalServerError, "server_error", "The operation could not be completed. Please retry."}
+		a.Log.Error("request failed", "request", request.Header.Get("X-Request-ID"), "error", err)
+	}
+	writeJSON(writer, aeValue.Status, map[string]any{"code": aeValue.Code, "message": aeValue.Message, "requestID": request.Header.Get("X-Request-ID")})
+}
+
 func statusFor(code string) int {
 	switch code {
 	case "not_found":
-		return 404
+		return http.StatusNotFound
 	case "session_expired", "invalid_login":
-		return 401
-	case "bootstrap", "forbidden", "csrf", "origin":
-		return 403
+		return http.StatusUnauthorized
+	case "bootstrap", "forbidden", csrfKey, "origin":
+		return http.StatusForbidden
 	case "initialized", "email_exists", "metadata_conflict", "lease_lost", "revision_conflict":
-		return 409
+		return http.StatusConflict
 	case "document_limit", "upload_limit":
-		return 413
+		return http.StatusRequestEntityTooLarge
 	case "rate_limit":
-		return 429
+		return http.StatusTooManyRequests
 	default:
-		return 400
+		return http.StatusBadRequest
 	}
 }
-func (a *App) checkOrigin(r *http.Request) error {
-	if r.Header.Get("Sec-Fetch-Site") == "cross-site" {
-		return problem(403, "origin", "Cross-site requests are not allowed.")
+
+func (a *App) checkOrigin(request *http.Request) error {
+	if request.Header.Get("Sec-Fetch-Site") == "cross-site" {
+		return problem(http.StatusForbidden, "origin", "Cross-site requests are not allowed.")
 	}
-	origin := r.Header.Get("Origin")
+	origin := request.Header.Get("Origin")
 	if origin == "" {
 		return nil
 	}
-	s, err := a.service.Settings(r.Context())
+	s, err := a.authentication.Settings(request.Context())
 	if err != nil {
 		return err
 	}
 	if origin == s.PublicURL {
 		return nil
 	}
-	if a.Config.Dev && (origin == "http://localhost:5173" || origin == "http://127.0.0.1:5173" || origin == "http://"+r.Host) {
+	if a.Config.Dev && (origin == "http://localhost:5173" || origin == "http://127.0.0.1:5173" || origin == "http://"+request.Host) {
 		return nil
 	}
 	// Before setup, the browser must be on the same public host.
-	initialized, err := a.service.Initialized(r.Context())
+	initialized, err := a.authentication.Initialized(request.Context())
 	if err != nil {
 		return err
 	}
 	u, e := url.Parse(origin)
-	if !initialized && e == nil && u.Host == r.Host && u.Scheme == "https" {
+	if !initialized && e == nil && u.Host == request.Host && u.Scheme == "https" {
 		return nil
 	}
-	return problem(403, "origin", "Request origin does not match the application URL.")
+
+	return problem(http.StatusForbidden, "origin", "Request origin does not match the application URL.")
 }
+
 func (a *App) limited(r *http.Request, key string) bool {
 	host, _, _ := net.SplitHostPort(r.RemoteAddr)
 	if host == "" {
@@ -159,25 +158,33 @@ func (a *App) limited(r *http.Request, key string) bool {
 	key += ":" + host
 	a.limitMu.Lock()
 	defer a.limitMu.Unlock()
-	v := a.limits[key]
-	if time.Since(v.Start) > time.Minute {
-		v = rateWindow{Start: time.Now()}
+	value := a.limits[key]
+	if time.Since(value.Start) > time.Minute {
+		value = rateWindow{Start: time.Now()}
 	}
-	v.Count++
-	a.limits[key] = v
-	if len(a.limits) > 10000 {
+	value.Count++
+	a.limits[key] = value
+	if len(a.limits) > maxRateWindows {
 		for k, v := range a.limits {
 			if time.Since(v.Start) > time.Minute {
 				delete(a.limits, k)
 			}
 		}
 	}
-	return v.Count > 20
+
+	return value.Count > maxRequestsPerMinute
 }
-func (a *App) authenticate(r *http.Request) (principal, error) {
-	cookie, err := r.Cookie("mindflow_session")
+
+func (a *App) authenticate(request *http.Request) error {
+	cookie, err := request.Cookie("mindflow_session")
 	if err != nil {
-		return principal{}, domain.Fault("session_expired", "Please sign in.")
+		return fault.Fault("session_expired", "Please sign in.")
 	}
-	return a.service.Authenticate(r.Context(), cookie.Value)
+
+	_, err = a.authentication.Authenticate(request.Context(), cookie.Value)
+
+	return err
 }
+
+// responseWritten marks a body already written by a streaming or binary handler.
+type responseWritten struct{}
