@@ -1,10 +1,8 @@
 package workspace
 
 import (
-	"context"
-	"database/sql"
 	"mindflow/internal/page"
-	"time"
+	"mindflow/internal/workspace/storage"
 
 	imageasset "mindflow/internal/image"
 )
@@ -15,23 +13,13 @@ import (
 
 // Service owns this domain's behavior and persistence.
 type Service struct {
-	db      *sql.DB
-	pages   *page.Service
-	images  *imageasset.Service
-	publish func(string, string, string)
+	repository *storage.Repository
+	pages      *page.Service
+	images     *imageasset.Service
+	publish    func(string, string, string)
 }
 
 // NewService constructs the domain service with explicit collaborators.
-func NewService(connection *sql.DB, pages *page.Service, images *imageasset.Service, publish func(string, string, string)) *Service {
-	return &Service{db: connection, pages: pages, images: images, publish: publish}
-}
-
-// Activity records workspace recency without a dependency on page or canvas services.
-type Activity struct{}
-
-// TouchPage updates parent workspace recency in the save transaction.
-func (Activity) TouchPage(ctx context.Context, transaction *sql.Tx, pageID string) error {
-	_, err := New(transaction).TouchWorkspace(ctx, TouchWorkspaceParams{UpdatedAt: time.Now().Unix(), ID: pageID})
-
-	return err
+func NewService(repository *storage.Repository, pages *page.Service, images *imageasset.Service, publish func(string, string, string)) *Service {
+	return &Service{repository: repository, pages: pages, images: images, publish: publish}
 }

@@ -27,7 +27,7 @@ func TestNoHorizontalPackages(t *testing.T) {
 func TestDomainsOwnQueriesAndSchemas(t *testing.T) {
 	t.Parallel()
 	for _, domain := range []string{"account", "session", "invitation", passwordResetDomain, "email", "installation", "workspace", "page", canvasDomain, "editor", imageDomain} {
-		for _, name := range []string{"queries/queries.sql", "queries.sql.go", "sqlc_db.go", "schema.sql"} {
+		for _, name := range []string{"storage/queries/queries.sql", "storage/queries.sql.go", "storage/sqlc_db.go", "storage/migrations/00001_initial.sql", "storage/migrations/migrations.go"} {
 			_, err := os.Stat(filepath.Join("..", domain, name))
 			if err != nil {
 				t.Errorf("%s does not own %s: %v", domain, name, err)
@@ -58,12 +58,19 @@ func checkQueryVisibility(t *testing.T, file string) {
 		if unquoteErr != nil {
 			t.Fatal(unquoteErr)
 		}
+		if path == "database/sql" || strings.HasPrefix(path, "github.com/pressly/goose") {
+			t.Errorf("database dependency outside storage: %s imports %s", file, path)
+		}
 		if !strings.HasPrefix(path, "mindflow/internal/") {
 			continue
 		}
 		name := filepath.Base(path)
 		if dependency.Name != nil {
 			name = dependency.Name.Name
+		}
+		domain := filepath.Base(filepath.Dir(file))
+		if domain != "mindflow" && strings.Contains(path, "/storage") && !strings.HasPrefix(path, "mindflow/internal/"+domain+"/storage") {
+			t.Errorf("%s imports another domain's storage: %s", file, path)
 		}
 		imports[name] = path
 	}
@@ -72,14 +79,9 @@ func checkQueryVisibility(t *testing.T, file string) {
 		if !ok {
 			return true
 		}
-		if selector, ok := call.Fun.(*ast.SelectorExpr); ok && selector.Sel.Name == "New" {
-			if name, ok := selector.X.(*ast.Ident); ok && imports[name.Name] != "" {
-				t.Errorf("%s constructs another domain's generated queries: %s", file, imports[name.Name])
-			}
-		}
-		if filepath.Base(file) == "http.go" {
-			if name, ok := call.Fun.(*ast.Ident); ok && name.Name == "New" {
-				t.Errorf("domain HTTP handler bypasses its service: %s", file)
+		if selector, ok := call.Fun.(*ast.SelectorExpr); ok {
+			if name, ok := selector.X.(*ast.Ident); ok && imports[name.Name] != "" && selector.Sel.Name == "New" {
+				t.Errorf("%s constructs queries outside storage", file)
 			}
 		}
 
@@ -100,7 +102,7 @@ func TestSQLWritesStayWithTheirDomain(t *testing.T) {
 
 func checkDomainWrites(t *testing.T, domain string, tables []string) {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join("..", domain, "queries", "queries.sql")) //nolint:gosec // G304: domain is selected from the fixed ownership map in this test.
+	data, err := os.ReadFile(filepath.Join("..", domain, "storage", "queries", "queries.sql")) //nolint:gosec // G304: domain is selected from the fixed ownership map in this test.
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,6 +7,7 @@ import (
 	"mindflow/internal/email"
 	"mindflow/internal/installation"
 	"mindflow/internal/mindflow"
+	"mindflow/internal/mindflow/storage"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -24,17 +25,24 @@ type testClient struct {
 
 func fixture(t *testing.T) *testClient {
 	t.Helper()
-	dbValue, err := mindflow.OpenData(t.Context(), filepath.Join(t.TempDir(), "test.sqlite"))
+	path := filepath.Join(t.TempDir(), "test.sqlite")
+	dbValue, err := storage.OpenData(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = dbValue.Close() })
-	a, err := mindflow.New(t.Context(), dbValue, mindflow.Config{Dev: true, Bootstrap: "operator-secret"})
+	application, err := mindflow.New(t.Context(), dbValue, mindflow.Config{Dev: true, Bootstrap: "operator-secret"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	return &testClient{a: a, db: dbValue, t: t}
+	probe, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = probe.Close() })
+
+	return &testClient{a: application, db: probe, t: t}
 }
 
 func (c *testClient) request(method, path string, body any) *httptest.ResponseRecorder {

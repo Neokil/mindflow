@@ -1,12 +1,9 @@
 package image
 
-import (
-	"database/sql"
-	"errors"
-)
+import "mindflow/internal/image/storage"
 
 func repositoryError(err error) error {
-	if errors.Is(err, sql.ErrNoRows) {
+	if storage.IsNotFound(err) {
 		return notFound()
 	}
 

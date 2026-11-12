@@ -2,10 +2,9 @@ package passwordreset
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"mindflow/internal/account"
 	"mindflow/internal/email"
+	"mindflow/internal/passwordreset/storage"
 	"time"
 )
 
@@ -16,7 +15,7 @@ type LinkConfiguration interface {
 
 // Service owns reset links and their account/email workflow.
 type Service struct {
-	db            *sql.DB
+	repository    *storage.Repository
 	accounts      *account.Service
 	email         *email.Service
 	configuration LinkConfiguration
@@ -36,8 +35,8 @@ type ForgotCommand struct {
 }
 
 // NewService supplies explicit account, delivery and link-configuration collaborators.
-func NewService(connection *sql.DB, accounts *account.Service, delivery *email.Service, configuration LinkConfiguration) *Service {
-	return &Service{db: connection, accounts: accounts, email: delivery, configuration: configuration}
+func NewService(repository *storage.Repository, accounts *account.Service, delivery *email.Service, configuration LinkConfiguration) *Service {
+	return &Service{repository: repository, accounts: accounts, email: delivery, configuration: configuration}
 }
 
 // Redeem consumes a reset link and changes the account password atomically.
@@ -46,13 +45,13 @@ func (a *Service) Redeem(ctx context.Context, command RedeemCommand) (Completed,
 	if err != nil {
 		return Completed{}, err
 	}
-	transaction, err := a.db.BeginTx(ctx, nil)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Completed{}, wrap("begin reset redemption", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
-	token, err := New(transaction).FindToken(ctx, FindTokenParams{TokenHash: secretDigest(command.Token), ExpiresAt: time.Now().Unix()})
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	token, err := a.repository.Within(transaction).FindToken(ctx, storage.FindTokenParams{TokenHash: secretDigest(command.Token), ExpiresAt: time.Now().Unix()})
+	if err != nil && !storage.IsNotFound(err) {
 		return Completed{}, err
 	}
 	if err != nil {
@@ -73,27 +72,8 @@ func (a *Service) Redeem(ctx context.Context, command RedeemCommand) (Completed,
 	return Completed{OK: true}, wrap("commit reset redemption", transaction.Commit())
 }
 
-// RevokeUserWithin removes this account's reset links during a credential change.
-func RevokeUserWithin(ctx context.Context, transaction *sql.Tx, userID string) error {
-	_, err := New(transaction).DeleteUserTokens(ctx, userID)
-
-	return err
-}
-
-// RevokeAllWithin removes reset links after a snapshot restore.
-func RevokeAllWithin(ctx context.Context, transaction *sql.Tx) error {
-	return New(transaction).RevokeTokens(ctx)
-}
-
-// CanDeliver authorizes delivery of an unexpired, unused reset link.
-func CanDeliver(ctx context.Context, connection *sql.DB, hash string) (bool, error) {
-	count, err := New(connection).CountValidTokens(ctx, CountValidTokensParams{TokenHash: hash, ExpiresAt: time.Now().Unix()})
-
-	return count > 0, err
-}
-
 // Cleanup removes expired reset links.
-func (a *Service) Cleanup(ctx context.Context) error { return New(a.db).DeleteExpiredTokens(ctx) }
+func (a *Service) Cleanup(ctx context.Context) error { return a.repository.DeleteExpiredTokens(ctx) }
 
 // Forgot queues recovery without exposing whether an active account exists.
 func (a *Service) Forgot(ctx context.Context, command ForgotCommand) (Completed, error) {
@@ -119,13 +99,13 @@ func (a *Service) AdminReset(ctx context.Context, actor account.User, resourceID
 	return Completed{OK: true}, a.requestForUser(ctx, resourceID)
 }
 
-func (a *Service) issueWithin(ctx context.Context, transaction *sql.Tx, user account.User, publicURL string) error {
-	_, err := New(transaction).DeleteUserTokens(ctx, user.ID)
+func (a *Service) issueWithin(ctx context.Context, transaction *storage.Transaction, user account.User, publicURL string) error {
+	_, err := a.repository.Within(transaction).DeleteUserTokens(ctx, user.ID)
 	if err != nil {
 		return err
 	}
 	token := newID()
-	_, err = New(transaction).CreateToken(ctx, CreateTokenParams{ID: newID(), UserID: user.ID, TokenHash: secretDigest(token), ExpiresAt: time.Now().Unix() + tokenLifetimeSeconds})
+	_, err = a.repository.Within(transaction).CreateToken(ctx, storage.CreateTokenParams{ID: newID(), UserID: user.ID, TokenHash: secretDigest(token), ExpiresAt: time.Now().Unix() + tokenLifetimeSeconds})
 	if err != nil {
 		return err
 	}
@@ -140,7 +120,7 @@ func (a *Service) requestForUser(ctx context.Context, resourceID string) error {
 	if err != nil {
 		return err
 	}
-	transaction, err := a.db.BeginTx(ctx, nil)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return wrap("begin reset issuance", err)
 	}

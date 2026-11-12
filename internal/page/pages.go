@@ -2,9 +2,9 @@ package page
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"mindflow/internal/canvas"
+	"mindflow/internal/page/storage"
 	"mindflow/internal/session"
 	"strings"
 	"time"
@@ -13,12 +13,12 @@ import (
 // ListPages lists metadata after checking parent workspace ownership.
 func (a *Service) ListPages(ctx context.Context, actor session.Principal, resourceID string) (_ []Page, err error) {
 	defer func() { err = repositoryError(err) }()
-	ownedWorkspaceRow, err := New(a.db).OwnedWorkspace(ctx, OwnedWorkspaceParams{ID: resourceID, OwnerID: actor.ID})
+	ownedWorkspaceRow, err := a.repository.OwnedWorkspace(ctx, storage.OwnedWorkspaceParams{ID: resourceID, OwnerID: actor.ID})
 	resourceID = ownedWorkspaceRow
 	if err != nil {
 		return nil, err
 	}
-	rows, err := New(a.db).ListPages(ctx, resourceID)
+	rows, err := a.repository.ListPages(ctx, resourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -38,13 +38,13 @@ func (a *Service) CreatePage(ctx context.Context, actor session.Principal, resou
 	if validateNameErr3 != nil {
 		return Created{}, validateNameErr3
 	}
-	transaction, err := a.db.BeginTx(ctx, nil)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Created{}, wrap("workspace_repository.go", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
 	var wid string
-	ownedWorkspaceRow, err := New(transaction).OwnedWorkspace(ctx, OwnedWorkspaceParams{ID: resourceID, OwnerID: actor.ID})
+	ownedWorkspaceRow, err := a.repository.Within(transaction).OwnedWorkspace(ctx, storage.OwnedWorkspaceParams{ID: resourceID, OwnerID: actor.ID})
 	wid = ownedWorkspaceRow
 	if err != nil {
 		return Created{}, err
@@ -74,19 +74,19 @@ func (a *Service) RenamePage(ctx context.Context, actor session.Principal, resou
 	if validateNameErr4 != nil {
 		return Completed{}, validateNameErr4
 	}
-	transaction, err := a.db.BeginTx(ctx, nil)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Completed{}, wrap("workspace_repository.go", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
-	page, err := loadOwnedPage(ctx, transaction, resourceID, actor.ID)
+	page, err := a.loadOwnedPage(ctx, transaction, resourceID, actor.ID)
 	if err != nil {
 		return Completed{}, err
 	}
 	if page.MetadataRevision != command.Revision {
 		return Completed{}, failure("metadata_conflict", "Page changed. Refresh and retry.")
 	}
-	_, err = New(transaction).RenamePage(ctx, RenamePageParams{Name: strings.TrimSpace(command.Name), ID: page.ID})
+	_, err = a.repository.Within(transaction).RenamePage(ctx, storage.RenamePageParams{Name: strings.TrimSpace(command.Name), ID: page.ID})
 	if err != nil {
 		return Completed{}, err
 	}
@@ -106,12 +106,12 @@ func (a *Service) DeletePage(ctx context.Context, actor session.Principal, resou
 	if !command.Confirm {
 		return Completed{}, invalid("Confirm page deletion.")
 	}
-	transaction, err := a.db.BeginTx(ctx, nil)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Completed{}, wrap("workspace_repository.go", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
-	page, err := loadOwnedPage(ctx, transaction, resourceID, actor.ID)
+	page, err := a.loadOwnedPage(ctx, transaction, resourceID, actor.ID)
 	if err != nil {
 		return Completed{}, err
 	}
@@ -122,7 +122,7 @@ func (a *Service) DeletePage(ctx context.Context, actor session.Principal, resou
 	if err != nil {
 		return Completed{}, err
 	}
-	_, err = New(transaction).DeletePage(ctx, page.ID)
+	_, err = a.repository.Within(transaction).DeletePage(ctx, page.ID)
 	if err != nil {
 		return Completed{}, err
 	}
@@ -139,12 +139,12 @@ func (a *Service) DeletePage(ctx context.Context, actor session.Principal, resou
 func (a *Service) DuplicatePage(ctx context.Context, actor session.Principal, resourceID string) (_ Created, err error) {
 	defer func() { err = repositoryError(err) }()
 
-	transaction, err := a.db.BeginTx(ctx, nil)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Created{}, wrap("workspace_repository.go", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
-	page, err := loadOwnedPage(ctx, transaction, resourceID, actor.ID)
+	page, err := a.loadOwnedPage(ctx, transaction, resourceID, actor.ID)
 	if err != nil {
 		return Created{}, err
 	}
@@ -176,13 +176,13 @@ func (a *Service) RecoveryCopy(ctx context.Context, actor session.Principal, com
 	if validateNameErr != nil {
 		return Created{}, validateNameErr
 	}
-	transaction, err := a.db.BeginTx(ctx, nil)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Created{}, wrap("canvas_repository.go", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
 	var wid string
-	ownedWorkspaceRow, err := New(transaction).OwnedWorkspace(ctx, OwnedWorkspaceParams{ID: command.WorkspaceID, OwnerID: actor.ID})
+	ownedWorkspaceRow, err := a.repository.Within(transaction).OwnedWorkspace(ctx, storage.OwnedWorkspaceParams{ID: command.WorkspaceID, OwnerID: actor.ID})
 	wid = ownedWorkspaceRow
 	if err != nil {
 		return Created{}, err
@@ -196,7 +196,7 @@ func (a *Service) RecoveryCopy(ctx context.Context, actor session.Principal, com
 		return Created{}, err
 	}
 	resourceID := newID()
-	_, err = New(transaction).CreateRecoveryPage(ctx, CreateRecoveryPageParams{ID: resourceID, WorkspaceID: wid, Name: command.Name, Document: cloned, UpdatedAt: time.Now().Unix(), WorkspaceID_2: wid})
+	_, err = a.repository.Within(transaction).CreateRecoveryPage(ctx, storage.CreateRecoveryPageParams{ID: resourceID, WorkspaceID: wid, Name: command.Name, Document: cloned, UpdatedAt: time.Now().Unix(), WorkspaceID_2: wid})
 	if err != nil {
 		return Created{}, err
 	}
@@ -214,17 +214,17 @@ func (a *Service) RecoveryCopy(ctx context.Context, actor session.Principal, com
 }
 
 // CreateWithin inserts page metadata and content in the caller transaction.
-func (a *Service) CreateWithin(ctx context.Context, tx *sql.Tx, wid, name, raw string) (string, error) {
+func (a *Service) CreateWithin(ctx context.Context, tx *storage.Transaction, wid, name, raw string) (string, error) {
 	id := newID()
-	_, err := New(tx).CreatePage(ctx, CreatePageParams{ID: id, WorkspaceID: wid, Name: name, Document: raw, UpdatedAt: time.Now().Unix(), WorkspaceID_2: wid})
+	_, err := a.repository.Within(tx).CreatePage(ctx, storage.CreatePageParams{ID: id, WorkspaceID: wid, Name: name, Document: raw, UpdatedAt: time.Now().Unix(), WorkspaceID_2: wid})
 
 	return id, err
 }
 
 // CopyWithin duplicates a page and its canvas references in the caller transaction.
-func (a *Service) CopyWithin(ctx context.Context, transaction *sql.Tx, source, wid, name string) (string, error) {
+func (a *Service) CopyWithin(ctx context.Context, transaction *storage.Transaction, source, wid, name string) (string, error) {
 	var raw string
-	pageDocumentRow, err := New(transaction).PageDocument(ctx, source)
+	pageDocumentRow, err := a.repository.Within(transaction).PageDocument(ctx, source)
 	raw = pageDocumentRow
 	if err != nil {
 		return "", err
@@ -251,9 +251,9 @@ func copyName(name string) string {
 	return string(r) + " copy"
 }
 
-func loadOwnedPage(ctx context.Context, tx *sql.Tx, id, owner string) (Page, error) {
+func (a *Service) loadOwnedPage(ctx context.Context, tx *storage.Transaction, id, owner string) (Page, error) {
 	var page Page
-	ownedPageRow, err := New(tx).OwnedPage(ctx, OwnedPageParams{ID: id, OwnerID: owner})
+	ownedPageRow, err := a.repository.Within(tx).OwnedPage(ctx, storage.OwnedPageParams{ID: id, OwnerID: owner})
 	page.ID = ownedPageRow.ID
 	page.WorkspaceID = ownedPageRow.WorkspaceID
 	page.Name = ownedPageRow.Name

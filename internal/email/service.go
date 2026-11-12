@@ -2,9 +2,9 @@ package email
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"mindflow/internal/account"
+	"mindflow/internal/email/storage"
 	"time"
 )
 
@@ -20,22 +20,22 @@ type Authorization interface {
 
 // Service owns SMTP delivery, queue retries and cancellation.
 type Service struct {
-	db            *sql.DB
+	repository    *storage.Repository
 	configuration Configuration
 	authorization Authorization
 }
 
 // NewService supplies explicit configuration and credential-link authorization.
-func NewService(connection *sql.DB, configuration Configuration, authorization Authorization) *Service {
-	return &Service{db: connection, configuration: configuration, authorization: authorization}
+func NewService(repository *storage.Repository, configuration Configuration, authorization Authorization) *Service {
+	return &Service{repository: repository, configuration: configuration, authorization: authorization}
 }
 
 // Process delivers one due message.
 func (a *Service) Process(ctx context.Context) { a.runMail(ctx) }
 
 // QueueWithin replaces a superseded message and queues the new credential link atomically.
-func (a *Service) QueueWithin(ctx context.Context, transaction *sql.Tx, userID, purpose, to, subject, body, tokenHash string) error {
-	_, err := New(transaction).DeletePurposeMail(ctx, DeletePurposeMailParams{UserID: sql.NullString{String: userID, Valid: true}, DedupKey: sql.NullString{String: userID + ":" + purpose, Valid: true}})
+func (a *Service) QueueWithin(ctx context.Context, transaction *storage.Transaction, userID, purpose, to, subject, body, tokenHash string) error {
+	_, err := a.repository.Within(transaction).DeletePurposeMail(ctx, storage.DeletePurposeMailParams{UserID: userID, DedupKey: userID + ":" + purpose})
 	if err != nil {
 		return err
 	}
@@ -43,21 +43,9 @@ func (a *Service) QueueWithin(ctx context.Context, transaction *sql.Tx, userID, 
 	if err != nil {
 		return wrap("encode credential email", err)
 	}
-	_, err = New(transaction).QueueMail(ctx, QueueMailParams{ID: newID(), UserID: sql.NullString{String: userID, Valid: true}, DedupKey: sql.NullString{String: userID + ":" + purpose, Valid: true}, Payload: string(payload), RunAt: time.Now().Unix()})
+	_, err = a.repository.Within(transaction).QueueMail(ctx, storage.QueueMailParams{ID: newID(), UserID: userID, DedupKey: userID + ":" + purpose, Payload: string(payload), RunAt: time.Now().Unix()})
 
 	return err
-}
-
-// CancelUserWithin removes secret-bearing messages during a credential change.
-func CancelUserWithin(ctx context.Context, transaction *sql.Tx, userID string) error {
-	_, err := New(transaction).DeleteUserMail(ctx, sql.NullString{String: userID, Valid: true})
-
-	return err
-}
-
-// CancelAllWithin removes queued credential mail after restoring a snapshot.
-func CancelAllWithin(ctx context.Context, transaction *sql.Tx) error {
-	return New(transaction).RevokeMail(ctx)
 }
 
 // Test sends a test message using saved operator settings.

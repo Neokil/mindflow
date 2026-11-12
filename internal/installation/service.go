@@ -2,10 +2,9 @@ package installation
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"mindflow/internal/account"
 	"mindflow/internal/email"
+	"mindflow/internal/installation/storage"
 )
 
 // Config supplies local development mode and the one-time installation credential.
@@ -16,14 +15,14 @@ type Config struct {
 
 // Service owns installation state and operator configuration.
 type Service struct {
-	db       *sql.DB
-	Config   Config
-	accounts *account.Service
+	repository *storage.Repository
+	Config     Config
+	accounts   *account.Service
 }
 
 // NewService supplies the account creator used by first-run setup.
-func NewService(connection *sql.DB, accounts *account.Service, config Config) *Service {
-	return &Service{db: connection, accounts: accounts, Config: config}
+func NewService(repository *storage.Repository, accounts *account.Service, config Config) *Service {
+	return &Service{repository: repository, accounts: accounts, Config: config}
 }
 
 // Settings returns the saved operator configuration.
@@ -44,7 +43,7 @@ func (a *Service) PublicAddress(ctx context.Context) (string, error) {
 }
 
 func repositoryError(err error) error {
-	if errors.Is(err, sql.ErrNoRows) {
+	if storage.IsNotFound(err) {
 		return notFound()
 	}
 

@@ -2,8 +2,7 @@ package editor
 
 import (
 	"context"
-	"database/sql"
-	"errors"
+	"mindflow/internal/editor/storage"
 	"mindflow/internal/session"
 	"time"
 )
@@ -18,23 +17,23 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 		return LeaseResult{}, invalid("Invalid editor action.")
 	}
 	caller := actor
-	transaction, err := a.db.BeginTx(ctx, nil)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return LeaseResult{}, wrap("canvas_repository.go", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
-	page, err := loadOwnedPage(ctx, transaction, resourceID, caller.ID)
+	page, err := a.repository.OwnedPageWithin(ctx, transaction, resourceID, caller.ID)
 	if err != nil {
 		return LeaseResult{}, err
 	}
-	_, err = New(transaction).EnsureLease(ctx, page.ID)
+	_, err = a.repository.Within(transaction).EnsureLease(ctx, page.ID)
 	if err != nil {
 		return LeaseResult{}, err
 	}
-	var session sql.NullString
+	var session string
 	var client string
 	var epoch, expires int64
-	pageLeaseRow, err := New(transaction).PageLease(ctx, page.ID)
+	pageLeaseRow, err := a.repository.LeaseWithin(ctx, transaction, page.ID)
 	session = pageLeaseRow.SessionID
 	client = pageLeaseRow.ClientID
 	epoch = pageLeaseRow.Epoch
@@ -42,14 +41,14 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 	if err != nil {
 		return LeaseResult{}, err
 	}
-	state, changed, err := (LeaseState{SessionID: session.String, ClientID: client, Epoch: epoch, ExpiresAt: expires}).Advance(caller.SessionID, command, time.Now().Unix())
+	state, changed, err := (LeaseState{SessionID: session, ClientID: client, Epoch: epoch, ExpiresAt: expires}).Advance(caller.SessionID, command, time.Now().Unix())
 	if err != nil {
 		return LeaseResult{}, err
 	}
 	epoch, expires, client = state.Epoch, state.ExpiresAt, state.ClientID
-	session = sql.NullString{String: state.SessionID, Valid: state.SessionID != ""}
+	session = state.SessionID
 	if changed {
-		_, err = New(transaction).UpdateLease(ctx, UpdateLeaseParams{SessionID: session, ClientID: client, Epoch: epoch, ExpiresAt: expires, PageID: page.ID})
+		err = a.repository.SaveLeaseWithin(ctx, transaction, page.ID, session, client, epoch, expires)
 		if err != nil {
 			return LeaseResult{}, err
 		}
@@ -62,7 +61,7 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 		a.publish(caller.ID, "lease", page.ID)
 	}
 
-	return LeaseResult{Editable: session.String == caller.SessionID && client == command.ClientID && expires > time.Now().Unix(), Epoch: epoch, ExpiresAt: expires, Revision: page.Revision}, nil
+	return LeaseResult{Editable: session == caller.SessionID && client == command.ClientID && expires > time.Now().Unix(), Epoch: epoch, ExpiresAt: expires, Revision: page.Revision}, nil
 }
 
 // LeaseStatus reports editor control and revision for an owned page.
@@ -70,23 +69,23 @@ func (a *Service) LeaseStatus(ctx context.Context, actor session.Principal, reso
 	defer func() { err = repositoryError(err) }()
 
 	var rev int
-	ownedPageRevisionRow, err := New(a.db).OwnedPageRevision(ctx, OwnedPageRevisionParams{ID: resourceID, OwnerID: actor.ID})
+	ownedPageRevisionRow, err := a.repository.OwnedPageRevision(ctx, storage.OwnedPageRevisionParams{ID: resourceID, OwnerID: actor.ID})
 	rev = ownedPageRevisionRow
 	if err != nil {
 		return LeaseResult{}, err
 	}
-	var session sql.NullString
+	var session string
 	var client string
 	var epoch, expires int64
-	pageLeaseRow, err := New(a.db).PageLease(ctx, resourceID)
+	pageLeaseRow, err := a.repository.Lease(ctx, resourceID)
 	session = pageLeaseRow.SessionID
 	client = pageLeaseRow.ClientID
 	epoch = pageLeaseRow.Epoch
 	expires = pageLeaseRow.ExpiresAt
 
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil && !storage.IsNotFound(err) {
 		return LeaseResult{}, err
 	}
 
-	return LeaseResult{Editable: session.String == actor.SessionID && client == clientID && expires > time.Now().Unix(), Epoch: epoch, ExpiresAt: expires, Revision: rev}, nil
+	return LeaseResult{Editable: session == actor.SessionID && client == clientID && expires > time.Now().Unix(), Epoch: epoch, ExpiresAt: expires, Revision: rev}, nil
 }

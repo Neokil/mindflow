@@ -4,9 +4,9 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
-	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"mindflow/internal/account/storage"
 	"net/mail"
 	"strings"
 	"unicode/utf8"
@@ -123,16 +123,16 @@ func verifyPassword(encoded, password string) bool {
 	return subtle.ConstantTimeCompare(h, expected) == 1
 }
 
-func guardLastAdmin(ctx context.Context, transaction *sql.Tx, id, newRole, newStatus string) error {
+func (a *Service) guardLastAdmin(ctx context.Context, transaction *storage.Transaction, id, newRole, newStatus string) error {
 	var role, status string
-	userRoleStatusRow, err := New(transaction).UserRoleStatus(ctx, id)
+	userRoleStatusRow, err := a.repository.Within(transaction).UserRoleStatus(ctx, id)
 	role = userRoleStatusRow.Role
 	status = userRoleStatusRow.Status
 	if err != nil {
 		return err
 	}
 	var count int
-	countAdministratorsRow, err := New(transaction).CountAdministrators(ctx)
+	countAdministratorsRow, err := a.repository.Within(transaction).CountAdministrators(ctx)
 	count = int(countAdministratorsRow)
 	if err != nil {
 		return err
@@ -149,7 +149,7 @@ func (a *Service) ListUsers(ctx context.Context, actor User) (_ []UserDelivery, 
 	}
 	defer func() { err = repositoryError(err) }()
 
-	rows, err := New(a.db).ListUsers(ctx)
+	rows, err := a.repository.ListUsers(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -169,13 +169,13 @@ func (a *Service) UpdateUser(ctx context.Context, actor User, resourceID string,
 	}
 	defer func() { err = repositoryError(err) }()
 
-	transaction, err := a.db.BeginTx(ctx, nil)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Completed{}, wrap("account.UpdateUser", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
 	var role, status string
-	userRoleStatusRow, err := New(transaction).UserRoleStatus(ctx, resourceID)
+	userRoleStatusRow, err := a.repository.Within(transaction).UserRoleStatus(ctx, resourceID)
 	role = userRoleStatusRow.Role
 	status = userRoleStatusRow.Status
 	if err != nil {
@@ -185,11 +185,11 @@ func (a *Service) UpdateUser(ctx context.Context, actor User, resourceID string,
 	if err != nil {
 		return Completed{}, err
 	}
-	err = guardLastAdmin(ctx, transaction, resourceID, command.Role, command.Status)
+	err = a.guardLastAdmin(ctx, transaction, resourceID, command.Role, command.Status)
 	if err != nil {
 		return Completed{}, err
 	}
-	_, err = New(transaction).UpdateUser(ctx, UpdateUserParams{Role: command.Role, Status: command.Status, ID: resourceID})
+	_, err = a.repository.Within(transaction).UpdateUser(ctx, storage.UpdateUserParams{Role: command.Role, Status: command.Status, ID: resourceID})
 	if err != nil {
 		return Completed{}, err
 	}
@@ -214,16 +214,16 @@ func (a *Service) DeleteUser(ctx context.Context, actor User, resourceID string,
 	if !command.Confirm {
 		return Completed{}, invalid("Confirm permanent user deletion.")
 	}
-	transaction, err := a.db.BeginTx(ctx, nil)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Completed{}, wrap("account.DeleteUser", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
-	err = guardLastAdmin(ctx, transaction, resourceID, "", "")
+	err = a.guardLastAdmin(ctx, transaction, resourceID, "", "")
 	if err != nil {
 		return Completed{}, err
 	}
-	_, err = New(transaction).DeleteUser(ctx, resourceID)
+	_, err = a.repository.Within(transaction).DeleteUser(ctx, resourceID)
 	if err != nil {
 		return Completed{}, err
 	}
@@ -236,7 +236,7 @@ func (a *Service) SetAppearance(ctx context.Context, actor User, value string) e
 	if value != "system" && value != "light" && value != "dark" {
 		return invalid("Invalid appearance.")
 	}
-	_, err := New(a.db).SetAppearance(ctx, SetAppearanceParams{Appearance: value, ID: actor.ID})
+	_, err := a.repository.SetAppearance(ctx, storage.SetAppearanceParams{Appearance: value, ID: actor.ID})
 
 	return err
 }

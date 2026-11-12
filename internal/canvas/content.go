@@ -2,10 +2,9 @@ package canvas
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"math"
+	"mindflow/internal/canvas/storage"
 	"mindflow/internal/session"
 	"time"
 )
@@ -16,7 +15,7 @@ func (a *Service) GetDocument(ctx context.Context, actor session.Principal, reso
 	var raw string
 	var revision, metadata int
 	var name, workspace string
-	getDocumentRow, err := New(a.db).GetDocument(ctx, GetDocumentParams{ID: resourceID, OwnerID: actor.ID})
+	getDocumentRow, err := a.repository.GetDocument(ctx, storage.GetDocumentParams{ID: resourceID, OwnerID: actor.ID})
 	raw = getDocumentRow.Document
 	revision = getDocumentRow.Revision
 	metadata = getDocumentRow.MetadataRevision
@@ -53,20 +52,20 @@ func (a *Service) SaveDocument(ctx context.Context, actor session.Principal, res
 	}
 	hash := secretDigest(string(requestRaw))
 	page := actor
-	transaction, err := a.db.BeginTx(ctx, nil)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return SaveReceipt{}, wrap("canvas_repository.go", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
 	var revision int
-	ownedPageRevisionRow, err := New(transaction).OwnedPageRevision(ctx, OwnedPageRevisionParams{ID: resourceID, OwnerID: page.ID})
+	ownedPageRevisionRow, err := a.repository.Within(transaction).OwnedPageRevision(ctx, storage.OwnedPageRevisionParams{ID: resourceID, OwnerID: page.ID})
 	revision = ownedPageRevisionRow
 	if err != nil {
 		return SaveReceipt{}, err
 	}
 	var receiptHash string
 	var receiptRev int
-	saveReceiptRow, err := New(transaction).SaveReceipt(ctx, SaveReceiptParams{PageID: resourceID, ClientID: command.ClientID, MutationID: command.MutationID, ExpiresAt: time.Now().Unix()})
+	saveReceiptRow, err := a.repository.Within(transaction).SaveReceipt(ctx, storage.SaveReceiptParams{PageID: resourceID, ClientID: command.ClientID, MutationID: command.MutationID, ExpiresAt: time.Now().Unix()})
 	receiptHash = saveReceiptRow.Digest
 	receiptRev = saveReceiptRow.Revision
 
@@ -77,7 +76,7 @@ func (a *Service) SaveDocument(ctx context.Context, actor session.Principal, res
 
 		return SaveReceipt{Revision: receiptRev, MutationID: command.MutationID}, nil
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !storage.IsNotFound(err) {
 		return SaveReceipt{}, err
 	}
 	err = a.editors.CheckSaveWithin(ctx, transaction, page.SessionID, resourceID, command.ClientID, command.Epoch, command.BaseRevision, revision)
@@ -89,7 +88,7 @@ func (a *Service) SaveDocument(ctx context.Context, actor session.Principal, res
 		return SaveReceipt{}, err
 	}
 	revision++
-	_, err = New(transaction).SaveDocument(ctx, SaveDocumentParams{Document: string(raw), Revision: revision, UpdatedAt: time.Now().Unix(), ID: resourceID})
+	_, err = a.repository.Within(transaction).SaveDocument(ctx, storage.SaveDocumentParams{Document: string(raw), Revision: revision, UpdatedAt: time.Now().Unix(), ID: resourceID})
 	if err != nil {
 		return SaveReceipt{}, err
 	}
@@ -97,7 +96,7 @@ func (a *Service) SaveDocument(ctx context.Context, actor session.Principal, res
 	if err != nil {
 		return SaveReceipt{}, err
 	}
-	_, err = New(transaction).CreateSaveReceipt(ctx, CreateSaveReceiptParams{PageID: resourceID, ClientID: command.ClientID, MutationID: command.MutationID, Digest: hash, Revision: revision, ExpiresAt: time.Now().Unix() + receiptLifetimeSeconds})
+	_, err = a.repository.Within(transaction).CreateSaveReceipt(ctx, storage.CreateSaveReceiptParams{PageID: resourceID, ClientID: command.ClientID, MutationID: command.MutationID, Digest: hash, Revision: revision, ExpiresAt: time.Now().Unix() + receiptLifetimeSeconds})
 	if err != nil {
 		return SaveReceipt{}, err
 	}
@@ -112,7 +111,7 @@ func (a *Service) SaveDocument(ctx context.Context, actor session.Principal, res
 }
 
 // ValidateAssetsWithin checks image ownership and records canvas references in the caller transaction.
-func (a *Service) ValidateAssetsWithin(ctx context.Context, transaction *sql.Tx, owner, pageID string, d Document) error {
+func (a *Service) ValidateAssetsWithin(ctx context.Context, transaction *storage.Transaction, owner, pageID string, d Document) error {
 	seen := map[string]bool{}
 	for _, entry := range d.Elements {
 		if entry.Type != elementImage || seen[entry.AssetID] {
@@ -128,7 +127,7 @@ func (a *Service) ValidateAssetsWithin(ctx context.Context, transaction *sql.Tx,
 		if count != 1 {
 			return failure("asset_missing", "An image is unavailable. Reattach it before saving.")
 		}
-		_, attachAssetErr := New(transaction).AttachAsset(ctx, AttachAssetParams{PageID: pageID, AssetID: entry.AssetID})
+		_, attachAssetErr := a.repository.Within(transaction).AttachAsset(ctx, storage.AttachAssetParams{PageID: pageID, AssetID: entry.AssetID})
 		if attachAssetErr != nil {
 			return attachAssetErr
 		}

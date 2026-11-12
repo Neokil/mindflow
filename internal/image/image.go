@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -13,10 +12,14 @@ import (
 	"image/jpeg"
 	"image/png"
 	"math"
-	"mindflow/internal/session" // Register WebP decoding for original uploads.
+	"mindflow/internal/image/storage"
+	"mindflow/internal/session"
 	"time"
 
 	"golang.org/x/image/draw"
+
+	// Register WebP decoding for original uploads.
+
 	// Register WebP image decoding alongside standard PNG and JPEG support.
 	_ "golang.org/x/image/webp"
 )
@@ -25,7 +28,7 @@ import (
 func (a *Service) AssetMeta(ctx context.Context, actor session.Principal, id string) (_ AssetInfo, err error) {
 	defer func() { err = repositoryError(err) }()
 	var value AssetInfo
-	assetMetadataRow, err := New(a.db).AssetMetadata(ctx, AssetMetadataParams{ID: id, OwnerID: actor.ID})
+	assetMetadataRow, err := a.repository.AssetMetadata(ctx, storage.AssetMetadataParams{ID: id, OwnerID: actor.ID})
 	value.ID = assetMetadataRow.ID
 	value.Width = assetMetadataRow.Width
 	value.Height = assetMetadataRow.Height
@@ -34,7 +37,7 @@ func (a *Service) AssetMeta(ctx context.Context, actor session.Principal, id str
 		return AssetInfo{}, err
 	}
 	value.Variants = []int{}
-	rows, err := New(a.db).VariantBuckets(ctx, value.ID)
+	rows, err := a.repository.VariantBuckets(ctx, value.ID)
 	if err != nil {
 		return AssetInfo{}, err
 	}
@@ -161,7 +164,7 @@ func orient(src image.Image, orientation int) image.Image {
 // QueueVariant requests a display preview for an owned image.
 func (a *Service) QueueVariant(ctx context.Context, owner, resourceID string, width, height float64) error {
 	var originalWidth, originalHeight int
-	assetDimensionsRow, err := New(a.db).AssetDimensions(ctx, AssetDimensionsParams{ID: resourceID, OwnerID: owner})
+	assetDimensionsRow, err := a.repository.AssetDimensions(ctx, storage.AssetDimensionsParams{ID: resourceID, OwnerID: owner})
 	originalWidth = assetDimensionsRow.Width
 	originalHeight = assetDimensionsRow.Height
 	if err != nil {
@@ -172,7 +175,7 @@ func (a *Service) QueueVariant(ctx context.Context, owner, resourceID string, wi
 		return nil
 	}
 	var count int
-	countVariantsRow, err := New(a.db).CountVariants(ctx, CountVariantsParams{AssetID: resourceID, Bucket: bucket})
+	countVariantsRow, err := a.repository.CountVariants(ctx, storage.CountVariantsParams{AssetID: resourceID, Bucket: bucket})
 	count = int(countVariantsRow)
 	if err != nil {
 		return err
@@ -184,7 +187,7 @@ func (a *Service) QueueVariant(ctx context.Context, owner, resourceID string, wi
 	if err != nil {
 		return wrap("encode variant request", err)
 	}
-	_, err = New(a.db).QueueVariant(ctx, QueueVariantParams{ID: newID(), UserID: sql.NullString{String: owner, Valid: true}, AssetID: sql.NullString{String: resourceID, Valid: true}, DedupKey: sql.NullString{String: fmt.Sprintf("variant:%s:%d", resourceID, bucket), Valid: true}, Payload: string(payload), RunAt: time.Now().Unix()})
+	_, err = a.repository.QueueVariant(ctx, storage.QueueVariantParams{ID: newID(), UserID: owner, AssetID: resourceID, DedupKey: fmt.Sprintf("variant:%s:%d", resourceID, bucket), Payload: string(payload), RunAt: time.Now().Unix()})
 
 	return err
 }
@@ -193,7 +196,7 @@ func (a *Service) QueueVariant(ctx context.Context, owner, resourceID string, wi
 func (a *Service) RunVariant(ctx context.Context) {
 	a.mediaMu.Lock()
 	defer a.mediaMu.Unlock()
-	job, err := New(a.db).DueVariant(ctx, time.Now().Unix())
+	job, err := a.repository.DueVariant(ctx, time.Now().Unix())
 	if err != nil {
 		return
 	}
@@ -202,13 +205,13 @@ func (a *Service) RunVariant(ctx context.Context) {
 	}
 	err = json.Unmarshal([]byte(job.Payload), &request)
 	if err != nil {
-		_, _ = New(a.db).DeleteJob(ctx, job.ID)
+		_, _ = a.repository.DeleteJob(ctx, job.ID)
 
 		return
 	}
-	original, err := New(a.db).OriginalImage(ctx, OriginalImageParams{ID: job.AssetID.String, OwnerID: job.UserID.String})
+	original, err := a.repository.OriginalImage(ctx, storage.OriginalImageParams{ID: job.AssetID, OwnerID: job.UserID})
 	if err != nil {
-		_, _ = New(a.db).DeleteJob(ctx, job.ID)
+		_, _ = a.repository.DeleteJob(ctx, job.ID)
 
 		return
 	}
@@ -217,11 +220,11 @@ func (a *Service) RunVariant(ctx context.Context) {
 		err = a.storePreview(ctx, job, request.Bucket, preview)
 	}
 	if err == nil {
-		a.publish(job.UserID.String, "asset", job.AssetID.String)
+		a.publish(job.UserID, "asset", job.AssetID)
 
 		return
 	}
-	_, _ = New(a.db).RetryVariant(ctx, RetryVariantParams{RunAt: time.Now().Unix() + variantRetrySeconds, ID: job.ID})
+	_, _ = a.repository.RetryVariant(ctx, storage.RetryVariantParams{RunAt: time.Now().Unix() + variantRetrySeconds, ID: job.ID})
 }
 
 func renderPreview(raw []byte, width, height, bucket int) (Blob, error) {
@@ -250,19 +253,19 @@ func renderPreview(raw []byte, width, height, bucket int) (Blob, error) {
 	return Blob{Data: buffer.Bytes(), MIME: mime, Width: targetWidth, Height: targetHeight}, nil
 }
 
-func (a *Service) storePreview(ctx context.Context, job DueVariantRow, bucket int, preview Blob) error {
-	transaction, err := a.db.BeginTx(ctx, nil)
+func (a *Service) storePreview(ctx context.Context, job storage.DueVariantRow, bucket int, preview Blob) error {
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return wrap("begin preview transaction", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
-	queries := New(transaction)
-	exists, err := queries.CountOwnedAsset(ctx, CountOwnedAssetParams{ID: job.AssetID.String, OwnerID: job.UserID.String})
+	queries := a.repository.Within(transaction)
+	exists, err := queries.CountOwnedAsset(ctx, storage.CountOwnedAssetParams{ID: job.AssetID, OwnerID: job.UserID})
 	if err != nil {
 		return err
 	}
 	if exists == 1 {
-		_, err = queries.CreateVariant(ctx, CreateVariantParams{AssetID: job.AssetID.String, Bucket: bucket, Mime: preview.MIME, Data: preview.Data, Width: preview.Width, Height: preview.Height})
+		_, err = queries.CreateVariant(ctx, storage.CreateVariantParams{AssetID: job.AssetID, Bucket: bucket, Mime: preview.MIME, Data: preview.Data, Width: preview.Width, Height: preview.Height})
 		if err != nil {
 			return err
 		}
@@ -301,7 +304,7 @@ func (a *Service) UploadAsset(ctx context.Context, actor session.Principal, raw 
 	mime := "image/" + format
 	hash := sha256.Sum256(raw)
 	resourceID := newID()
-	_, err = New(a.db).CreateAsset(ctx, CreateAssetParams{ID: resourceID, OwnerID: actor.ID, Original: raw, Mime: mime, Width: width, Height: height, Digest: hex.EncodeToString(hash[:]), CreatedAt: time.Now().Unix()})
+	_, err = a.repository.CreateAsset(ctx, storage.CreateAssetParams{ID: resourceID, OwnerID: actor.ID, Original: raw, Mime: mime, Width: width, Height: height, Digest: hex.EncodeToString(hash[:]), CreatedAt: time.Now().Unix()})
 	if err != nil {
 		return AssetInfo{}, err
 	}
@@ -316,14 +319,14 @@ func (a *Service) GetAsset(ctx context.Context, actor session.Principal, resourc
 	var mime string
 	var width, height int
 	if bucket > 0 {
-		imageVariantRow, _ := New(a.db).ImageVariant(ctx, ImageVariantParams{ID: resourceID, OwnerID: actor.ID, Bucket: bucket})
+		imageVariantRow, _ := a.repository.ImageVariant(ctx, storage.ImageVariantParams{ID: resourceID, OwnerID: actor.ID, Bucket: bucket})
 		raw = imageVariantRow.Data
 		mime = imageVariantRow.Mime
 		width = imageVariantRow.Width
 		height = imageVariantRow.Height
 	}
 	if len(raw) == 0 {
-		getImageRow, err := New(a.db).GetImage(ctx, GetImageParams{ID: resourceID, OwnerID: actor.ID})
+		getImageRow, err := a.repository.GetImage(ctx, storage.GetImageParams{ID: resourceID, OwnerID: actor.ID})
 		raw = getImageRow.Original
 		mime = getImageRow.Mime
 		width = getImageRow.Width

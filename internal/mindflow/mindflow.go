@@ -2,7 +2,6 @@ package mindflow
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"io/fs"
 	"log/slog"
@@ -13,6 +12,7 @@ import (
 	"mindflow/internal/email"
 	"mindflow/internal/installation"
 	"mindflow/internal/invitation"
+	"mindflow/internal/mindflow/storage"
 	"mindflow/internal/notification"
 	"mindflow/internal/page"
 	"mindflow/internal/passwordreset"
@@ -57,28 +57,28 @@ type App struct {
 }
 
 // New composes domain services and registers HTTP routes.
-func New(ctx context.Context, connection *sql.DB, config Config) (*App, error) {
+func New(ctx context.Context, data *storage.Database, config Config) (*App, error) {
 	service := &App{Config: config, Mux: http.NewServeMux(), Log: slog.Default(), limits: make(map[string]rateWindow)}
-	accounts, err := account.NewService(connection, credentialRevoker{})
+	accounts, err := account.NewService(data.Accounts, credentialRevoker{data: data})
 	if err != nil {
 		return nil, err
 	}
 	service.accounts = accounts
-	service.sessions = session.NewService(connection)
-	service.installation = installation.NewService(connection, accounts, installation.Config{Dev: config.Dev, Bootstrap: config.Bootstrap})
-	service.mail = email.NewService(connection, service.installation, linkAuthorization{connection: connection})
-	service.invitations = invitation.NewService(connection, accounts, service.mail, service.installation)
-	service.passwordResets = passwordreset.NewService(connection, accounts, service.mail, service.installation)
+	service.sessions = session.NewService(data.Sessions)
+	service.installation = installation.NewService(data.Installation, accounts, installation.Config{Dev: config.Dev, Bootstrap: config.Bootstrap})
+	service.mail = email.NewService(data.Email, service.installation, linkAuthorization{data: data})
+	service.invitations = invitation.NewService(data.Invitations, accounts, service.mail, service.installation)
+	service.passwordResets = passwordreset.NewService(data.PasswordResets, accounts, service.mail, service.installation)
 	service.authentication = authentication.NewService(accounts, service.sessions, config.Dev)
 	service.notifications = notification.NewService(service.authentication)
-	service.images = imageasset.NewService(connection, service.notifications.Publish)
-	service.editors, err = editor.NewService(ctx, connection, service.notifications.Publish)
+	service.images = imageasset.NewService(data.Images, service.notifications.Publish)
+	service.editors, err = editor.NewService(ctx, data.Editor, service.notifications.Publish)
 	if err != nil {
 		return nil, err
 	}
-	service.canvases = canvas.NewService(connection, service.images, service.editors, workspace.Activity{}, service.notifications.Publish)
-	service.pages = page.NewService(connection, service.canvases, service.images, service.notifications.Publish)
-	service.workspace = workspace.NewService(connection, service.pages, service.images, service.notifications.Publish)
+	service.canvases = canvas.NewService(data.Canvas, service.images, service.editors, data.Workspaces, service.notifications.Publish)
+	service.pages = page.NewService(data.Pages, service.canvases, service.images, service.notifications.Publish)
+	service.workspace = workspace.NewService(data.Workspaces, service.pages, service.images, service.notifications.Publish)
 	service.accounts.RegisterHTTP(service)
 	service.authentication.RegisterHTTP(service)
 	service.installation.RegisterHTTP(service)
@@ -94,7 +94,7 @@ func New(ctx context.Context, connection *sql.DB, config Config) (*App, error) {
 
 	service.Mux.HandleFunc("GET /health/live", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, http.StatusOK, map[string]bool{"ok": true}) })
 	service.Mux.HandleFunc("GET /health/ready", func(writer http.ResponseWriter, r *http.Request) {
-		if connection.PingContext(r.Context()) != nil {
+		if data.Ping(r.Context()) != nil {
 			writeJSON(writer, http.StatusServiceUnavailable, map[string]bool{"ok": false})
 
 			return

@@ -3,7 +3,6 @@ package installation
 import (
 	"context"
 	"crypto/subtle"
-	"database/sql"
 	"encoding/json"
 	"mindflow/internal/account"
 	"mindflow/internal/email"
@@ -78,13 +77,13 @@ func (a *Service) Setup(ctx context.Context, _ account.User, command SetupComman
 	if err != nil {
 		return Completed{}, err
 	}
-	transaction, err := a.db.BeginTx(ctx, nil)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Completed{}, wrap("identity_repository.go", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
 	var init int
-	setupStatusRow, err := New(transaction).SetupStatus(ctx)
+	setupStatusRow, err := a.repository.Within(transaction).SetupStatus(ctx)
 	init = setupStatusRow
 	if err != nil {
 		return Completed{}, err
@@ -100,7 +99,7 @@ func (a *Service) Setup(ctx context.Context, _ account.User, command SetupComman
 	if err != nil {
 		return Completed{}, wrap("encode settings", err)
 	}
-	_, err = New(transaction).CompleteSetup(ctx, string(raw))
+	_, err = a.repository.Within(transaction).CompleteSetup(ctx, string(raw))
 	if err != nil {
 		return Completed{}, err
 	}
@@ -113,7 +112,7 @@ func (a *Service) SetupTestEmail(ctx context.Context, _ account.User, command Se
 	defer func() { err = repositoryError(err) }()
 
 	var init int
-	setupStatusRow, err := New(a.db).SetupStatus(ctx)
+	setupStatusRow, err := a.repository.SetupStatus(ctx)
 	init = setupStatusRow
 	if err != nil {
 		return Completed{}, err
@@ -161,14 +160,14 @@ func (a *Service) UpdateSettings(ctx context.Context, actor account.User, comman
 	if err != nil {
 		return Completed{}, wrap("encode settings", err)
 	}
-	_, err = New(a.db).UpdateSettings(ctx, string(raw))
+	_, err = a.repository.UpdateSettings(ctx, string(raw))
 
 	return Completed{OK: true}, err
 }
 
 func (a *Service) settings(ctx context.Context) (Settings, error) {
 	var raw string
-	settingsRow, err := New(a.db).Settings(ctx)
+	settingsRow, err := a.repository.Settings(ctx)
 	raw = settingsRow
 
 	var s Settings
@@ -182,15 +181,8 @@ func (a *Service) settings(ctx context.Context) (Settings, error) {
 // Initialized reports whether first-run setup is complete.
 func (a *Service) Initialized(ctx context.Context) (bool, error) {
 	var n int
-	setupStatusRow, err := New(a.db).SetupStatus(ctx)
+	setupStatusRow, err := a.repository.SetupStatus(ctx)
 	n = setupStatusRow
 
 	return n == 1, err
-}
-
-// SetupComplete reports whether first-run setup has been committed.
-func SetupComplete(ctx context.Context, connection *sql.DB) (bool, error) {
-	initialized, err := New(connection).SetupStatus(ctx)
-
-	return initialized == 1, wrap("read setup status", err)
 }

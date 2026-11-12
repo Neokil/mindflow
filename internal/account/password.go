@@ -2,8 +2,7 @@ package account
 
 import (
 	"context"
-	"database/sql"
-	"errors"
+	"mindflow/internal/account/storage"
 	"strings"
 )
 
@@ -14,7 +13,7 @@ func (a *Service) VerifyCredentials(ctx context.Context, address, password strin
 	email := strings.ToLower(strings.TrimSpace(address))
 	var user User
 	var hash string
-	userByEmailRow, err := New(a.db).UserByEmail(ctx, email)
+	userByEmailRow, err := a.repository.UserByEmail(ctx, email)
 	user.ID = userByEmailRow.ID
 	user.Email = userByEmailRow.Email
 	user.Role = userByEmailRow.Role
@@ -22,7 +21,7 @@ func (a *Service) VerifyCredentials(ctx context.Context, address, password strin
 	user.Appearance = userByEmailRow.Appearance
 	hash = userByEmailRow.PasswordHash
 
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil && !storage.IsNotFound(err) {
 		return User{}, err
 	}
 	if err != nil || hash == "" {

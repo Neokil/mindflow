@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"mindflow/internal/installation"
 	"mindflow/internal/mindflow"
+	"mindflow/internal/mindflow/storage"
 	"net"
 	"net/http"
 	"os"
@@ -57,26 +57,44 @@ func run(ctx context.Context) error {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
 		return healthcheck(ctx, address)
 	}
+	command := ""
+	if len(os.Args) > 1 {
+		command = os.Args[1]
+		switch command {
+		case "migrate", "revoke-credentials", "check-data":
+		default:
+			return errors.ErrUnsupported
+		}
+	}
 	directory := os.Getenv("MINDFLOW_DATA")
 	if directory == "" {
 		directory = "data"
 	}
-	connection, err := mindflow.OpenData(ctx, filepath.Join(directory, "mindflow.sqlite"))
+	connection, err := storage.Open(ctx, filepath.Join(directory, "mindflow.sqlite"))
 	if err != nil {
 		return err
 	}
 	defer func() { _ = connection.Close() }()
+	err = connection.Migrate(ctx)
+	if err != nil {
+		return err
+	}
+	if command == "migrate" {
+		slog.Info("All domain migrations are current.")
+
+		return nil
+	}
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "revoke-credentials":
-			err = mindflow.RevokeCredentials(ctx, connection)
+			err = connection.RevokeCredentials(ctx)
 			if err == nil {
 				slog.Info("Sessions, account links, queued token emails, and editor control revoked.")
 			}
 
 			return err
 		case "check-data":
-			err = installation.Check(ctx, connection)
+			err = connection.Check(ctx)
 			if err == nil {
 				slog.Info("Database integrity and foreign keys: OK")
 			}
@@ -92,7 +110,7 @@ func run(ctx context.Context) error {
 		return wrap("generate setup credential", err)
 	}
 	bootstrap := hex.EncodeToString(token)
-	initialized, err := installation.SetupComplete(ctx, connection)
+	initialized, err := connection.SetupComplete(ctx)
 	if err != nil {
 		return err
 	}
