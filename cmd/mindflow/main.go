@@ -46,6 +46,7 @@ func main() {
 	srv := &http.Server{Addr: addr, Handler: a, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 90 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	go a.RunWorkers(ctx)
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 30*time.Second)

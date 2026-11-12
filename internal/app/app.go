@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 
 	web "mindflow/web"
 )
@@ -15,13 +17,20 @@ type Config struct {
 	Bootstrap string
 }
 type App struct {
-	DB     *sql.DB
-	Config Config
-	Mux    *http.ServeMux
+	Log       *slog.Logger
+	hashMu    sync.Mutex
+	limitMu   sync.Mutex
+	limits    map[string]rateWindow
+	dummyHash string
+	DB        *sql.DB
+	Config    Config
+	Mux       *http.ServeMux
 }
 
 func New(db *sql.DB, config Config) *App {
-	a := &App{DB: db, Config: config, Mux: http.NewServeMux()}
+	a := &App{DB: db, Config: config, Mux: http.NewServeMux(), Log: slog.Default(), limits: make(map[string]rateWindow)}
+	a.dummyHash, _ = hashPassword("dummy password never used")
+	a.identityRoutes()
 	a.Mux.HandleFunc("GET /health/live", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, map[string]bool{"ok": true}) })
 	a.Mux.HandleFunc("GET /health/ready", func(w http.ResponseWriter, r *http.Request) {
 		if db.PingContext(r.Context()) != nil {
@@ -52,6 +61,8 @@ func New(db *sql.DB, config Config) *App {
 	return a
 }
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	r.Header.Set("X-Request-ID", randomID()[:16])
+	w.Header().Set("X-Request-ID", r.Header.Get("X-Request-ID"))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	w.Header().Set("X-Frame-Options", "DENY")

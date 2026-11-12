@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	_ "embed"
 	"fmt"
 	"net/url"
 	"os"
@@ -31,9 +32,16 @@ func Open(path string) (*sql.DB, error) {
 	return db, nil
 }
 
+//go:embed schema.sql
+var schema string
+
 func migrate(db *sql.DB) error {
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY);
 	CREATE TABLE IF NOT EXISTS app_settings(id INTEGER PRIMARY KEY CHECK(id=1), initialized INTEGER NOT NULL DEFAULT 0, config TEXT NOT NULL DEFAULT '{}');
 	INSERT OR IGNORE INTO app_settings(id) VALUES(1);`)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(schema)
 	return err
 }
