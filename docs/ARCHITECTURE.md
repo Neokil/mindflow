@@ -52,27 +52,37 @@ Use explicit SQL and versioned migrations. Select a maintained SQLite driver and
 | Background work | Durable image/email jobs, bounded retries, cleanup. |
 | Persistence | Queries, transactions, migrations, database configuration. |
 
-Handlers call application services through typed commands and results. Services enforce authorization and validate domain policies. Repository operations execute state-dependent checks and writes in one SQLite transaction; ownership conditions remain in SQL even after application authorization.
+Organize backend code by domain. `authentication` owns account models and policies, sessions, invitations, passwords, SMTP delivery and their persistence. `workspace` owns workspace/page models, canvas documents, editor leases, images, preview workers and their persistence. Each package contains its use cases and SQL queries; generated storage code is private to the owning domain.
 
 Implemented repository layout:
 
 ```text
-cmd/mindflow/             Go entry point
-internal/domain/         Models, validation, account/lease/media policies
-internal/application/    Use cases and typed repository interfaces
-internal/app/            HTTP adapters, SSE and composition root (app.go)
-internal/store/          SQLite adapters, transactions, SMTP/image workers
-internal/architecture/   Tests enforcing dependency direction
-web/src/features/        Account, workspace and editor components
-web/                     Shared frontend modules and embedded release assets
-api/openapi.yaml         API contract
-deploy/                  Container and TrueNAS YAML
-docs/                    Product and technical documents
+cmd/mindflow/                    Entry point and operator commands
+internal/authentication/         Account/session policies, operations and HTTP middleware
+internal/authentication/queries/ Account, session, invitation and mail SQL
+internal/authentication/dbquery/ sqlc-generated typed query methods
+internal/workspace/              Workspace/page/canvas/media policies and operations
+internal/workspace/queries/      Workspace, page, lease, image and preview-job SQL
+internal/workspace/dbquery/      sqlc-generated typed query methods
+internal/database/              SQLite connection setup, schema migrations and integrity checks
+internal/app/                   HTTP adapters, SSE and composition root
+internal/architecture/          Tests enforcing domain storage boundaries
+internal/fault/                 Shared typed failures and error context
+internal/identifier/            Opaque IDs, secret digests and Unix timestamps
+internal/result/                Small shared success responses
+web/src/features/               Account, workspace and editor components
+api/openapi.yaml                API contract
+deploy/                         Container and TrueNAS YAML
+docs/                           Product and technical documents
 ```
 
-Domain code has no dependency on HTTP, SQL, application services or adapters. Application code depends on domain models and interfaces; the SQLite adapter implements those interfaces. Only the HTTP composition root constructs persistence adapters. Boundary tests enforce these import rules, and the adapter keeps its database handle private.
+`app.New` composes the services explicitly and registers HTTP adapters. Authenticated routes use `authentication.Service.Middleware` to verify the session and install the caller in the request context; write requests also require CSRF verification. Administrator routes compose `RequireAdministrator`, and account-management operations check administrator access themselves. Workspace SQL always includes ownership checks. Administrator privileges grant no access to another user's content.
 
-Keep this a small modular application: explicit constructors, ordinary Go interfaces and SQL transactions. No dependency injection container, generic command dispatcher, ORM, event sourcing, or separate domain service per table. Durable email/image jobs are infrastructure, separate from the domain policies they use.
+Domain services keep their database handle private. They bind generated queries to the current transaction with `dbquery.New(transaction)`, preserving atomic ownership/revision checks, lease fencing, saves and token redemption. Contexts propagate from HTTP requests or startup through transactions and queries. `sqlc.yaml` uses the migration schema as the source for type checking; the generated code is committed. Runtime domain queries live in SQL files; connection/migration DDL and SQLite integrity PRAGMAs remain in `database`.
+
+Boundary tests prevent either domain from using the other's generated queries, prevent authentication from depending on workspace internals, and keep SQL out of HTTP handlers. The workspace domain can use the authenticated principal type without accessing account storage. The operator coordinates account revocation and editor-control invalidation during a stopped-instance restore.
+
+Use ordinary Go methods, explicit constructors and SQL transactions. Avoid generic command dispatch, reflection-based wiring, an ORM, or additional runtime frameworks. sqlc is a build-time tool and adds no runtime dependency. The shared schema accommodates SQLite foreign keys and cascading user deletion; SQL ownership and domain policies stay with their domains.
 
 ## 4. Frontend architecture
 
