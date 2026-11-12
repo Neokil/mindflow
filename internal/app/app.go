@@ -17,20 +17,24 @@ type Config struct {
 	Bootstrap string
 }
 type App struct {
-	Log       *slog.Logger
-	hashMu    sync.Mutex
-	limitMu   sync.Mutex
-	limits    map[string]rateWindow
-	dummyHash string
-	DB        *sql.DB
-	Config    Config
-	Mux       *http.ServeMux
+	Log         *slog.Logger
+	hashMu      sync.Mutex
+	limitMu     sync.Mutex
+	limits      map[string]rateWindow
+	dummyHash   string
+	eventsMu    sync.Mutex
+	subscribers map[string]subscriber
+	DB          *sql.DB
+	Config      Config
+	Mux         *http.ServeMux
 }
 
 func New(db *sql.DB, config Config) *App {
-	a := &App{DB: db, Config: config, Mux: http.NewServeMux(), Log: slog.Default(), limits: make(map[string]rateWindow)}
+	a := &App{DB: db, Config: config, Mux: http.NewServeMux(), Log: slog.Default(), limits: make(map[string]rateWindow), subscribers: make(map[string]subscriber)}
 	a.dummyHash, _ = hashPassword("dummy password never used")
 	a.identityRoutes()
+	a.workspaceRoutes()
+	_, _ = a.DB.Exec("UPDATE page_leases SET epoch=epoch+1,expires_at=0,session_id=NULL,client_id=''")
 	a.Mux.HandleFunc("GET /health/live", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, map[string]bool{"ok": true}) })
 	a.Mux.HandleFunc("GET /health/ready", func(w http.ResponseWriter, r *http.Request) {
 		if db.PingContext(r.Context()) != nil {

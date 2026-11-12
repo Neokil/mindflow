@@ -79,6 +79,8 @@ func (a *App) RunWorkers(ctx context.Context) {
 			return
 		case <-tick.C:
 			a.runMail(ctx)
+			a.runVariant(ctx)
+			a.cleanup(ctx)
 		}
 	}
 }
