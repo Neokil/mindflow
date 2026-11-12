@@ -49,7 +49,7 @@ make test-e2e
 make verify-container
 ```
 
-Go lint and sqlc tools install automatically into `.cache/tools` at pinned versions. Backend behavior, HTTP controllers, schema and queries live with each individual domain; see [domain boundaries](docs/ARCHITECTURE.md#3-domain-packages-and-collaboration). After SQL changes, run `make generate` and commit the generated files.
+Go lint and sqlc tools install automatically into `.cache/tools` at pinned versions. Backend behavior and controllers live with each domain; its `storage` subpackage owns repositories, queries and Goose migrations; see [domain boundaries](docs/ARCHITECTURE.md#3-domain-packages-and-collaboration). Run `make generate` after adding migration packages or changing SQL, and commit the generated files. Each domain has an independent Goose history table. Run `MINDFLOW_DATA=./data go run ./cmd/mindflow migrate` to apply all discovered migrations explicitly; server startup applies them too.
 
 The first browser-test run requires `cd web && npx playwright install chromium firefox`. Tests use temporary data and never contact a real email provider. Container verification requires Docker, Python 3 and OpenSSL; it runs an isolated HTTPS proxy and TLS SMTP fixture, then checks persistence and snapshot restore. GitHub Actions runs lint, tests, Chrome/Firefox acceptance, dependency auditing and container verification on pushes and pull requests.
 

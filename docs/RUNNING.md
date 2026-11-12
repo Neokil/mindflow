@@ -101,6 +101,24 @@ Take a snapshot, stop the old container, deploy a pinned new image, and check re
 
 Image decoding and processing are serialized to bound memory; the database uses WAL, full synchronization, foreign keys, and one serialized connection. Start with two CPUs and 1 GiB memory, then measure your own image workload. This is a starting allocation rather than a guaranteed minimum. Keep enough free disk for originals, variants, WAL growth, and snapshots.
 
+## Domain migrations
+
+All schema changes run through Goose, with a separate version table for each domain. The application applies pending migrations before normal startup. To run them explicitly, stop the application first, then use the same data directory or volume:
+
+```sh
+MINDFLOW_DATA=./data go run ./cmd/mindflow migrate
+# Or, after stopping the Compose service:
+docker compose -f deploy/compose.yaml run --rm mindflow migrate
+```
+
+The command discovers the embedded domain catalog, resolves schema dependencies, applies pending migrations and exits. It starts no HTTP server and requires no account or SMTP setup. Repeated runs are safe. Keep one application/migration process against the SQLite file at a time.
+
+History is independent: `goose_invitation_version` tracks invitation migrations, `goose_canvas_version` tracks canvas migrations, and equivalent tables track the remaining stored domains. Existing version-2 databases are adopted by the initial Goose migrations without deleting users, pages, images or settings. Newer unsupported history is refused. The old version table is retired by an installation-domain migration.
+
+For a new migration, append an `Up`/`Down` Goose SQL file under `internal/<domain>/storage/migrations`; do not edit already applied files. Each migration package exposes its embedded `Files()` and its `Dependencies()`. When adding a domain migration package, run `make generate` (or `go generate ./internal/mindflow/storage`) to discover and link it automatically. Then run `make generate` for sqlc bindings and commit the SQL and generated files together. The binary embeds SQL, so release containers need no migration-directory mount or standalone Goose executable.
+
+Each migration is atomic, but an upgrade across domains is not one transaction. If a migration fails, its own changes/history roll back; earlier successful domains stay applied and a retry resumes remaining work. Use the matching image and pre-upgrade snapshot for release rollback. The application does not expose `down` commands that could partially roll back collaborating domains.
+
 ## Tests
 
 ```sh
@@ -112,12 +130,12 @@ cd .. && make test-e2e
 
 Browser tests run a temporary backend on `127.0.0.1:8087` with a temporary SQLite database and a local, non-delivering SMTP target. Test data is removed afterward. They exercise setup/login, canvas composition, lasso/grouping, images/transforms/variants, persistence, two-session takeover with disconnected recovery, and a large-page fixture. Backend tests cover access isolation, token lifecycle, revocation/deletion, and save fencing/idempotency. Unit tests cover geometry and save-state edge cases.
 
-`make verify-container` builds the production image and tests it with disposable Docker volumes, an HTTPS proxy and a capturing TLS SMTP server. Requires Docker, Python 3 and OpenSSL. It checks secure cookies, SSE delivery, invitations, implicit TLS/STARTTLS, owner isolation, image originals/variants, save retries and takeover, restart persistence, snapshot restore and credential revocation. The application runs without root, with a read-only root filesystem. Fixture email stays inside the test environment; the script removes its own containers, network and volumes afterward.
+`make verify-container` builds the production image and tests it with disposable Docker volumes, an HTTPS proxy and a capturing TLS SMTP server. Requires Docker, Python 3 and OpenSSL. It first runs the standalone `migrate` command twice, then checks secure cookies, SSE delivery, invitations, implicit TLS/STARTTLS, owner isolation, image originals/variants, save retries and takeover, restart persistence, snapshot restore and credential revocation. The application runs without root, with a read-only root filesystem. Fixture email stays inside the test environment; the script removes its own containers, network and volumes afterward.
 
-`make tools` installs pinned sqlc 1.31.1 and golangci-lint 2.15.0 binaries under `.cache/tools/`. `make lint` installs missing tools automatically, validates the linter configuration, runs all enabled Go linters, checks gofumpt/goimports formatting and uses `sqlc diff` to reject stale generated code. After changing domain SQL or the schema, run `make generate` and commit the SQL and generated Go files together. Each stored domain owns `internal/<domain>/schema.sql` and `queries/queries.sql`; sqlc emits `queries.sql.go`, `sqlc_db.go` and model bindings directly into that domain package. Installation receives the domain schemas explicitly; the product root only composes collaborators. Edit the SQL rather than generated files.
+`make tools` installs pinned sqlc 1.31.1 and golangci-lint 2.15.0 binaries under `.cache/tools/`. Goose 3.30.0 is a normal Go dependency. `make lint` validates linter configuration, checks formatting, checks the migration catalog and uses `sqlc diff` to reject stale query bindings. Each domain's database code lives under `internal/<domain>/storage`, including repository code, queries, generated files and migrations. `sqlc` reads the Goose migration directories as its schema source. Edit SQL rather than generated files.
 
 `.golangci.yml` uses `default: all` and disables exactly `funlen`, `lll`, `depguard`, `exhaustruct`, `exhaustruct_v5`, `dupl`, `cyclop`, `maintidx`, `canonicalheader`, `wsl`, `wsl_v5` and `gomodguard`. Internal typed errors can pass through package boundaries; external failures receive operation context. JSON naming preserves the existing `publicURL` spelling. Narrow, explained gosec suppressions cover the fixed-loopback health check, bounded multipart parsing, deliberate development cookies and disposable test credentials. All other enabled checks apply to production and test code, apart from golangci-lint's standard generated-code handling.
 
-GitHub Actions runs these checks on pushes and pull requests in three jobs: quality (pinned tools, SQL generation freshness, golangci-lint/formatting/race tests, ESLint/React hooks, Prettier, TypeScript/build, frontend unit tests and dependency audit), Chrome/Firefox acceptance, and production container verification. Actions are pinned to commit hashes. Browser failures upload test artifacts. Hosted runs start once these commits are pushed to GitHub.
+GitHub Actions runs these checks on pushes and pull requests in three jobs: quality (pinned tools, migration catalog and SQL generation freshness, golangci-lint/formatting/race tests, ESLint/React hooks, Prettier, TypeScript/build, frontend unit tests and dependency audit), Chrome/Firefox acceptance, and production container verification. Actions are pinned to commit hashes. Browser failures upload test artifacts. Hosted runs start once these commits are pushed to GitHub.
 
 The frontend package override pins `minimatch` to 11.0.8 to resolve development-tool dependency advisories. Keep the override under review when updating ESLint dependencies; `npm audit` is checked in CI.

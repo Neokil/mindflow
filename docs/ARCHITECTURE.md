@@ -41,7 +41,7 @@ Use explicit SQL and versioned migrations. Select a maintained SQLite driver and
 
 ## 3. Domain packages and collaboration
 
-Organize production code around individual business responsibilities. Each stored domain contains its models, policies, operations, SQL queries, generated query code and schema declarations. Domains that expose HTTP operations also own their route handlers. There is no shared storage, repository, service, error, result or identifier package.
+Organize production code around individual business responsibilities. Each domain contains its models, policies and operations. Every database concern is inside that domain's `storage` subpackage: repository implementation, SQL queries, generated query code and Goose migrations. Domains that expose HTTP operations also own their route handlers. There is no shared domain repository, service, error, result or identifier package.
 
 | Package | Owned responsibility |
 | --- | --- |
@@ -51,7 +51,7 @@ Organize production code around individual business responsibilities. Each store
 | `invitation` | Invite-only account creation, invitation links, resending and activation. |
 | `passwordreset` | Forgotten-password requests, administrator resets and one-time reset redemption. |
 | `email` | SMTP transport, queued email, retries, cancellation and test delivery. |
-| `installation` | First-run setup, public URL and SMTP settings, schema installation and integrity checks. |
+| `installation` | First-run setup, public URL and SMTP settings. Its storage package owns installation records and their migrations. |
 | `workspace` | Workspace metadata, recency and coordination of its page lifecycle. |
 | `page` | Page metadata, ordering, creation, duplication, deletion and recovery copies. |
 | `canvas` | Document content, element validation, copying element identities, image references and idempotent saves. |
@@ -59,20 +59,23 @@ Organize production code around individual business responsibilities. Each store
 | `image` | Original images, preview sizes, protected image access and variant processing. |
 | `notification` | Owner-scoped realtime events, subscribers and SSE lifecycle. |
 
-The product root, `internal/mindflow`, composes these domains and supplies common HTTP mechanics. It installs middleware, encodes responses, enforces origins and request limits, serves the frontend, starts workers and coordinates shutdown. It contains no account, workspace, canvas, email or image controllers. `internal/architecture` contains only tests.
+The product root, `internal/mindflow`, composes these domains and supplies common HTTP mechanics. It installs middleware, encodes responses, enforces origins and request limits, serves the frontend, starts workers and coordinates shutdown. It contains no account, workspace, canvas, email or image controllers. Its `storage` subpackage owns the SQLite connection, integrity checks, cross-domain storage assembly and Goose coordination. `internal/architecture` contains only tests.
 
 A stored domain has this layout, with files named for its own concepts:
 
 ```text
 internal/<domain>/
-  model/service/policy files    Domain types and behavior
-  http.go                      Domain-owned controllers, where applicable
-  schema.sql                   Domain storage declarations
-  schema.go                    Embedded declarations for installation
-  queries/queries.sql          Explicit, named SQL
-  queries.sql.go               sqlc-generated typed queries in the same package
-  sqlc_db.go                   Generated transaction/query binding
-  *_test.go                    Focused domain tests
+  model/service/policy files     Domain types and behavior
+  http.go                       Domain-owned controllers, where applicable
+  storage/
+    repository.go               Domain storage implementation and transaction binding
+    queries/queries.sql         Explicit, named SQL
+    queries.sql.go              sqlc-generated queries in package storage
+    sqlc_db.go                  Generated SQL binding
+    migrations/
+      migrations.go             Embedded files and explicit domain dependencies
+      00001_initial.sql         Independent Goose migration sequence
+  *_test.go                     Focused domain tests
 ```
 
 Collaborations are ordinary method calls with explicit constructor dependencies or small interfaces declared by the consuming domain. Examples:
@@ -83,13 +86,23 @@ Collaborations are ordinary method calls with explicit constructor dependencies 
 - Canvas saving asks editor control to validate the lease inside the save transaction and asks images to check ownership. A workspace-activity port records parent recency without introducing a canvas/workspace import cycle.
 - Email obtains saved SMTP configuration through an installation interface and checks credential-link validity through invitation/reset interfaces before delivering queued mail.
 
-Services keep their database handles private. A caller-owned `*sql.Tx` is passed explicitly through collaborating operations, so ownership checks, token consumption, saves, asset references and revocation remain atomic. Within its own package, a domain binds its generated queries to that transaction with `New(transaction)`. Application composition uses `NewService`, never another domain's query constructor. HTTP controllers call domain operations and do not construct queries. Contexts propagate through the complete operation.
+Repositories keep their SQLite handles private. Domain services receive their own typed storage repository; services and controllers do not import `database/sql`. Collaborating operations receive an explicit storage transaction handle, preserving atomic ownership checks, token consumption, saves, references and credential revocation. A domain's storage repository binds generated queries to that transaction with `Within`. Storage adapters translate SQL-specific nullable values and row counts before returning policy data. Contexts propagate through the complete operation.
 
-The SQLite file remains compatible with schema version 2. Existing `account_tokens` rows are partitioned by invitation/reset purpose, and `jobs` rows by email/preview kind. Every mutating query for those shared tables contains its domain's purpose/kind guard. Pages own metadata and lifecycle; canvas owns the document/revision fields stored on page rows. Read joins support ownership checks and projections. These storage details preserve existing data without a format migration; they do not create a shared persistence package.
+Existing `account_tokens` rows remain partitioned by invitation/reset purpose, and `jobs` rows by email/preview kind. Every mutating query for those shared tables contains its domain's purpose/kind guard. Pages own metadata and lifecycle; canvas owns the document/revision fields stored on page rows. Read joins support ownership checks and projections. This preserves existing content while moving persistence into domain storage packages.
 
-Installation receives the domain schema declarations explicitly from the product root and applies them transactionally. `sqlc.yaml` checks every domain's queries against those declarations. Generated code is committed beside the owning domain and adds no runtime generator dependency. SQLite connection setup, migration DDL and integrity PRAGMAs belong to installation.
+### Domain migrations
 
-Boundary tests verify that the former horizontal packages are absent, stored domains own their schema/query files, outside code cannot construct a domain's generated queries, controllers do not bypass their service, and SQL writes remain with their owner or guarded row partition. Domain failures expose a small behavioral error contract to the HTTP boundary; helper implementation stays local to its domain.
+Goose 3.30.0 handles all schema changes. Each `internal/<domain>/storage/migrations` package embeds its own numbered SQL files and declares prerequisite domain names. The product storage coordinator creates one Goose provider per package with its own history table (`goose_account_version`, `goose_invitation_version`, `goose_canvas_version`, and so on). Repeated migration numbers across domains are valid. A canvas upgrade advances only canvas history.
+
+`cmd/genmigrations` scans domain storage directories and generates the imports and catalog under `internal/mindflow/storage`. Discovery happens at build time because Go packages must be linked into the binary. Adding a migration file to an existing package is picked up by its embedded filesystem; adding a migration package requires `make generate`, without editing a central import list by hand. `go generate ./internal/mindflow/storage` also regenerates the catalog. CI and Docker builds reject stale catalogs.
+
+The `migrate` command applies all pending domain migrations in dependency order. Normal server startup uses the same coordinator before serving requests. Providers have independent history tables and disable Goose's global Go-migration registry, preventing migration-version collisions. Each SQL migration and its history record are transactional through Goose. Previously completed domain migrations remain applied if a later domain fails; retry resumes the pending work. Missing dependencies, cycles and database versions newer than this binary are rejected before pending domain changes are applied.
+
+The first Goose migrations adopt the existing version-2 tables without changing their content. A preflight check rejects an unsupported legacy version. The installation domain then retires the old `schema_migrations` table through a Goose migration. Snapshot restore remains the supported release rollback procedure. The application exposes migration up only, keeping rollback coordinated with the matching binary and snapshot.
+
+`sqlc.yaml` reads the Goose migration directories as its schema source. Generated code is committed under each domain's `storage` package. There is no second schema definition or custom DDL migration runner.
+
+Boundary tests verify that former horizontal packages are absent, stored domains own migrations and queries, database dependencies stay inside storage, domain controllers do not construct queries, and SQL writes remain with their owner or guarded row partition. Migration integration tests cover independent versions, repeated runs, failure rollback/retry, legacy-data preservation, version refusal and invalid dependency graphs.
 
 Use explicit constructors, ordinary Go methods, local interfaces and SQL transactions. Avoid generic command dispatch, reflection-based wiring, shared repository containers and additional runtime frameworks.
 
@@ -133,7 +146,7 @@ This is a logical schema; migration SQL will define exact column types, constrai
 | `page_leases` | Page ID, holder session/client ID, increasing epoch, lease expiry. |
 | `save_receipts` | Page/client/mutation ID, request digest, committed revision, acknowledgment expiry. |
 | `jobs` | Type, deduplication key, payload, status, attempts, next attempt time. |
-| `schema_migrations` | Applied migration versions. |
+| `goose_<domain>_version` | Independent applied Goose versions for each domain; replaces the legacy `schema_migrations` table. |
 
 Use opaque random IDs generated by the server for entities; clients generate collision-resistant IDs for new elements and mutation attempts. Store timestamps in UTC. Email normalization must be consistent across invitations, login, and resets; do not apply provider-specific dot or plus-address rewriting.
 
