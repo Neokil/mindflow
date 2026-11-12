@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { Group, Layer, Line, Stage, Transformer } from "react-konva";
 import { selectedWithGroup, snap, worldPoint } from "../../geometry";
 import type { CanvasDocument, CanvasElement, Point } from "../../model";
+import { wholeFontSize } from "../../model";
 import CanvasElementView from "./CanvasElement";
 import type { Camera, Tool } from "./types";
 type Props = {
@@ -138,7 +139,7 @@ export default function CanvasScene({
         height,
         rotation: (node.rotation() * Math.PI) / 180,
         ...(e.type === "text" && corner
-          ? { fontSize: Math.max(1, Math.min(2000, (e.fontSize || 24) * sx)) }
+          ? { fontSize: wholeFontSize((e.fontSize || 24) * sx) }
           : {}),
       };
       node.scale({ x: 1, y: 1 });

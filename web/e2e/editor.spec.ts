@@ -289,6 +289,98 @@ test("image placement, independent resize handles, rotation, and variants", asyn
   await expect(page.getByTestId("element-count")).toHaveText("2 elements");
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
 });
+test("move cursors, whole font sizes and vertical text alignment", async ({
+  page,
+}, info) => {
+  await login(page);
+  const name = `Text controls ${info.project.name} ${Date.now()}`;
+  await create(page, name);
+  await page.getByRole("button", { name: "Text (T)", exact: true }).click();
+  await clickCanvas(page, 450, 300);
+  await page.getByLabel("Edit canvas text").fill("Aligned text");
+  await page.getByLabel("Edit canvas text").press("Control+Enter");
+  const center = await canvasPoint(page, 450, 300);
+  await page.mouse.move(center.x + 1, center.y);
+  const surface = page.locator('[data-testid="canvas"] .konvajs-content');
+  await expect(async () => {
+    await page.mouse.move(center.x + 2, center.y);
+    await page.mouse.move(center.x + 1, center.y);
+    await expect(surface).toHaveCSS("cursor", "grab", { timeout: 500 });
+  }).toPass({ timeout: 10000 });
+  await page.mouse.down();
+  await page.mouse.move(center.x + 8, center.y, { steps: 3 });
+  await expect(surface).toHaveCSS("cursor", "grabbing");
+  await page.mouse.up();
+  await expect(surface).toHaveCSS("cursor", "grab");
+  // Undo just the move so the text box has known coordinates for the render check.
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Selection properties", exact: true })
+    .click();
+  const font = page.getByLabel("Font size", { exact: true });
+  await expect(font).toHaveAttribute("step", "1");
+  await font.fill("32");
+  await font.fill("32.5");
+  await expect(font).toHaveValue("32");
+  await page
+    .getByLabel("Vertical alignment", { exact: true })
+    .selectOption("bottom");
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  const saved = (await document(page, name)).elements[0];
+  expect(saved.fontSize).toBe(32);
+  expect(saved.verticalAlign).toBe("bottom");
+  // Text pixels must be in the lower half of the box, not merely stored as an option.
+  await expect
+    .poll(() =>
+      page
+        .locator('[data-testid="canvas"] canvas')
+        .first()
+        .evaluate((canvas) => {
+          const node = canvas as HTMLCanvasElement;
+          const scale = node.width / node.getBoundingClientRect().width;
+          const pixels = node
+            .getContext("2d")!
+            .getImageData(330 * scale, 250 * scale, 240 * scale, 100 * scale);
+          for (let y = 0; y < pixels.height; y++)
+            for (let x = 0; x < pixels.width; x++)
+              if (pixels.data[(y * pixels.width + x) * 4 + 3] > 0)
+                return y / scale;
+          return -1;
+        }),
+    )
+    .toBeGreaterThan(50);
+  await page.getByRole("button", { name: "Edit text", exact: true }).click();
+  await expect
+    .poll(async () =>
+      parseFloat(
+        await page
+          .getByLabel("Edit canvas text")
+          .evaluate((node) => getComputedStyle(node).paddingTop),
+      ),
+    )
+    .toBeGreaterThan(50);
+  await page.getByLabel("Edit canvas text").press("Control+Enter");
+  await page
+    .getByRole("button", { name: "Close settings", exact: true })
+    .click();
+  await page.mouse.move(center.x + 124, center.y + 54);
+  await page.mouse.down();
+  await page.mouse.move(center.x + 161, center.y + 69, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  const resized = (await document(page, name)).elements[0];
+  expect(resized.fontSize).toBeGreaterThan(32);
+  expect(Number.isInteger(resized.fontSize)).toBe(true);
+  await page
+    .getByRole("button", { name: "Back to workspaces", exact: true })
+    .click();
+  await page.getByRole("button", { name: `Open ${name}`, exact: true }).click();
+  await page.getByRole("button", { name: "Select (V)", exact: true }).click();
+  await page.getByRole("button", { name: "Pen (P)", exact: true }).click();
+  await page.mouse.move(center.x + 1, center.y);
+  await expect(surface).toHaveCSS("cursor", "crosshair");
+});
+
 test("large page remains interactive with 3000 elements and image placements", async ({
   page,
 }, info) => {

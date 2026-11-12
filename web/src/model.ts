@@ -16,6 +16,7 @@ export type CanvasElement = {
   bold?: boolean;
   italic?: boolean;
   align?: "left" | "center" | "right";
+  verticalAlign?: "top" | "middle" | "bottom";
   color?: string;
   assetId?: string;
   points?: number[];
@@ -95,6 +96,7 @@ export function validClipboardElements(
       "border",
       "text",
       "align",
+      "verticalAlign",
       "color",
       "assetId",
     ])
@@ -116,6 +118,14 @@ export function validClipboardElements(
         ))
     )
       return false;
+    if (
+      e.verticalAlign !== undefined &&
+      !["top", "middle", "bottom"].includes(e.verticalAlign)
+    )
+      return false;
     return e.width > 0 && e.height > 0;
   });
 }
+
+export const wholeFontSize = (value: number) =>
+  Math.max(1, Math.min(2000, Math.round(value)));

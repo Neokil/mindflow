@@ -1274,7 +1274,7 @@ kbd {
   border: 1px solid var(--accent) !important;
   border-radius: 1px !important;
   background: var(--panel) !important;
-  padding: 0 !important;
+  padding: 0;
   resize: none;
   overflow: hidden;
   margin: 0;

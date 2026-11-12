@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import type { CanvasDocument, CanvasElement } from "../../model";
+import { wholeFontSize } from "../../model";
 type Props = {
   selected: CanvasElement[];
   editable: boolean;
@@ -166,16 +167,15 @@ export default function SelectionInspector({
                       type="number"
                       min="1"
                       max="2000"
-                      value={first.fontSize}
+                      step="1"
+                      inputMode="numeric"
+                      value={wholeFontSize(first.fontSize || 24)}
                       disabled={!editable}
-                      onChange={(e) =>
-                        onPatch({
-                          fontSize: Math.max(
-                            1,
-                            Math.min(2000, +e.target.value),
-                          ),
-                        })
-                      }
+                      onChange={(event) => {
+                        const value = event.target.valueAsNumber;
+                        if (Number.isInteger(value))
+                          onPatch({ fontSize: wholeFontSize(value) });
+                      }}
                     />
                   </label>
                   <div className="segmented">
@@ -210,6 +210,24 @@ export default function SelectionInspector({
                       <option value="left">Left</option>
                       <option value="center">Center</option>
                       <option value="right">Right</option>
+                    </select>
+                  </label>
+                  <label>
+                    Vertical alignment
+                    <select
+                      aria-label="Vertical alignment"
+                      value={first.verticalAlign || "top"}
+                      disabled={!editable}
+                      onChange={(event) =>
+                        onPatch({
+                          verticalAlign: event.target
+                            .value as CanvasElement["verticalAlign"],
+                        })
+                      }
+                    >
+                      <option value="top">Top</option>
+                      <option value="middle">Middle</option>
+                      <option value="bottom">Bottom</option>
                     </select>
                   </label>
                   <button

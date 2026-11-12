@@ -7,6 +7,7 @@ import {
   invalidateMedia,
 } from "../../media";
 import type { CanvasElement } from "../../model";
+import { wholeFontSize } from "../../model";
 import { localImages } from "../../session";
 function ImageContent({
   element: e,
@@ -127,13 +128,14 @@ const ElementContent = memo(function ElementContent({
         width={e.width}
         height={e.height}
         text={e.text || ""}
-        fontSize={e.fontSize || 24}
+        fontSize={wholeFontSize(e.fontSize || 24)}
         fontFamily="Arial"
         fontStyle={
           `${e.bold ? "bold" : ""} ${e.italic ? "italic" : ""}`.trim() ||
           "normal"
         }
         align={e.align || "left"}
+        verticalAlign={e.verticalAlign || "top"}
         fill={e.color || "#28282d"}
         lineHeight={1.3}
         wrap="word"

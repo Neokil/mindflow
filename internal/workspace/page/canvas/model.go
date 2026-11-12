@@ -8,27 +8,28 @@ import (
 
 // Element is an independently transformed canvas object.
 type Element struct {
-	ID          string    `json:"id"`
-	Type        string    `json:"type"`
-	X           float64   `json:"x"`
-	Y           float64   `json:"y"`
-	Width       float64   `json:"width"`
-	Height      float64   `json:"height"`
-	Rotation    float64   `json:"rotation"`
-	GroupID     string    `json:"groupId,omitempty"`
-	Shape       string    `json:"shape,omitempty"`
-	Fill        string    `json:"fill,omitempty"`
-	Border      string    `json:"border,omitempty"`
-	BorderWidth float64   `json:"borderWidth,omitempty"`
-	Text        string    `json:"text,omitempty"`
-	FontSize    float64   `json:"fontSize,omitempty"`
-	Bold        bool      `json:"bold,omitempty"`
-	Italic      bool      `json:"italic,omitempty"`
-	Align       string    `json:"align,omitempty"`
-	Color       string    `json:"color,omitempty"`
-	AssetID     string    `json:"assetId,omitempty"`
-	Points      []float64 `json:"points,omitempty"`
-	PenWidth    float64   `json:"penWidth,omitempty"`
+	ID            string    `json:"id"`
+	Type          string    `json:"type"`
+	X             float64   `json:"x"`
+	Y             float64   `json:"y"`
+	Width         float64   `json:"width"`
+	Height        float64   `json:"height"`
+	Rotation      float64   `json:"rotation"`
+	GroupID       string    `json:"groupId,omitempty"`
+	Shape         string    `json:"shape,omitempty"`
+	Fill          string    `json:"fill,omitempty"`
+	Border        string    `json:"border,omitempty"`
+	BorderWidth   float64   `json:"borderWidth,omitempty"`
+	Text          string    `json:"text,omitempty"`
+	FontSize      float64   `json:"fontSize,omitempty"`
+	Bold          bool      `json:"bold,omitempty"`
+	Italic        bool      `json:"italic,omitempty"`
+	Align         string    `json:"align,omitempty"`
+	VerticalAlign string    `json:"verticalAlign,omitempty"`
+	Color         string    `json:"color,omitempty"`
+	AssetID       string    `json:"assetId,omitempty"`
+	Points        []float64 `json:"points,omitempty"`
+	PenWidth      float64   `json:"penWidth,omitempty"`
 }
 
 // Settings stores a page's background and grid preferences.
@@ -104,6 +105,9 @@ func validateElement(entry Element) error {
 	geometryErr := validateGeometry(entry)
 	if geometryErr != nil {
 		return geometryErr
+	}
+	if entry.VerticalAlign != "" && entry.VerticalAlign != "top" && entry.VerticalAlign != "middle" && entry.VerticalAlign != "bottom" {
+		return invalid("Invalid vertical alignment.")
 	}
 	switch entry.Type {
 	case "shape":

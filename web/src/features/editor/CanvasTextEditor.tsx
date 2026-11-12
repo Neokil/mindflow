@@ -1,5 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { CanvasElement } from "../../model";
+import { wholeFontSize } from "../../model";
+import { textVerticalOffset } from "./textLayout";
 import type { Camera } from "./types";
 type Props = {
   element: CanvasElement;
@@ -23,6 +25,10 @@ export default function CanvasTextEditor({
     }, 0);
     return () => clearTimeout(timer);
   }, [element.id]);
+  const paddingTop = useMemo(
+    () => textVerticalOffset(element, value),
+    [element, value],
+  );
   return (
     <textarea
       aria-label="Edit canvas text"
@@ -47,7 +53,8 @@ export default function CanvasTextEditor({
         top: element.y * camera.zoom + camera.y,
         width: element.width,
         height: element.height,
-        fontSize: element.fontSize,
+        fontSize: wholeFontSize(element.fontSize || 24),
+        paddingTop,
         fontFamily: "Arial",
         fontWeight: element.bold ? "bold" : "normal",
         fontStyle: element.italic ? "italic" : "normal",
