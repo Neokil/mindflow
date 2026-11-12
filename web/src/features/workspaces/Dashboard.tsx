@@ -127,6 +127,7 @@ export default function Dashboard({
                     <strong>{w.name}</strong>
                     <span>
                       {w.pageCount} {w.pageCount === 1 ? "page" : "pages"}
+                      {w.shared ? " · Shared" : ""}
                       <span className="info-dot">·</span>
                       {new Date(w.updatedAt * 1000).toLocaleDateString(
                         undefined,
@@ -138,6 +139,7 @@ export default function Dashboard({
                     <button
                       className="icon-button"
                       aria-label={`Options for ${w.name}`}
+                      hidden={!!w.role && w.role !== "owner"}
                       onClick={() => setMenu(menu === w.id ? undefined : w.id)}
                     >
                       <MoreHorizontal size={19} />

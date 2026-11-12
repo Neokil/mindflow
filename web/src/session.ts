@@ -1,7 +1,8 @@
 import { api, APIError } from "./api";
-import type { CanvasDocument } from "./model";
+import type { CanvasDocument, WorkspacePermission } from "./model";
 import { clone, emptyDocument, uid } from "./model";
 export type Lease = {
+  permission?: WorkspacePermission;
   editable: boolean;
   epoch: number;
   expiresAt: number;
@@ -39,6 +40,7 @@ export class PageSession {
   revision = 0;
   epoch = 0;
   editable = false;
+  permission: WorkspacePermission = "owner";
   loaded = false;
   status = "Loading";
   error = "";
@@ -63,6 +65,12 @@ export class PageSession {
     private request: Transport = api,
     private onAuthenticationRequired: () => void = () => {},
   ) {}
+  get canWrite() {
+    return this.permission === "owner" || this.permission === "full";
+  }
+  get canComment() {
+    return this.canWrite || this.permission === "comment";
+  }
   get dirty() {
     return this.generation !== this.acknowledged;
   }
@@ -95,6 +103,7 @@ export class PageSession {
       this.revision = data.revision;
       this.name = data.name;
       this.workspaceId = data.workspaceId;
+      this.permission = lease.permission || "owner";
       this.epoch = lease.epoch;
       this.editable = lease.editable;
       this.renewal = Date.now();
@@ -165,7 +174,7 @@ export class PageSession {
     const local = localImages.get(oldId);
     if (local) localImages.set(newId, local);
   }
-  async prepare(document: CanvasDocument) {
+  async prepare(document: CanvasDocument, workspaceId = this.workspaceId) {
     const result = clone(document);
     const ids = new Set(
       result.elements
@@ -179,6 +188,7 @@ export class PageSession {
           "An image is no longer available. Reattach it before saving.",
         );
       const form = new FormData();
+      if (workspaceId) form.append("workspaceId", workspaceId);
       form.append("file", image.file);
       const uploaded = await this.request<{ id: string }>(
         "/assets",
@@ -341,6 +351,7 @@ export class PageSession {
       let lease = await this.request<Lease>(
         `/pages/${this.id}/lease?clientId=${this.clientId}`,
       );
+      this.permission = lease.permission || "owner";
       if (this.editable) {
         if (!lease.editable) {
           if (
@@ -398,8 +409,10 @@ export class PageSession {
       else if (e instanceof APIError && e.status === 404) {
         if (this.dirty) await this.loseControl();
         this.editable = false;
+        this.loaded = false;
+        this.doc = emptyDocument();
         this.error =
-          "This page was deleted in another session. Local work can be recovered into another workspace.";
+          "This page was deleted or workspace access was removed. Local unsaved work can be recovered into another workspace.";
         this.status = "Page unavailable";
       } else {
         this.status = "Disconnected";
@@ -411,7 +424,7 @@ export class PageSession {
     }
   }
   async takeover() {
-    if (this.busy || this.recovery) return;
+    if (this.busy || this.recovery || !this.canWrite) return;
     try {
       if (this.dirty) this.recovery = clone(this.doc);
       const lease = await this.request<Lease>(
@@ -423,7 +436,8 @@ export class PageSession {
       this.doc = data.document;
       this.revision = data.revision;
       this.epoch = lease.epoch;
-      this.editable = true;
+      this.permission = lease.permission || "owner";
+      this.editable = lease.editable;
       this.renewal = Date.now();
       this.generation = 0;
       this.acknowledged = 0;
@@ -440,7 +454,7 @@ export class PageSession {
   }
   async recover(workspaceId: string) {
     if (!this.recovery) throw new Error("No local recovery copy is available.");
-    const document = await this.prepare(this.recovery);
+    const document = await this.prepare(this.recovery, workspaceId);
     const result = await this.request<{ id: string }>(
       "/pages/recovery-copy",
       "POST",

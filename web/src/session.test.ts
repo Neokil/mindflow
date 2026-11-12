@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { APIError } from "./api";
 import { emptyDocument } from "./model";
 import type { Transport } from "./session";
-import { PageSession } from "./session";
+import { PageSession, localImages } from "./session";
 let sessions: PageSession[] = [];
 beforeEach(() => {
   vi.stubGlobal("navigator", { onLine: true });
@@ -142,4 +142,50 @@ it("automatically resumes an unmodified page after its offline lease expires", a
   await s.flush();
   expect(s.dirty).toBe(false);
   expect(epochs).toEqual([1, 1, 2]);
+});
+
+it("uploads pending recovery images into the chosen workspace", async () => {
+  const transport = vi.fn(
+    async (path: string, _method?: string, body?: unknown) => {
+      if (path === "/assets") {
+        expect((body as FormData).get("workspaceId")).toBe(
+          "recovery-workspace",
+        );
+        return { id: "recovered-asset" };
+      }
+      return { id: "recovered-page" };
+    },
+  ) as unknown as Transport;
+  const session = make(transport);
+  session.workspaceId = "former-shared-workspace";
+  const localID = "local:recovery-upload";
+  localImages.set(localID, {
+    file: new File(["image"], "recovery.png", { type: "image/png" }),
+    url: "blob:test",
+    width: 1,
+    height: 1,
+  });
+  try {
+    session.recovery = {
+      ...emptyDocument(),
+      elements: [
+        {
+          id: "pending-image",
+          type: "image",
+          assetId: localID,
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 100,
+          rotation: 0,
+        },
+      ],
+    };
+    await expect(session.recover("recovery-workspace")).resolves.toBe(
+      "recovered-page",
+    );
+  } finally {
+    localImages.delete(localID);
+    localImages.delete("recovered-asset");
+  }
 });

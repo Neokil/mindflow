@@ -1,5 +1,6 @@
 import {
   Circle,
+  MessageCircle,
   ImagePlus,
   MousePointer2,
   Pencil,
@@ -14,6 +15,7 @@ type Props = {
   tool: Tool;
   placing: boolean;
   editable: boolean;
+  canComment: boolean;
   canUndo: boolean;
   canRedo: boolean;
   onTool: (tool: Tool) => void;
@@ -28,11 +30,13 @@ const tools = [
   { id: "star", icon: Star, label: "Star" },
   { id: "text", icon: Type, label: "Text (T)" },
   { id: "pen", icon: Pencil, label: "Pen (P)" },
+  { id: "comment", icon: MessageCircle, label: "Add comment" },
 ] as const;
 export default function EditorToolbar({
   tool,
   placing,
   editable,
+  canComment,
   canUndo,
   canRedo,
   onTool,
@@ -49,7 +53,9 @@ export default function EditorToolbar({
           title={label}
           aria-label={label}
           aria-pressed={tool === id}
-          disabled={!editable && id !== "select"}
+          disabled={
+            id === "comment" ? !canComment : !editable && id !== "select"
+          }
           onClick={() => onTool(id)}
         >
           <Icon size={18} strokeWidth={1.7} />

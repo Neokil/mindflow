@@ -1488,3 +1488,118 @@ kbd {
   gap: 10px;
   margin-top: 24px;
 }
+
+button.private-badge {
+  cursor: pointer;
+  background: transparent;
+}
+.sharing-members {
+  margin-top: 22px;
+}
+.sharing-member {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.sharing-member span {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.sharing-member select {
+  margin: 0;
+  padding: 7px;
+}
+.comments-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.comment-anchor {
+  position: absolute;
+  pointer-events: auto;
+  z-index: 2;
+}
+.comment-anchor:has(.comment-popover) {
+  z-index: 3;
+}
+.comment-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid var(--panel);
+  border-radius: 50% 50% 50% 4px;
+  background: var(--accent);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: 0 2px 10px #0003;
+}
+.comment-pin.resolved {
+  background: var(--muted);
+}
+.comment-popover {
+  position: absolute;
+  left: 28px;
+  top: 0;
+  width: 300px;
+  max-height: 380px;
+  overflow: auto;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 12px 35px #0002;
+}
+.comment-heading,
+.comment-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.comment-messages {
+  max-height: 200px;
+  overflow: auto;
+}
+.comment-message {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.comment-message strong {
+  font-size: 10px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.comment-message p {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.comment-popover textarea {
+  min-height: 65px;
+  margin: 10px 0;
+  font-size: 13px;
+  resize: vertical;
+}
+.comment-actions {
+  margin-top: 10px;
+}
+.resolved-comments {
+  position: absolute;
+  right: 20px;
+  bottom: 65px;
+  pointer-events: auto;
+}
+
+[hidden] {
+  display: none !important;
+}

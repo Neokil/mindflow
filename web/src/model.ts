@@ -29,7 +29,10 @@ export type CanvasDocument = {
   elements: CanvasElement[];
   settings: { background: "dots" | "plain"; gridSize: number; snap: boolean };
 };
+export type WorkspacePermission = "owner" | "read" | "comment" | "full";
 export type Workspace = {
+  role?: WorkspacePermission;
+  shared?: boolean;
   id: string;
   name: string;
   revision: number;

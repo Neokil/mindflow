@@ -5,6 +5,7 @@ import { resolve, join } from "node:path";
 const root = resolve("..");
 const data = mkdtempSync(join(tmpdir(), "mindflow-e2e-"));
 mkdirSync(join(root, ".cache/e2e"), { recursive: true });
+writeFileSync(join(root, ".cache/e2e/data-dir"), data, { mode: 0o600 });
 const child = spawn(join(root, ".cache/e2e/mindflow"), [], {
   env: {
     ...process.env,

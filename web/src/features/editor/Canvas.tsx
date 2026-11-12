@@ -14,6 +14,7 @@ import type { CanvasElement, Point } from "../../model";
 import { clone, duplicateElements, uid } from "../../model";
 import { PageSession, localImages } from "../../session";
 import ImageCropDialog from "./ImageCropDialog";
+import CommentsLayer from "./CommentsLayer";
 import CanvasControls from "./CanvasControls";
 import CanvasScene from "./CanvasScene";
 import CanvasTextEditor from "./CanvasTextEditor";
@@ -50,6 +51,7 @@ export default function Canvas({
     [error, setError] = useState("");
   const [editing, setEditing] = useState<string>(),
     [textValue, setTextValue] = useState("");
+  const [commentPoint, setCommentPoint] = useState<Point>();
   const [cropping, setCropping] = useState<CanvasElement>();
   const gesture = useRef<
     | {
@@ -303,6 +305,11 @@ export default function Canvas({
       gesture.current = { kind: "pan", start: p, camera, points: [] };
       return;
     }
+    if (tool === "comment" && session.canComment) {
+      setCommentPoint(world);
+      setTool("select");
+      return;
+    }
     if (editing) {
       finishText();
       return;
@@ -474,7 +481,7 @@ export default function Canvas({
           ...backgroundStyle,
           cursor: pending.length
             ? "copy"
-            : tool === "pen"
+            : tool === "pen" || tool === "comment"
               ? "crosshair"
               : tool === "text"
                 ? "text"
@@ -525,6 +532,15 @@ export default function Canvas({
             )
           }
         />
+        <CommentsLayer
+          pageId={session.id}
+          camera={camera}
+          size={size}
+          canComment={session.canComment}
+          refresh={refresh}
+          draftPoint={commentPoint}
+          closeDraft={() => setCommentPoint(undefined)}
+        />
         {editingElement && (
           <CanvasTextEditor
             element={editingElement}
@@ -550,6 +566,7 @@ export default function Canvas({
         tool={tool}
         placing={pending.length > 0}
         editable={session.editable}
+        canComment={session.canComment}
         canUndo={session.undoStack.length > 0}
         canRedo={session.redoStack.length > 0}
         onTool={(tool) => {
@@ -579,7 +596,9 @@ export default function Canvas({
               ? "Draw freely. Select a stroke to move or delete it."
               : tool === "text"
                 ? "Click anywhere to start writing."
-                : `Click to place a ${tool}.`}
+                : tool === "comment"
+                  ? "Click to leave a comment."
+                  : `Click to place a ${tool}.`}
           <kbd>esc</kbd>
         </div>
       )}

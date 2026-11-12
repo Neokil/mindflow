@@ -19,6 +19,7 @@ import { api } from "../../api";
 import type { Page, Workspace } from "../../model";
 import { PageSession } from "../../session";
 import { Empty, ErrorMessage, Modal, Spinner } from "../../ui";
+import SharingDialog from "./SharingDialog";
 import Canvas from "../editor/Canvas";
 import NameDialog from "./NameDialog";
 export default function WorkspaceEditor({
@@ -45,6 +46,9 @@ export default function WorkspaceEditor({
       action: (name: string) => Promise<void>;
     }>(),
     [menu, setMenu] = useState<string>();
+  const [sharing, setSharing] = useState(false);
+  const canManage = !workspace.role || workspace.role === "owner";
+  const canWrite = canManage || workspace.role === "full";
   const [refresh, setRefresh] = useState(0),
     [, render] = useState(0),
     [recovering, setRecovering] = useState(false);
@@ -94,7 +98,8 @@ export default function WorkspaceEditor({
     for (const session of sessions.current.values()) void session.sync();
     if (serverEvent.type === "workspace" || serverEvent.type === "connected")
       void load().catch(() => {});
-    if (serverEvent.type === "asset") setRefresh((value) => value + 1);
+    if (serverEvent.type === "asset" || serverEvent.type === "comment")
+      setRefresh((value) => value + 1);
   }, [serverEvent, load]);
   useEffect(() => {
     const online = () => {
@@ -226,7 +231,10 @@ export default function WorkspaceEditor({
     if (!session) return;
     setRecovering(true);
     try {
-      const list = await api<Workspace[]>("/workspaces");
+      const available = await api<Workspace[]>("/workspaces");
+      const list = available.filter(
+        (item) => !item.role || item.role === "owner" || item.role === "full",
+      );
       setRecoveryWorkspaces(list);
       setRecoveryTarget(
         list.find((w) => w.id === workspaceId)?.id || list[0]?.id || "",
@@ -252,7 +260,8 @@ export default function WorkspaceEditor({
           <span className="breadcrumb-slash">/</span>
           <button
             className="workspace-name"
-            title="Rename workspace"
+            title={canManage ? "Rename workspace" : "Workspace name"}
+            disabled={!canManage}
             onClick={() =>
               setDialog({
                 title: "Rename workspace",
@@ -270,10 +279,14 @@ export default function WorkspaceEditor({
             {workspace.name}
             <ChevronDown size={13} />
           </button>
-          <span className="private-badge">
+          <button
+            className="private-badge"
+            aria-label="Workspace sharing"
+            onClick={() => setSharing(true)}
+          >
             <LockKeyhole size={10} />
-            Private
-          </span>
+            {workspace.shared ? "Shared" : "Private"}
+          </button>
         </div>
         <div
           className={`save-status ${["Disconnected", "Save failed", "Control lost"].includes(saveStatus) ? "warning" : ""}`}
@@ -296,7 +309,7 @@ export default function WorkspaceEditor({
           <div
             className={`page-tab-wrap ${p.id === pageId ? "active" : ""}`}
             key={p.id}
-            draggable
+            draggable={canWrite}
             onDragStart={() => {
               dragTab.current = p.id;
             }}
@@ -311,7 +324,9 @@ export default function WorkspaceEditor({
               role="tab"
               aria-selected={p.id === pageId}
               onClick={() => setPageId(p.id)}
-              onDoubleClick={() => pageAction(p, "rename")}
+              onDoubleClick={() => {
+                if (canWrite) pageAction(p, "rename");
+              }}
             >
               <GripVertical className="tab-grip" size={11} />
               {p.name}
@@ -323,6 +338,7 @@ export default function WorkspaceEditor({
               <button
                 className="tab-menu icon-button"
                 aria-label={`Page options for ${p.name}`}
+                disabled={!canWrite}
                 onClick={() => setMenu(menu === p.id ? undefined : p.id)}
               >
                 <MoreHorizontal size={14} />
@@ -359,6 +375,7 @@ export default function WorkspaceEditor({
         <button
           className="icon-button add-page"
           aria-label="Add page"
+          disabled={!canWrite}
           onClick={newPage}
         >
           <Plus size={17} />
@@ -393,10 +410,15 @@ export default function WorkspaceEditor({
       {session?.loaded && !session.editable && (
         <div className="editor-banner">
           <LockKeyhole size={14} />
-          <span>This page is read-only. Another session may have control.</span>
+          <span>
+            {session.canWrite
+              ? "This page is read-only. Another session may have control."
+              : `You have ${session.permission === "comment" ? "comment" : "read-only"} access to this workspace.`}
+          </span>
           <button
             className="secondary compact"
-            disabled={!!session.recovery}
+            disabled={!!session.recovery || !session.canWrite}
+            hidden={!session.canWrite}
             title={
               session.recovery
                 ? "Save or discard the local recovery copy before taking control."
@@ -454,6 +476,12 @@ export default function WorkspaceEditor({
         </div>
       ) : session?.loaded ? (
         <Canvas key={pageId} session={session} refresh={refresh} />
+      ) : session?.status === "Page unavailable" ? (
+        <Empty icon={<LockKeyhole size={25} />} title="Page unavailable">
+          <button className="secondary" onClick={leave}>
+            Back to workspaces
+          </button>
+        </Empty>
       ) : pages.length === 0 ? (
         <Empty icon={<FolderOpen size={25} />} title="A fresh page awaits.">
           <button className="primary" onClick={newPage}>
@@ -470,6 +498,13 @@ export default function WorkspaceEditor({
             </button>
           )}
         </div>
+      )}
+      {sharing && (
+        <SharingDialog
+          workspace={workspace}
+          close={() => setSharing(false)}
+          changed={load}
+        />
       )}
       {dialog && <NameDialog {...dialog} close={() => setDialog(undefined)} />}
       {recovering && recoveryWorkspaces && (
