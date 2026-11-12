@@ -42,7 +42,17 @@ export type Page = {
   metadataRevision: number;
 };
 export type Point = { x: number; y: number };
-export const uid = () => crypto.randomUUID();
+// getRandomValues is available on HTTP origins where randomUUID is unavailable.
+export function uid(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  // Set the UUID v4 version and RFC variant bits.
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 export const clone = <T>(v: T): T => structuredClone(v);
 export const emptyDocument = (): CanvasDocument => ({
   schemaVersion: 1,

@@ -15,6 +15,7 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      testIgnore: "**/http.spec.ts",
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 1000 },
@@ -22,10 +23,26 @@ export default defineConfig({
     },
     {
       name: "firefox",
+      testIgnore: "**/http.spec.ts",
       use: {
         ...devices["Desktop Firefox"],
         deviceScaleFactor: 2,
         viewport: { width: 1440, height: 1000 },
+      },
+    },
+    {
+      name: "chromium-http",
+      testMatch: "**/http.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: "http://mindflow.test:8087",
+        viewport: { width: 1440, height: 1000 },
+        launchOptions: {
+          args: [
+            "--host-resolver-rules=MAP mindflow.test 127.0.0.1",
+            "--no-proxy-server",
+          ],
+        },
       },
     },
   ],

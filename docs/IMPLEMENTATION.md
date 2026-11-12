@@ -18,9 +18,9 @@ Go 1.26.11; Goose 3.30.0; SQLite through modernc.org/sqlite 1.62.0; golang.org/x
 ## Validation — 12 November 2026
 
 - Go integration/service tests use real temporary SQLite databases: setup, invitations/reset, session/CSRF/origin rules, last-administrator protection, private content/assets, duplication, deletion, save retries/revisions, lease fencing, image variants/orientation, and restore maintenance.
-- `go test -race ./cmd/... ./internal/...` passed; frontend type checking/production build and nine geometry/save-state unit tests passed.
-- Browser acceptance suite: eight scenarios across Chromium 158 and Firefox 159, including Firefox device scale factor 2. Covers composition, lasso/grouping, drawing/text/history, persistence, image insertion/transforms/variants, control takeover with disconnected recovery, and canceling an unsaved tab close. Clipboard/drop checks use synthetic native event data rather than the operating system clipboard.
-- Latest browser run after top-level domain consolidation: all eight tests passed in 38.2 seconds. Large-page frame measurements: Chromium median 16.7 ms / p95 16.8 ms; Firefox median 7.2 ms / p95 48.5 ms.
+- `go test -race ./cmd/... ./internal/...` passed; frontend type checking/production build and ten frontend unit tests passed.
+- Browser acceptance suite: eight existing cases across Chromium 158 and Firefox 159, including Firefox device scale factor 2, plus a Chromium insecure-HTTP regression. Covers composition, lasso/grouping, drawing/text/history, persistence, image insertion/transforms/variants, control takeover with disconnected recovery, and canceling an unsaved tab close. Clipboard/drop checks use synthetic native event data rather than the operating system clipboard.
+- Latest browser run after the HTTP UUID fix: all nine tests passed in 35.8 seconds. Large-page frame measurements: Chromium median 16.7 ms / p95 16.8 ms; Firefox median 7.5 ms / p95 34.7 ms.
 - Large-page fixture: 3,000 elements, including 200 image placements sharing one source. On this Apple Silicon development machine, observed pan frame medians were approximately 16.7 ms in Chromium and 8–20 ms in Firefox; Firefox tail frames varied around 42–111 ms across runs, including a run concurrent with Linux cross-compilation. This demonstrates basic usability, not a guarantee for 200 unique large images or all hardware. The original 33.3 ms tail-frame goal is not consistently achieved in Firefox and remains a performance optimization target.
 - Production Docker image built successfully and passed isolated verification, including running the standalone `migrate` command twice against a fresh volume, with secure HTTPS cookies, SSE streaming through a TLS proxy, invitation delivery over implicit TLS and STARTTLS, owner isolation, original/variant BLOBs, save retries and takeover, non-root/read-only execution, restart persistence, snapshot restore and credential revocation. Fixture SMTP captures messages without contacting a real provider.
 - Linux amd64 binary cross-compilation passed. Both Compose YAML files pass `docker compose ... config --quiet`.
@@ -37,7 +37,7 @@ Go 1.26.11; Goose 3.30.0; SQLite through modernc.org/sqlite 1.62.0; golang.org/x
 - Frontend components are split by accounts, workspaces and editor responsibilities. Scene rendering, elements, text entry, controls, inspector and shortcuts are separate components/modules. Typed props and callbacks replace the previous global custom-event bridge.
 - Credential serialization is explicitly excluded and tested. SMTP settings responses redact passwords. Infrastructure failures retain server-error semantics rather than being misreported as invalid credentials.
 - `make lint` checks sqlc output freshness, golangci-lint 2.15.0 with all linters enabled except the twelve requested exclusions, gofumpt/goimports formatting, ESLint/React hooks, Prettier and Python syntax. Configuration validation passes. Builds enforce TypeScript unused-code checks. Domain/boundary tests complement existing integration tests.
-- `make lint test` passes: golangci-lint reports zero issues, all Go tests pass under the race detector, and all nine frontend unit tests pass. `sqlc diff` and catalog freshness checks confirm generated code matches the committed migrations and SQL.
+- `make lint test` passes: golangci-lint reports zero issues, all Go tests pass under the race detector, and all ten frontend unit tests pass. `sqlc diff` and catalog freshness checks confirm generated code matches the committed migrations and SQL.
 - GitHub Actions defines quality, Chrome/Firefox acceptance and production-container jobs for pushes and pull requests. A dependent publishing job pushes Linux amd64/arm64 images to `neokil/mindflow` for main/version tags, using the Docker Hub repository secrets. Action versions are pinned to commit hashes. The workflow passes local actionlint validation; hosted execution requires pushing the commits.
 
 ## Operational checks requiring the deployment environment
@@ -49,3 +49,9 @@ The application and tests are implemented; these checks are not represented as c
 - TrueNAS installation, dataset permissions, snapshot/restore drill, and resource measurement with the owner's image workload.
 
 See [RUNNING.md](RUNNING.md) for exact setup and operating steps. No public image or production instance has been published.
+
+## HTTP UUID regression
+
+The original workspace acceptance suite used `127.0.0.1`, a browser-trusted loopback origin. It missed that `crypto.randomUUID()` is unavailable over ordinary HTTP hostnames. A real `http://mindflow.test:8087` Chromium test reproduced the reported blank workspace and exact exception with the previous implementation. Frontend IDs now use `crypto.getRandomValues()` and UUID v4 formatting, with no randomUUID requirement. A unit test verifies the version/variant with randomUUID absent. The browser regression checks the origin is actually insecure and randomUUID absent before opening, editing, saving and reopening the workspace.
+
+Validation: the previous implementation failed the real HTTP regression with `crypto.randomUUID is not a function`; the fixed build passed all nine Playwright cases in 35.8 seconds, plus ten unit tests, ESLint, formatting and the TypeScript/production build.
