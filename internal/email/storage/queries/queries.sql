@@ -1,23 +1,26 @@
--- name: DueMail :one
-SELECT id,payload,attempts FROM jobs WHERE kind='mail' AND run_at<=? AND attempts<8 ORDER BY run_at LIMIT 1;
+-- name: EmailDueMail :one
+SELECT id,payload,attempts FROM mail_jobs WHERE run_at<=? AND attempts<8 ORDER BY run_at LIMIT 1;
 
--- name: DeleteJob :execresult
-DELETE FROM jobs WHERE id=? AND kind='mail';
+-- name: EmailDeleteJob :execresult
+DELETE FROM mail_jobs WHERE id=?;
 
--- name: FailMail :execresult
-UPDATE jobs SET attempts=?,payload='{}',last_error='Email delivery failed. Check SMTP settings and resend.' WHERE id=? AND kind='mail';
+-- name: EmailFailMail :execresult
+UPDATE mail_jobs SET attempts=?,payload='{}',last_error='Email delivery failed. Check SMTP settings and resend.' WHERE id=?;
 
--- name: RetryMail :execresult
-UPDATE jobs SET attempts=?,run_at=?,last_error='Email delivery failed; retry scheduled.' WHERE id=? AND kind='mail';
+-- name: EmailRetryMail :execresult
+UPDATE mail_jobs SET attempts=?,run_at=?,last_error='Email delivery failed; retry scheduled.' WHERE id=?;
 
--- name: DeleteUserMail :execresult
-DELETE FROM jobs WHERE user_id=? AND kind='mail';
+-- name: EmailDeleteUserMail :execresult
+DELETE FROM mail_jobs WHERE user_id=?;
 
--- name: DeletePurposeMail :execresult
-DELETE FROM jobs WHERE user_id=? AND kind='mail' AND dedup_key=?;
+-- name: EmailDeletePurposeMail :execresult
+DELETE FROM mail_jobs WHERE user_id=? AND dedup_key=?;
 
--- name: QueueMail :execresult
-INSERT INTO jobs(id,user_id,kind,dedup_key,payload,run_at) VALUES(?,?,'mail',?,?,?);
+-- name: EmailQueueMail :execresult
+INSERT INTO mail_jobs(id,user_id,dedup_key,payload,run_at) VALUES(?,?,?,?,?);
 
--- name: RevokeMail :exec
-DELETE FROM jobs WHERE kind='mail';
+-- name: EmailRevokeMail :exec
+DELETE FROM mail_jobs;
+
+-- name: EmailDeliveryError :one
+SELECT CAST(COALESCE((SELECT last_error FROM mail_jobs WHERE user_id=? ORDER BY run_at DESC LIMIT 1),'') AS TEXT);

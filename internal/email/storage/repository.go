@@ -41,12 +41,17 @@ func IsNotFound(err error) bool { return errors.Is(err, sql.ErrNoRows) }
 
 // CancelUserWithin removes secret-bearing messages during a credential change.
 func (a *Repository) CancelUserWithin(ctx context.Context, transaction *Transaction, userID string) error {
-	_, err := a.Within(transaction).DeleteUserMail(ctx, userID)
+	_, err := a.Within(transaction).EmailDeleteUserMail(ctx, userID)
 
 	return err
 }
 
 // CancelAllWithin removes queued credential mail after restoring a snapshot.
 func (a *Repository) CancelAllWithin(ctx context.Context, transaction *Transaction) error {
-	return a.Within(transaction).RevokeMail(ctx)
+	return a.Within(transaction).EmailRevokeMail(ctx)
+}
+
+// DeliveryError returns the most recent queued delivery status for an opaque account ID.
+func (a *Repository) DeliveryError(ctx context.Context, userID string) (string, error) {
+	return a.EmailDeliveryError(ctx, userID)
 }

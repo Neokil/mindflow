@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -24,9 +25,9 @@ func TestNoHorizontalPackages(t *testing.T) {
 	}
 }
 
-func TestDomainsOwnQueriesAndSchemas(t *testing.T) {
+func TestTopLevelDomainsOwnStorage(t *testing.T) {
 	t.Parallel()
-	for _, domain := range []string{"account", "session", "invitation", passwordResetDomain, "email", "installation", "workspace", "page", canvasDomain, "editor", imageDomain} {
+	for _, domain := range []string{"account", "workspace", "email", "installation"} {
 		for _, name := range []string{"storage/queries/queries.sql", "storage/queries.sql.go", "storage/sqlc_db.go", "storage/migrations/00001_initial.sql", "storage/migrations/migrations.go"} {
 			_, err := os.Stat(filepath.Join("..", domain, name))
 			if err != nil {
@@ -34,18 +35,29 @@ func TestDomainsOwnQueriesAndSchemas(t *testing.T) {
 			}
 		}
 	}
-	files, err := filepath.Glob("../*/*.go")
+	err := filepath.WalkDir("..", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		relative := strings.TrimPrefix(filepath.ToSlash(path), "../")
+		parts := strings.Split(relative, "/")
+		if entry.IsDir() && entry.Name() == "storage" && len(parts) != 2 {
+			t.Errorf("subdomain defines separate storage: %s", path)
+		}
+		if !entry.IsDir() && strings.HasSuffix(path, ".go") {
+			checkQueryVisibility(t, path, parts[0])
+		}
+
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, file := range files {
-		checkQueryVisibility(t, file)
-	}
 }
 
-func checkQueryVisibility(t *testing.T, file string) {
+func checkQueryVisibility(t *testing.T, file, domain string) {
 	t.Helper()
-	if strings.HasSuffix(file, "_test.go") || strings.HasSuffix(file, ".sql.go") || strings.Contains(file, "sqlc_") {
+	if strings.HasSuffix(file, "_test.go") {
 		return
 	}
 	tree, err := parser.ParseFile(token.NewFileSet(), file, nil, 0)
@@ -58,18 +70,14 @@ func checkQueryVisibility(t *testing.T, file string) {
 		if unquoteErr != nil {
 			t.Fatal(unquoteErr)
 		}
-		if path == "database/sql" || strings.HasPrefix(path, "github.com/pressly/goose") {
+		if !strings.Contains(filepath.ToSlash(file), "/storage/") && (path == "database/sql" || strings.HasPrefix(path, "github.com/pressly/goose")) {
 			t.Errorf("database dependency outside storage: %s imports %s", file, path)
-		}
-		if !strings.HasPrefix(path, "mindflow/internal/") {
-			continue
 		}
 		name := filepath.Base(path)
 		if dependency.Name != nil {
 			name = dependency.Name.Name
 		}
-		domain := filepath.Base(filepath.Dir(file))
-		if domain != "mindflow" && strings.Contains(path, "/storage") && !strings.HasPrefix(path, "mindflow/internal/"+domain+"/storage") {
+		if strings.Contains(path, "/storage") && strings.HasPrefix(path, "mindflow/internal/") && domain != "mindflow" && path != "mindflow/internal/mindflow/storage/transaction" && path != "mindflow/internal/"+domain+"/storage" {
 			t.Errorf("%s imports another domain's storage: %s", file, path)
 		}
 		imports[name] = path
@@ -79,8 +87,8 @@ func checkQueryVisibility(t *testing.T, file string) {
 		if !ok {
 			return true
 		}
-		if selector, ok := call.Fun.(*ast.SelectorExpr); ok {
-			if name, ok := selector.X.(*ast.Ident); ok && imports[name.Name] != "" && selector.Sel.Name == "New" {
+		if selector, selectorOK := call.Fun.(*ast.SelectorExpr); selectorOK {
+			if name, nameOK := selector.X.(*ast.Ident); nameOK && strings.HasSuffix(imports[name.Name], "/storage") && selector.Sel.Name == "New" && !strings.Contains(filepath.ToSlash(file), "/storage/") {
 				t.Errorf("%s constructs queries outside storage", file)
 			}
 		}
@@ -89,76 +97,31 @@ func checkQueryVisibility(t *testing.T, file string) {
 	})
 }
 
-func TestSQLWritesStayWithTheirDomain(t *testing.T) {
+func TestSQLReadsWritesAndForeignKeysStayWithinDomain(t *testing.T) {
 	t.Parallel()
 	ownership := map[string][]string{
-		"account": {"users"}, "session": {"sessions"}, "invitation": {accountTokensTable}, passwordResetDomain: {accountTokensTable}, "email": {jobsTable}, "installation": {"app_settings"},
-		"workspace": {"workspaces"}, "page": {pagesTable}, canvasDomain: {pagesTable, "page_assets", "save_receipts"}, "editor": {"page_leases"}, imageDomain: {"assets", "asset_variants", jobsTable},
+		"account":      {"users", "sessions", "account_tokens"},
+		"workspace":    {"workspaces", "pages", "page_assets", "save_receipts", "page_leases", "assets", "asset_variants", "image_jobs"},
+		"email":        {"mail_jobs"},
+		"installation": {"app_settings"},
 	}
+	tableReference := regexp.MustCompile(`(?i)\b(?:FROM|JOIN|UPDATE|INTO|REFERENCES|CREATE TABLE(?: IF NOT EXISTS)?)\s+(\w+)`)
 	for domain, tables := range ownership {
-		checkDomainWrites(t, domain, tables)
+		files, globErr := filepath.Glob(filepath.Join("..", domain, "storage", "*", "*.sql"))
+		if globErr != nil {
+			t.Fatal(globErr)
+		}
+		for _, file := range files {
+			data, err := os.ReadFile(file) //nolint:gosec // G304: SQL paths are enumerated under the fixed domain storage directories in this test.
+			if err != nil {
+				t.Fatal(err)
+			}
+			sql := regexp.MustCompile(`(?m)^--.*$`).ReplaceAllString(string(data), "")
+			for _, match := range tableReference.FindAllStringSubmatch(sql, -1) {
+				if !slices.Contains(tables, match[1]) {
+					t.Errorf("%s accesses foreign table %s in %s", domain, match[1], file)
+				}
+			}
+		}
 	}
 }
-
-func checkDomainWrites(t *testing.T, domain string, tables []string) {
-	t.Helper()
-	data, err := os.ReadFile(filepath.Join("..", domain, "storage", "queries", "queries.sql")) //nolint:gosec // G304: domain is selected from the fixed ownership map in this test.
-	if err != nil {
-		t.Fatal(err)
-	}
-	mutation := regexp.MustCompile(`(?i)^(?:INSERT(?: OR IGNORE)? INTO|UPDATE|DELETE FROM)\s+(\w+)`)
-	for _, statement := range regexp.MustCompile(`(?m)^-- name: `).Split(string(data), -1) {
-		lines := strings.Split(strings.TrimSpace(statement), "\n")
-		body := strings.Join(lines[1:], "\n")
-		match := mutation.FindStringSubmatch(strings.TrimSpace(body))
-		if len(match) == 0 {
-			continue
-		}
-		if !contains(tables, match[1]) {
-			t.Errorf("%s writes %s owned by another domain", domain, match[1])
-		}
-		checkPartition(t, domain, match[1], body)
-	}
-}
-
-func checkPartition(t *testing.T, domain, table, body string) {
-	t.Helper()
-	if table == accountTokensTable {
-		purpose := "'invite'"
-		if domain == passwordResetDomain {
-			purpose = "'reset'"
-		}
-		if !strings.Contains(body, purpose) {
-			t.Errorf("%s mutates tokens without its purpose guard", domain)
-		}
-	}
-	if table == jobsTable {
-		kind := "'mail'"
-		if domain == imageDomain {
-			kind = "'variant'"
-		}
-		if !strings.Contains(body, kind) {
-			t.Errorf("%s mutates jobs without its kind guard", domain)
-		}
-	}
-	if domain == canvasDomain && table == pagesTable && !strings.HasPrefix(strings.TrimSpace(body), "UPDATE pages SET document=") {
-		t.Error("canvas mutates page metadata instead of its document fields")
-	}
-}
-
-func contains(values []string, value string) bool {
-	return slices.Contains(values, value)
-}
-
-const (
-	canvasDomain       = "canvas"
-	accountTokensTable = "account_tokens"
-	pagesTable         = "pages"
-)
-
-const (
-	imageDomain = "image"
-	jobsTable   = "jobs"
-)
-
-const passwordResetDomain = "passwordreset"

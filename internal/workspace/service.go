@@ -1,10 +1,10 @@
 package workspace
 
 import (
-	"mindflow/internal/page"
+	"mindflow/internal/workspace/page"
 	"mindflow/internal/workspace/storage"
 
-	imageasset "mindflow/internal/image"
+	imageasset "mindflow/internal/workspace/image"
 )
 
 // NewService constructs workspace operations with explicit page and image collaborators.

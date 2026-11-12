@@ -1,7 +1,7 @@
 package workspace
 
 import (
-	"mindflow/internal/session"
+	"mindflow/internal/account/session"
 	"net/http"
 )
 

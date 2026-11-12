@@ -1,11 +1,10 @@
 -- +goose Up
-CREATE TABLE IF NOT EXISTS jobs (
- id TEXT NOT NULL PRIMARY KEY, user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
- asset_id TEXT, kind TEXT NOT NULL, dedup_key TEXT UNIQUE, payload TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS mail_jobs (
+ id TEXT NOT NULL PRIMARY KEY, user_id TEXT,
+ dedup_key TEXT UNIQUE, payload TEXT NOT NULL,
  attempts INTEGER NOT NULL DEFAULT 0, run_at INTEGER NOT NULL, last_error TEXT NOT NULL DEFAULT ''
 );
-CREATE INDEX IF NOT EXISTS jobs_due ON jobs(run_at);
+CREATE INDEX IF NOT EXISTS mail_jobs_due ON mail_jobs(run_at);
 
 -- +goose Down
--- Preview jobs share the legacy physical table and must remain intact.
-DELETE FROM jobs WHERE kind='mail';
+DROP TABLE IF EXISTS mail_jobs;

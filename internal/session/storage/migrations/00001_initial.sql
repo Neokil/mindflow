@@ -1,9 +1,0 @@
--- +goose Up
-CREATE TABLE IF NOT EXISTS sessions (
- id TEXT NOT NULL PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
- verifier_hash TEXT NOT NULL, csrf TEXT NOT NULL, expires_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
-
--- +goose Down
-DROP TABLE IF EXISTS sessions;

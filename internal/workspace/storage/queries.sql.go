@@ -10,11 +10,856 @@ import (
 	"database/sql"
 )
 
-const createWorkspace = `-- name: CreateWorkspace :execresult
+const canvasAttachAsset = `-- name: CanvasAttachAsset :execresult
+INSERT OR IGNORE INTO page_assets(page_id,asset_id) VALUES(?,?)
+`
+
+type CanvasAttachAssetParams struct {
+	PageID  string
+	AssetID string
+}
+
+func (q *Queries) CanvasAttachAsset(ctx context.Context, arg CanvasAttachAssetParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, canvasAttachAsset, arg.PageID, arg.AssetID)
+}
+
+const canvasCopyPageAssets = `-- name: CanvasCopyPageAssets :execresult
+INSERT INTO page_assets(page_id,asset_id) SELECT ?,asset_id FROM page_assets WHERE page_assets.page_id=?
+`
+
+type CanvasCopyPageAssetsParams struct {
+	PageID   string
+	PageID_2 string
+}
+
+func (q *Queries) CanvasCopyPageAssets(ctx context.Context, arg CanvasCopyPageAssetsParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, canvasCopyPageAssets, arg.PageID, arg.PageID_2)
+}
+
+const canvasCreateSaveReceipt = `-- name: CanvasCreateSaveReceipt :execresult
+INSERT INTO save_receipts(page_id,client_id,mutation_id,digest,revision,expires_at) VALUES(?,?,?,?,?,?)
+`
+
+type CanvasCreateSaveReceiptParams struct {
+	PageID     string
+	ClientID   string
+	MutationID string
+	Digest     string
+	Revision   int
+	ExpiresAt  int64
+}
+
+func (q *Queries) CanvasCreateSaveReceipt(ctx context.Context, arg CanvasCreateSaveReceiptParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, canvasCreateSaveReceipt,
+		arg.PageID,
+		arg.ClientID,
+		arg.MutationID,
+		arg.Digest,
+		arg.Revision,
+		arg.ExpiresAt,
+	)
+}
+
+const canvasDeleteExpiredReceipts = `-- name: CanvasDeleteExpiredReceipts :exec
+DELETE FROM save_receipts WHERE expires_at<=unixepoch()
+`
+
+func (q *Queries) CanvasDeleteExpiredReceipts(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, canvasDeleteExpiredReceipts)
+	return err
+}
+
+const canvasGetDocument = `-- name: CanvasGetDocument :one
+SELECT p.document,p.revision,p.metadata_revision,p.name,p.workspace_id FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?
+`
+
+type CanvasGetDocumentParams struct {
+	ID      string
+	OwnerID string
+}
+
+type CanvasGetDocumentRow struct {
+	Document         string
+	Revision         int
+	MetadataRevision int
+	Name             string
+	WorkspaceID      string
+}
+
+func (q *Queries) CanvasGetDocument(ctx context.Context, arg CanvasGetDocumentParams) (CanvasGetDocumentRow, error) {
+	row := q.db.QueryRowContext(ctx, canvasGetDocument, arg.ID, arg.OwnerID)
+	var i CanvasGetDocumentRow
+	err := row.Scan(
+		&i.Document,
+		&i.Revision,
+		&i.MetadataRevision,
+		&i.Name,
+		&i.WorkspaceID,
+	)
+	return i, err
+}
+
+const canvasOwnedPageRevision = `-- name: CanvasOwnedPageRevision :one
+SELECT p.revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?
+`
+
+type CanvasOwnedPageRevisionParams struct {
+	ID      string
+	OwnerID string
+}
+
+func (q *Queries) CanvasOwnedPageRevision(ctx context.Context, arg CanvasOwnedPageRevisionParams) (int, error) {
+	row := q.db.QueryRowContext(ctx, canvasOwnedPageRevision, arg.ID, arg.OwnerID)
+	var revision int
+	err := row.Scan(&revision)
+	return revision, err
+}
+
+const canvasSaveDocument = `-- name: CanvasSaveDocument :execresult
+UPDATE pages SET document=?,revision=?,updated_at=? WHERE id=?
+`
+
+type CanvasSaveDocumentParams struct {
+	Document  string
+	Revision  int
+	UpdatedAt int64
+	ID        string
+}
+
+func (q *Queries) CanvasSaveDocument(ctx context.Context, arg CanvasSaveDocumentParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, canvasSaveDocument,
+		arg.Document,
+		arg.Revision,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+}
+
+const canvasSaveReceipt = `-- name: CanvasSaveReceipt :one
+SELECT digest,revision FROM save_receipts WHERE page_id=? AND client_id=? AND mutation_id=? AND expires_at>?
+`
+
+type CanvasSaveReceiptParams struct {
+	PageID     string
+	ClientID   string
+	MutationID string
+	ExpiresAt  int64
+}
+
+type CanvasSaveReceiptRow struct {
+	Digest   string
+	Revision int
+}
+
+func (q *Queries) CanvasSaveReceipt(ctx context.Context, arg CanvasSaveReceiptParams) (CanvasSaveReceiptRow, error) {
+	row := q.db.QueryRowContext(ctx, canvasSaveReceipt,
+		arg.PageID,
+		arg.ClientID,
+		arg.MutationID,
+		arg.ExpiresAt,
+	)
+	var i CanvasSaveReceiptRow
+	err := row.Scan(&i.Digest, &i.Revision)
+	return i, err
+}
+
+const editorEnsureLease = `-- name: EditorEnsureLease :execresult
+INSERT OR IGNORE INTO page_leases(page_id) VALUES(?)
+`
+
+func (q *Queries) EditorEnsureLease(ctx context.Context, pageID string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, editorEnsureLease, pageID)
+}
+
+const editorExpireLeases = `-- name: EditorExpireLeases :execresult
+UPDATE page_leases SET epoch=epoch+1,expires_at=0,session_id=NULL,client_id=''
+`
+
+func (q *Queries) EditorExpireLeases(ctx context.Context) (sql.Result, error) {
+	return q.db.ExecContext(ctx, editorExpireLeases)
+}
+
+const editorOwnedPage = `-- name: EditorOwnedPage :one
+SELECT p.id,p.workspace_id,p.name,p.position,p.revision,p.metadata_revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?
+`
+
+type EditorOwnedPageParams struct {
+	ID      string
+	OwnerID string
+}
+
+type EditorOwnedPageRow struct {
+	ID               string
+	WorkspaceID      string
+	Name             string
+	Position         int
+	Revision         int
+	MetadataRevision int
+}
+
+func (q *Queries) EditorOwnedPage(ctx context.Context, arg EditorOwnedPageParams) (EditorOwnedPageRow, error) {
+	row := q.db.QueryRowContext(ctx, editorOwnedPage, arg.ID, arg.OwnerID)
+	var i EditorOwnedPageRow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Position,
+		&i.Revision,
+		&i.MetadataRevision,
+	)
+	return i, err
+}
+
+const editorOwnedPageRevision = `-- name: EditorOwnedPageRevision :one
+SELECT p.revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?
+`
+
+type EditorOwnedPageRevisionParams struct {
+	ID      string
+	OwnerID string
+}
+
+func (q *Queries) EditorOwnedPageRevision(ctx context.Context, arg EditorOwnedPageRevisionParams) (int, error) {
+	row := q.db.QueryRowContext(ctx, editorOwnedPageRevision, arg.ID, arg.OwnerID)
+	var revision int
+	err := row.Scan(&revision)
+	return revision, err
+}
+
+const editorPageLease = `-- name: EditorPageLease :one
+SELECT session_id,client_id,epoch,expires_at FROM page_leases WHERE page_id=?
+`
+
+type EditorPageLeaseRow struct {
+	SessionID sql.NullString
+	ClientID  string
+	Epoch     int64
+	ExpiresAt int64
+}
+
+func (q *Queries) EditorPageLease(ctx context.Context, pageID string) (EditorPageLeaseRow, error) {
+	row := q.db.QueryRowContext(ctx, editorPageLease, pageID)
+	var i EditorPageLeaseRow
+	err := row.Scan(
+		&i.SessionID,
+		&i.ClientID,
+		&i.Epoch,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const editorUpdateLease = `-- name: EditorUpdateLease :execresult
+UPDATE page_leases SET session_id=?,client_id=?,epoch=?,expires_at=? WHERE page_id=?
+`
+
+type EditorUpdateLeaseParams struct {
+	SessionID sql.NullString
+	ClientID  string
+	Epoch     int64
+	ExpiresAt int64
+	PageID    string
+}
+
+func (q *Queries) EditorUpdateLease(ctx context.Context, arg EditorUpdateLeaseParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, editorUpdateLease,
+		arg.SessionID,
+		arg.ClientID,
+		arg.Epoch,
+		arg.ExpiresAt,
+		arg.PageID,
+	)
+}
+
+const imageAssetDimensions = `-- name: ImageAssetDimensions :one
+SELECT width,height FROM assets WHERE id=? AND owner_id=?
+`
+
+type ImageAssetDimensionsParams struct {
+	ID      string
+	OwnerID string
+}
+
+type ImageAssetDimensionsRow struct {
+	Width  int
+	Height int
+}
+
+func (q *Queries) ImageAssetDimensions(ctx context.Context, arg ImageAssetDimensionsParams) (ImageAssetDimensionsRow, error) {
+	row := q.db.QueryRowContext(ctx, imageAssetDimensions, arg.ID, arg.OwnerID)
+	var i ImageAssetDimensionsRow
+	err := row.Scan(&i.Width, &i.Height)
+	return i, err
+}
+
+const imageAssetMetadata = `-- name: ImageAssetMetadata :one
+SELECT id,width,height,mime FROM assets WHERE id=? AND owner_id=?
+`
+
+type ImageAssetMetadataParams struct {
+	ID      string
+	OwnerID string
+}
+
+type ImageAssetMetadataRow struct {
+	ID     string
+	Width  int
+	Height int
+	Mime   string
+}
+
+func (q *Queries) ImageAssetMetadata(ctx context.Context, arg ImageAssetMetadataParams) (ImageAssetMetadataRow, error) {
+	row := q.db.QueryRowContext(ctx, imageAssetMetadata, arg.ID, arg.OwnerID)
+	var i ImageAssetMetadataRow
+	err := row.Scan(
+		&i.ID,
+		&i.Width,
+		&i.Height,
+		&i.Mime,
+	)
+	return i, err
+}
+
+const imageCountOwnedAsset = `-- name: ImageCountOwnedAsset :one
+SELECT count(*) FROM assets WHERE id=? AND owner_id=?
+`
+
+type ImageCountOwnedAssetParams struct {
+	ID      string
+	OwnerID string
+}
+
+func (q *Queries) ImageCountOwnedAsset(ctx context.Context, arg ImageCountOwnedAssetParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, imageCountOwnedAsset, arg.ID, arg.OwnerID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const imageCountVariants = `-- name: ImageCountVariants :one
+SELECT count(*) FROM asset_variants WHERE asset_id=? AND bucket=?
+`
+
+type ImageCountVariantsParams struct {
+	AssetID string
+	Bucket  int
+}
+
+func (q *Queries) ImageCountVariants(ctx context.Context, arg ImageCountVariantsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, imageCountVariants, arg.AssetID, arg.Bucket)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const imageCreateAsset = `-- name: ImageCreateAsset :execresult
+INSERT INTO assets(id,owner_id,original,mime,width,height,digest,created_at) VALUES(?,?,?,?,?,?,?,?)
+`
+
+type ImageCreateAssetParams struct {
+	ID        string
+	OwnerID   string
+	Original  []byte
+	Mime      string
+	Width     int
+	Height    int
+	Digest    string
+	CreatedAt int64
+}
+
+func (q *Queries) ImageCreateAsset(ctx context.Context, arg ImageCreateAssetParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, imageCreateAsset,
+		arg.ID,
+		arg.OwnerID,
+		arg.Original,
+		arg.Mime,
+		arg.Width,
+		arg.Height,
+		arg.Digest,
+		arg.CreatedAt,
+	)
+}
+
+const imageCreateVariant = `-- name: ImageCreateVariant :execresult
+INSERT OR IGNORE INTO asset_variants(asset_id,bucket,mime,data,width,height) VALUES(?,?,?,?,?,?)
+`
+
+type ImageCreateVariantParams struct {
+	AssetID string
+	Bucket  int
+	Mime    string
+	Data    []byte
+	Width   int
+	Height  int
+}
+
+func (q *Queries) ImageCreateVariant(ctx context.Context, arg ImageCreateVariantParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, imageCreateVariant,
+		arg.AssetID,
+		arg.Bucket,
+		arg.Mime,
+		arg.Data,
+		arg.Width,
+		arg.Height,
+	)
+}
+
+const imageDeleteJob = `-- name: ImageDeleteJob :execresult
+DELETE FROM image_jobs WHERE id=?
+`
+
+func (q *Queries) ImageDeleteJob(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, imageDeleteJob, id)
+}
+
+const imageDeleteOrphanVariants = `-- name: ImageDeleteOrphanVariants :exec
+DELETE FROM image_jobs WHERE asset_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM assets WHERE assets.id=image_jobs.asset_id)
+`
+
+func (q *Queries) ImageDeleteOrphanVariants(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, imageDeleteOrphanVariants)
+	return err
+}
+
+const imageDeletePageAssets = `-- name: ImageDeletePageAssets :execresult
+DELETE FROM assets WHERE owner_id=? AND id IN(SELECT asset_id FROM page_assets WHERE page_assets.page_id=?) AND NOT EXISTS(SELECT 1 FROM page_assets pa WHERE pa.asset_id=assets.id AND pa.page_id<>?)
+`
+
+type ImageDeletePageAssetsParams struct {
+	OwnerID  string
+	PageID   string
+	PageID_2 string
+}
+
+func (q *Queries) ImageDeletePageAssets(ctx context.Context, arg ImageDeletePageAssetsParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, imageDeletePageAssets, arg.OwnerID, arg.PageID, arg.PageID_2)
+}
+
+const imageDeleteUnusedAssets = `-- name: ImageDeleteUnusedAssets :exec
+DELETE FROM assets WHERE created_at<unixepoch()-86400 AND NOT EXISTS(SELECT 1 FROM page_assets WHERE page_assets.asset_id=assets.id)
+`
+
+func (q *Queries) ImageDeleteUnusedAssets(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, imageDeleteUnusedAssets)
+	return err
+}
+
+const imageDeleteWorkspaceAssets = `-- name: ImageDeleteWorkspaceAssets :execresult
+DELETE FROM assets WHERE owner_id=? AND id IN(SELECT pa.asset_id FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE p.workspace_id=?) AND NOT EXISTS(SELECT 1 FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=assets.id AND p.workspace_id<>?)
+`
+
+type ImageDeleteWorkspaceAssetsParams struct {
+	OwnerID       string
+	WorkspaceID   string
+	WorkspaceID_2 string
+}
+
+func (q *Queries) ImageDeleteWorkspaceAssets(ctx context.Context, arg ImageDeleteWorkspaceAssetsParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, imageDeleteWorkspaceAssets, arg.OwnerID, arg.WorkspaceID, arg.WorkspaceID_2)
+}
+
+const imageDueVariant = `-- name: ImageDueVariant :one
+SELECT id,user_id,asset_id,payload,attempts FROM image_jobs WHERE attempts<3 AND run_at<=? ORDER BY run_at LIMIT 1
+`
+
+type ImageDueVariantRow struct {
+	ID       string
+	UserID   string
+	AssetID  string
+	Payload  string
+	Attempts int
+}
+
+func (q *Queries) ImageDueVariant(ctx context.Context, runAt int64) (ImageDueVariantRow, error) {
+	row := q.db.QueryRowContext(ctx, imageDueVariant, runAt)
+	var i ImageDueVariantRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.AssetID,
+		&i.Payload,
+		&i.Attempts,
+	)
+	return i, err
+}
+
+const imageGetImage = `-- name: ImageGetImage :one
+SELECT original,mime,width,height FROM assets WHERE id=? AND owner_id=?
+`
+
+type ImageGetImageParams struct {
+	ID      string
+	OwnerID string
+}
+
+type ImageGetImageRow struct {
+	Original []byte
+	Mime     string
+	Width    int
+	Height   int
+}
+
+func (q *Queries) ImageGetImage(ctx context.Context, arg ImageGetImageParams) (ImageGetImageRow, error) {
+	row := q.db.QueryRowContext(ctx, imageGetImage, arg.ID, arg.OwnerID)
+	var i ImageGetImageRow
+	err := row.Scan(
+		&i.Original,
+		&i.Mime,
+		&i.Width,
+		&i.Height,
+	)
+	return i, err
+}
+
+const imageImageVariant = `-- name: ImageImageVariant :one
+SELECT v.data,v.mime,v.width,v.height FROM asset_variants v JOIN assets a ON a.id=v.asset_id WHERE a.id=? AND a.owner_id=? AND v.bucket=?
+`
+
+type ImageImageVariantParams struct {
+	ID      string
+	OwnerID string
+	Bucket  int
+}
+
+type ImageImageVariantRow struct {
+	Data   []byte
+	Mime   string
+	Width  int
+	Height int
+}
+
+func (q *Queries) ImageImageVariant(ctx context.Context, arg ImageImageVariantParams) (ImageImageVariantRow, error) {
+	row := q.db.QueryRowContext(ctx, imageImageVariant, arg.ID, arg.OwnerID, arg.Bucket)
+	var i ImageImageVariantRow
+	err := row.Scan(
+		&i.Data,
+		&i.Mime,
+		&i.Width,
+		&i.Height,
+	)
+	return i, err
+}
+
+const imageOriginalImage = `-- name: ImageOriginalImage :one
+SELECT original,width,height FROM assets WHERE id=? AND owner_id=?
+`
+
+type ImageOriginalImageParams struct {
+	ID      string
+	OwnerID string
+}
+
+type ImageOriginalImageRow struct {
+	Original []byte
+	Width    int
+	Height   int
+}
+
+func (q *Queries) ImageOriginalImage(ctx context.Context, arg ImageOriginalImageParams) (ImageOriginalImageRow, error) {
+	row := q.db.QueryRowContext(ctx, imageOriginalImage, arg.ID, arg.OwnerID)
+	var i ImageOriginalImageRow
+	err := row.Scan(&i.Original, &i.Width, &i.Height)
+	return i, err
+}
+
+const imageQueueVariant = `-- name: ImageQueueVariant :execresult
+INSERT OR IGNORE INTO image_jobs(id,user_id,asset_id,dedup_key,payload,run_at) VALUES(?,?,?,?,?,?)
+`
+
+type ImageQueueVariantParams struct {
+	ID       string
+	UserID   string
+	AssetID  string
+	DedupKey string
+	Payload  string
+	RunAt    int64
+}
+
+func (q *Queries) ImageQueueVariant(ctx context.Context, arg ImageQueueVariantParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, imageQueueVariant,
+		arg.ID,
+		arg.UserID,
+		arg.AssetID,
+		arg.DedupKey,
+		arg.Payload,
+		arg.RunAt,
+	)
+}
+
+const imageRetryVariant = `-- name: ImageRetryVariant :execresult
+UPDATE image_jobs SET attempts=attempts+1,run_at=?,last_error='Image preview generation failed.' WHERE id=?
+`
+
+type ImageRetryVariantParams struct {
+	RunAt int64
+	ID    string
+}
+
+func (q *Queries) ImageRetryVariant(ctx context.Context, arg ImageRetryVariantParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, imageRetryVariant, arg.RunAt, arg.ID)
+}
+
+const imageVariantBuckets = `-- name: ImageVariantBuckets :many
+SELECT bucket FROM asset_variants WHERE asset_id=? ORDER BY bucket
+`
+
+func (q *Queries) ImageVariantBuckets(ctx context.Context, assetID string) ([]int, error) {
+	rows, err := q.db.QueryContext(ctx, imageVariantBuckets, assetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int{}
+	for rows.Next() {
+		var bucket int
+		if err := rows.Scan(&bucket); err != nil {
+			return nil, err
+		}
+		items = append(items, bucket)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pageCountPages = `-- name: PageCountPages :one
+SELECT count(*) FROM pages WHERE pages.workspace_id=?
+`
+
+func (q *Queries) PageCountPages(ctx context.Context, workspaceID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, pageCountPages, workspaceID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const pageCreatePage = `-- name: PageCreatePage :execresult
+INSERT INTO pages(id,workspace_id,name,position,document,updated_at) SELECT ?,?,?,COALESCE(MAX(position),-1)+1,?,? FROM pages WHERE pages.workspace_id=?
+`
+
+type PageCreatePageParams struct {
+	ID            string
+	WorkspaceID   string
+	Name          string
+	Document      string
+	UpdatedAt     int64
+	WorkspaceID_2 string
+}
+
+func (q *Queries) PageCreatePage(ctx context.Context, arg PageCreatePageParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, pageCreatePage,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.Name,
+		arg.Document,
+		arg.UpdatedAt,
+		arg.WorkspaceID_2,
+	)
+}
+
+const pageCreateRecoveryPage = `-- name: PageCreateRecoveryPage :execresult
+INSERT INTO pages(id,workspace_id,name,position,document,revision,updated_at) SELECT ?,?,?,COALESCE(MAX(position),-1)+1,?,1,? FROM pages WHERE pages.workspace_id=?
+`
+
+type PageCreateRecoveryPageParams struct {
+	ID            string
+	WorkspaceID   string
+	Name          string
+	Document      string
+	UpdatedAt     int64
+	WorkspaceID_2 string
+}
+
+func (q *Queries) PageCreateRecoveryPage(ctx context.Context, arg PageCreateRecoveryPageParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, pageCreateRecoveryPage,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.Name,
+		arg.Document,
+		arg.UpdatedAt,
+		arg.WorkspaceID_2,
+	)
+}
+
+const pageDeletePage = `-- name: PageDeletePage :execresult
+DELETE FROM pages WHERE id=?
+`
+
+func (q *Queries) PageDeletePage(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, pageDeletePage, id)
+}
+
+const pageListPages = `-- name: PageListPages :many
+SELECT id,workspace_id,name,position,revision,metadata_revision FROM pages WHERE pages.workspace_id=? ORDER BY position,id
+`
+
+type PageListPagesRow struct {
+	ID               string
+	WorkspaceID      string
+	Name             string
+	Position         int
+	Revision         int
+	MetadataRevision int
+}
+
+func (q *Queries) PageListPages(ctx context.Context, workspaceID string) ([]PageListPagesRow, error) {
+	rows, err := q.db.QueryContext(ctx, pageListPages, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PageListPagesRow{}
+	for rows.Next() {
+		var i PageListPagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.Position,
+			&i.Revision,
+			&i.MetadataRevision,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pageOwnedPage = `-- name: PageOwnedPage :one
+SELECT p.id,p.workspace_id,p.name,p.position,p.revision,p.metadata_revision FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=? AND w.owner_id=?
+`
+
+type PageOwnedPageParams struct {
+	ID      string
+	OwnerID string
+}
+
+type PageOwnedPageRow struct {
+	ID               string
+	WorkspaceID      string
+	Name             string
+	Position         int
+	Revision         int
+	MetadataRevision int
+}
+
+func (q *Queries) PageOwnedPage(ctx context.Context, arg PageOwnedPageParams) (PageOwnedPageRow, error) {
+	row := q.db.QueryRowContext(ctx, pageOwnedPage, arg.ID, arg.OwnerID)
+	var i PageOwnedPageRow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Position,
+		&i.Revision,
+		&i.MetadataRevision,
+	)
+	return i, err
+}
+
+const pageOwnedWorkspace = `-- name: PageOwnedWorkspace :one
+SELECT id FROM workspaces WHERE id=? AND owner_id=?
+`
+
+type PageOwnedWorkspaceParams struct {
+	ID      string
+	OwnerID string
+}
+
+func (q *Queries) PageOwnedWorkspace(ctx context.Context, arg PageOwnedWorkspaceParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, pageOwnedWorkspace, arg.ID, arg.OwnerID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const pagePageDocument = `-- name: PagePageDocument :one
+SELECT document FROM pages WHERE id=?
+`
+
+func (q *Queries) PagePageDocument(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, pagePageDocument, id)
+	var document string
+	err := row.Scan(&document)
+	return document, err
+}
+
+const pagePagesToCopy = `-- name: PagePagesToCopy :many
+SELECT id,name FROM pages WHERE pages.workspace_id=? ORDER BY position
+`
+
+type PagePagesToCopyRow struct {
+	ID   string
+	Name string
+}
+
+func (q *Queries) PagePagesToCopy(ctx context.Context, workspaceID string) ([]PagePagesToCopyRow, error) {
+	rows, err := q.db.QueryContext(ctx, pagePagesToCopy, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PagePagesToCopyRow{}
+	for rows.Next() {
+		var i PagePagesToCopyRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pagePositionPage = `-- name: PagePositionPage :execresult
+UPDATE pages SET position=? WHERE id=? AND workspace_id=?
+`
+
+type PagePositionPageParams struct {
+	Position    int
+	ID          string
+	WorkspaceID string
+}
+
+func (q *Queries) PagePositionPage(ctx context.Context, arg PagePositionPageParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, pagePositionPage, arg.Position, arg.ID, arg.WorkspaceID)
+}
+
+const pageRenamePage = `-- name: PageRenamePage :execresult
+UPDATE pages SET name=?,metadata_revision=metadata_revision+1 WHERE id=?
+`
+
+type PageRenamePageParams struct {
+	Name string
+	ID   string
+}
+
+func (q *Queries) PageRenamePage(ctx context.Context, arg PageRenamePageParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, pageRenamePage, arg.Name, arg.ID)
+}
+
+const workspaceCreateWorkspace = `-- name: WorkspaceCreateWorkspace :execresult
 INSERT INTO workspaces(id,owner_id,name,created_at,updated_at) VALUES(?,?,?,?,?)
 `
 
-type CreateWorkspaceParams struct {
+type WorkspaceCreateWorkspaceParams struct {
 	ID        string
 	OwnerID   string
 	Name      string
@@ -22,8 +867,8 @@ type CreateWorkspaceParams struct {
 	UpdatedAt int64
 }
 
-func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, createWorkspace,
+func (q *Queries) WorkspaceCreateWorkspace(ctx context.Context, arg WorkspaceCreateWorkspaceParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, workspaceCreateWorkspace,
 		arg.ID,
 		arg.OwnerID,
 		arg.Name,
@@ -32,32 +877,50 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 	)
 }
 
-const deleteWorkspace = `-- name: DeleteWorkspace :execresult
+const workspaceDeleteOwnerImages = `-- name: WorkspaceDeleteOwnerImages :exec
+DELETE FROM assets WHERE owner_id=?
+`
+
+func (q *Queries) WorkspaceDeleteOwnerImages(ctx context.Context, ownerID string) error {
+	_, err := q.db.ExecContext(ctx, workspaceDeleteOwnerImages, ownerID)
+	return err
+}
+
+const workspaceDeleteOwnerWorkspaces = `-- name: WorkspaceDeleteOwnerWorkspaces :exec
+DELETE FROM workspaces WHERE owner_id=?
+`
+
+func (q *Queries) WorkspaceDeleteOwnerWorkspaces(ctx context.Context, ownerID string) error {
+	_, err := q.db.ExecContext(ctx, workspaceDeleteOwnerWorkspaces, ownerID)
+	return err
+}
+
+const workspaceDeleteWorkspace = `-- name: WorkspaceDeleteWorkspace :execresult
 DELETE FROM workspaces WHERE id=? AND owner_id=?
 `
 
-type DeleteWorkspaceParams struct {
+type WorkspaceDeleteWorkspaceParams struct {
 	ID      string
 	OwnerID string
 }
 
-func (q *Queries) DeleteWorkspace(ctx context.Context, arg DeleteWorkspaceParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, deleteWorkspace, arg.ID, arg.OwnerID)
+func (q *Queries) WorkspaceDeleteWorkspace(ctx context.Context, arg WorkspaceDeleteWorkspaceParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, workspaceDeleteWorkspace, arg.ID, arg.OwnerID)
 }
 
-const incrementWorkspaceRevision = `-- name: IncrementWorkspaceRevision :execresult
+const workspaceIncrementWorkspaceRevision = `-- name: WorkspaceIncrementWorkspaceRevision :execresult
 UPDATE workspaces SET revision=revision+1 WHERE id=?
 `
 
-func (q *Queries) IncrementWorkspaceRevision(ctx context.Context, id string) (sql.Result, error) {
-	return q.db.ExecContext(ctx, incrementWorkspaceRevision, id)
+func (q *Queries) WorkspaceIncrementWorkspaceRevision(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, workspaceIncrementWorkspaceRevision, id)
 }
 
-const listWorkspaces = `-- name: ListWorkspaces :many
+const workspaceListWorkspaces = `-- name: WorkspaceListWorkspaces :many
 SELECT w.id,w.name,w.revision,w.updated_at,(SELECT count(*) FROM pages p WHERE p.workspace_id=w.id) AS page_count FROM workspaces w WHERE w.owner_id=? ORDER BY w.updated_at DESC,w.id
 `
 
-type ListWorkspacesRow struct {
+type WorkspaceListWorkspacesRow struct {
 	ID        string
 	Name      string
 	Revision  int
@@ -65,15 +928,15 @@ type ListWorkspacesRow struct {
 	PageCount int64
 }
 
-func (q *Queries) ListWorkspaces(ctx context.Context, ownerID string) ([]ListWorkspacesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listWorkspaces, ownerID)
+func (q *Queries) WorkspaceListWorkspaces(ctx context.Context, ownerID string) ([]WorkspaceListWorkspacesRow, error) {
+	rows, err := q.db.QueryContext(ctx, workspaceListWorkspaces, ownerID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListWorkspacesRow{}
+	items := []WorkspaceListWorkspacesRow{}
 	for rows.Next() {
-		var i ListWorkspacesRow
+		var i WorkspaceListWorkspacesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -94,60 +957,60 @@ func (q *Queries) ListWorkspaces(ctx context.Context, ownerID string) ([]ListWor
 	return items, nil
 }
 
-const renameWorkspace = `-- name: RenameWorkspace :execresult
+const workspaceRenameWorkspace = `-- name: WorkspaceRenameWorkspace :execresult
 UPDATE workspaces SET name=?,revision=revision+1,updated_at=? WHERE id=?
 `
 
-type RenameWorkspaceParams struct {
+type WorkspaceRenameWorkspaceParams struct {
 	Name      string
 	UpdatedAt int64
 	ID        string
 }
 
-func (q *Queries) RenameWorkspace(ctx context.Context, arg RenameWorkspaceParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, renameWorkspace, arg.Name, arg.UpdatedAt, arg.ID)
+func (q *Queries) WorkspaceRenameWorkspace(ctx context.Context, arg WorkspaceRenameWorkspaceParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, workspaceRenameWorkspace, arg.Name, arg.UpdatedAt, arg.ID)
 }
 
-const touchWorkspace = `-- name: TouchWorkspace :execresult
+const workspaceTouchWorkspace = `-- name: WorkspaceTouchWorkspace :execresult
 UPDATE workspaces SET updated_at=? WHERE id=(SELECT workspace_id FROM pages WHERE pages.id=?)
 `
 
-type TouchWorkspaceParams struct {
+type WorkspaceTouchWorkspaceParams struct {
 	UpdatedAt int64
 	ID        string
 }
 
-func (q *Queries) TouchWorkspace(ctx context.Context, arg TouchWorkspaceParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, touchWorkspace, arg.UpdatedAt, arg.ID)
+func (q *Queries) WorkspaceTouchWorkspace(ctx context.Context, arg WorkspaceTouchWorkspaceParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, workspaceTouchWorkspace, arg.UpdatedAt, arg.ID)
 }
 
-const workspaceName = `-- name: WorkspaceName :one
+const workspaceWorkspaceName = `-- name: WorkspaceWorkspaceName :one
 SELECT name FROM workspaces WHERE id=? AND owner_id=?
 `
 
-type WorkspaceNameParams struct {
+type WorkspaceWorkspaceNameParams struct {
 	ID      string
 	OwnerID string
 }
 
-func (q *Queries) WorkspaceName(ctx context.Context, arg WorkspaceNameParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, workspaceName, arg.ID, arg.OwnerID)
+func (q *Queries) WorkspaceWorkspaceName(ctx context.Context, arg WorkspaceWorkspaceNameParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, workspaceWorkspaceName, arg.ID, arg.OwnerID)
 	var name string
 	err := row.Scan(&name)
 	return name, err
 }
 
-const workspaceRevision = `-- name: WorkspaceRevision :one
+const workspaceWorkspaceRevision = `-- name: WorkspaceWorkspaceRevision :one
 SELECT revision FROM workspaces WHERE id=? AND owner_id=?
 `
 
-type WorkspaceRevisionParams struct {
+type WorkspaceWorkspaceRevisionParams struct {
 	ID      string
 	OwnerID string
 }
 
-func (q *Queries) WorkspaceRevision(ctx context.Context, arg WorkspaceRevisionParams) (int, error) {
-	row := q.db.QueryRowContext(ctx, workspaceRevision, arg.ID, arg.OwnerID)
+func (q *Queries) WorkspaceWorkspaceRevision(ctx context.Context, arg WorkspaceWorkspaceRevisionParams) (int, error) {
+	row := q.db.QueryRowContext(ctx, workspaceWorkspaceRevision, arg.ID, arg.OwnerID)
 	var revision int
 	err := row.Scan(&revision)
 	return revision, err

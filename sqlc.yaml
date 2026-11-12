@@ -1,17 +1,7 @@
 version: "2"
 sql:
   - engine: sqlite
-    schema:
-      - internal/installation/storage/migrations
-      - internal/account/storage/migrations
-      - internal/session/storage/migrations
-      - internal/invitation/storage/migrations
-      - internal/email/storage/migrations
-      - internal/workspace/storage/migrations
-      - internal/page/storage/migrations
-      - internal/canvas/storage/migrations
-      - internal/editor/storage/migrations
-      - internal/image/storage/migrations
+    schema: internal/account/storage/migrations
     queries: internal/account/storage/queries
     gen:
       go:
@@ -22,29 +12,7 @@ sql:
         emit_empty_slices: true
         omit_unused_structs: true
         overrides:
-          - column: jobs.user_id
-            go_type: string
-          - column: jobs.asset_id
-            go_type: string
-          - column: jobs.dedup_key
-            go_type: string
-          - column: save_receipts.expires_at
-            go_type: int64
-          - column: page_leases.expires_at
-            go_type: int64
-          - column: page_leases.epoch
-            go_type: int64
-          - column: pages.updated_at
-            go_type: int64
-          - column: workspaces.updated_at
-            go_type: int64
-          - column: workspaces.created_at
-            go_type: int64
-          - column: assets.created_at
-            go_type: int64
           - column: users.created_at
-            go_type: int64
-          - column: jobs.run_at
             go_type: int64
           - column: account_tokens.expires_at
             go_type: int64
@@ -53,277 +21,7 @@ sql:
           - db_type: INTEGER
             go_type: int
   - engine: sqlite
-    schema:
-      - internal/installation/storage/migrations
-      - internal/account/storage/migrations
-      - internal/session/storage/migrations
-      - internal/invitation/storage/migrations
-      - internal/email/storage/migrations
-      - internal/workspace/storage/migrations
-      - internal/page/storage/migrations
-      - internal/canvas/storage/migrations
-      - internal/editor/storage/migrations
-      - internal/image/storage/migrations
-    queries: internal/session/storage/queries
-    gen:
-      go:
-        package: storage
-        out: internal/session/storage
-        output_db_file_name: sqlc_db.go
-        output_models_file_name: sqlc_models.go
-        emit_empty_slices: true
-        omit_unused_structs: true
-        overrides:
-          - column: jobs.user_id
-            go_type: string
-          - column: jobs.asset_id
-            go_type: string
-          - column: jobs.dedup_key
-            go_type: string
-          - column: save_receipts.expires_at
-            go_type: int64
-          - column: page_leases.expires_at
-            go_type: int64
-          - column: page_leases.epoch
-            go_type: int64
-          - column: pages.updated_at
-            go_type: int64
-          - column: workspaces.updated_at
-            go_type: int64
-          - column: workspaces.created_at
-            go_type: int64
-          - column: assets.created_at
-            go_type: int64
-          - column: users.created_at
-            go_type: int64
-          - column: jobs.run_at
-            go_type: int64
-          - column: account_tokens.expires_at
-            go_type: int64
-          - column: sessions.expires_at
-            go_type: int64
-          - db_type: INTEGER
-            go_type: int
-  - engine: sqlite
-    schema:
-      - internal/installation/storage/migrations
-      - internal/account/storage/migrations
-      - internal/session/storage/migrations
-      - internal/invitation/storage/migrations
-      - internal/email/storage/migrations
-      - internal/workspace/storage/migrations
-      - internal/page/storage/migrations
-      - internal/canvas/storage/migrations
-      - internal/editor/storage/migrations
-      - internal/image/storage/migrations
-    queries: internal/invitation/storage/queries
-    gen:
-      go:
-        package: storage
-        out: internal/invitation/storage
-        output_db_file_name: sqlc_db.go
-        output_models_file_name: sqlc_models.go
-        emit_empty_slices: true
-        omit_unused_structs: true
-        overrides:
-          - column: jobs.user_id
-            go_type: string
-          - column: jobs.asset_id
-            go_type: string
-          - column: jobs.dedup_key
-            go_type: string
-          - column: save_receipts.expires_at
-            go_type: int64
-          - column: page_leases.expires_at
-            go_type: int64
-          - column: page_leases.epoch
-            go_type: int64
-          - column: pages.updated_at
-            go_type: int64
-          - column: workspaces.updated_at
-            go_type: int64
-          - column: workspaces.created_at
-            go_type: int64
-          - column: assets.created_at
-            go_type: int64
-          - column: users.created_at
-            go_type: int64
-          - column: jobs.run_at
-            go_type: int64
-          - column: account_tokens.expires_at
-            go_type: int64
-          - column: sessions.expires_at
-            go_type: int64
-          - db_type: INTEGER
-            go_type: int
-  - engine: sqlite
-    schema:
-      - internal/installation/storage/migrations
-      - internal/account/storage/migrations
-      - internal/session/storage/migrations
-      - internal/invitation/storage/migrations
-      - internal/email/storage/migrations
-      - internal/workspace/storage/migrations
-      - internal/page/storage/migrations
-      - internal/canvas/storage/migrations
-      - internal/editor/storage/migrations
-      - internal/image/storage/migrations
-    queries: internal/passwordreset/storage/queries
-    gen:
-      go:
-        package: storage
-        out: internal/passwordreset/storage
-        output_db_file_name: sqlc_db.go
-        output_models_file_name: sqlc_models.go
-        emit_empty_slices: true
-        omit_unused_structs: true
-        overrides:
-          - column: jobs.user_id
-            go_type: string
-          - column: jobs.asset_id
-            go_type: string
-          - column: jobs.dedup_key
-            go_type: string
-          - column: save_receipts.expires_at
-            go_type: int64
-          - column: page_leases.expires_at
-            go_type: int64
-          - column: page_leases.epoch
-            go_type: int64
-          - column: pages.updated_at
-            go_type: int64
-          - column: workspaces.updated_at
-            go_type: int64
-          - column: workspaces.created_at
-            go_type: int64
-          - column: assets.created_at
-            go_type: int64
-          - column: users.created_at
-            go_type: int64
-          - column: jobs.run_at
-            go_type: int64
-          - column: account_tokens.expires_at
-            go_type: int64
-          - column: sessions.expires_at
-            go_type: int64
-          - db_type: INTEGER
-            go_type: int
-  - engine: sqlite
-    schema:
-      - internal/installation/storage/migrations
-      - internal/account/storage/migrations
-      - internal/session/storage/migrations
-      - internal/invitation/storage/migrations
-      - internal/email/storage/migrations
-      - internal/workspace/storage/migrations
-      - internal/page/storage/migrations
-      - internal/canvas/storage/migrations
-      - internal/editor/storage/migrations
-      - internal/image/storage/migrations
-    queries: internal/email/storage/queries
-    gen:
-      go:
-        package: storage
-        out: internal/email/storage
-        output_db_file_name: sqlc_db.go
-        output_models_file_name: sqlc_models.go
-        emit_empty_slices: true
-        omit_unused_structs: true
-        overrides:
-          - column: jobs.user_id
-            go_type: string
-          - column: jobs.asset_id
-            go_type: string
-          - column: jobs.dedup_key
-            go_type: string
-          - column: save_receipts.expires_at
-            go_type: int64
-          - column: page_leases.expires_at
-            go_type: int64
-          - column: page_leases.epoch
-            go_type: int64
-          - column: pages.updated_at
-            go_type: int64
-          - column: workspaces.updated_at
-            go_type: int64
-          - column: workspaces.created_at
-            go_type: int64
-          - column: assets.created_at
-            go_type: int64
-          - column: users.created_at
-            go_type: int64
-          - column: jobs.run_at
-            go_type: int64
-          - column: account_tokens.expires_at
-            go_type: int64
-          - column: sessions.expires_at
-            go_type: int64
-          - db_type: INTEGER
-            go_type: int
-  - engine: sqlite
-    schema:
-      - internal/installation/storage/migrations
-      - internal/account/storage/migrations
-      - internal/session/storage/migrations
-      - internal/invitation/storage/migrations
-      - internal/email/storage/migrations
-      - internal/workspace/storage/migrations
-      - internal/page/storage/migrations
-      - internal/canvas/storage/migrations
-      - internal/editor/storage/migrations
-      - internal/image/storage/migrations
-    queries: internal/installation/storage/queries
-    gen:
-      go:
-        package: storage
-        out: internal/installation/storage
-        output_db_file_name: sqlc_db.go
-        output_models_file_name: sqlc_models.go
-        emit_empty_slices: true
-        omit_unused_structs: true
-        overrides:
-          - column: jobs.user_id
-            go_type: string
-          - column: jobs.asset_id
-            go_type: string
-          - column: jobs.dedup_key
-            go_type: string
-          - column: save_receipts.expires_at
-            go_type: int64
-          - column: page_leases.expires_at
-            go_type: int64
-          - column: page_leases.epoch
-            go_type: int64
-          - column: pages.updated_at
-            go_type: int64
-          - column: workspaces.updated_at
-            go_type: int64
-          - column: workspaces.created_at
-            go_type: int64
-          - column: assets.created_at
-            go_type: int64
-          - column: users.created_at
-            go_type: int64
-          - column: jobs.run_at
-            go_type: int64
-          - column: account_tokens.expires_at
-            go_type: int64
-          - column: sessions.expires_at
-            go_type: int64
-          - db_type: INTEGER
-            go_type: int
-  - engine: sqlite
-    schema:
-      - internal/installation/storage/migrations
-      - internal/account/storage/migrations
-      - internal/session/storage/migrations
-      - internal/invitation/storage/migrations
-      - internal/email/storage/migrations
-      - internal/workspace/storage/migrations
-      - internal/page/storage/migrations
-      - internal/canvas/storage/migrations
-      - internal/editor/storage/migrations
-      - internal/image/storage/migrations
+    schema: internal/workspace/storage/migrations
     queries: internal/workspace/storage/queries
     gen:
       go:
@@ -334,11 +32,11 @@ sql:
         emit_empty_slices: true
         omit_unused_structs: true
         overrides:
-          - column: jobs.user_id
+          - column: image_jobs.user_id
             go_type: string
-          - column: jobs.asset_id
+          - column: image_jobs.asset_id
             go_type: string
-          - column: jobs.dedup_key
+          - column: image_jobs.dedup_key
             go_type: string
           - column: save_receipts.expires_at
             go_type: int64
@@ -354,221 +52,41 @@ sql:
             go_type: int64
           - column: assets.created_at
             go_type: int64
-          - column: users.created_at
-            go_type: int64
-          - column: jobs.run_at
-            go_type: int64
-          - column: account_tokens.expires_at
-            go_type: int64
-          - column: sessions.expires_at
+          - column: image_jobs.run_at
             go_type: int64
           - db_type: INTEGER
             go_type: int
   - engine: sqlite
-    schema:
-      - internal/installation/storage/migrations
-      - internal/account/storage/migrations
-      - internal/session/storage/migrations
-      - internal/invitation/storage/migrations
-      - internal/email/storage/migrations
-      - internal/workspace/storage/migrations
-      - internal/page/storage/migrations
-      - internal/canvas/storage/migrations
-      - internal/editor/storage/migrations
-      - internal/image/storage/migrations
-    queries: internal/page/storage/queries
+    schema: internal/email/storage/migrations
+    queries: internal/email/storage/queries
     gen:
       go:
         package: storage
-        out: internal/page/storage
+        out: internal/email/storage
         output_db_file_name: sqlc_db.go
         output_models_file_name: sqlc_models.go
         emit_empty_slices: true
         omit_unused_structs: true
         overrides:
-          - column: jobs.user_id
+          - column: mail_jobs.user_id
             go_type: string
-          - column: jobs.asset_id
+          - column: mail_jobs.dedup_key
             go_type: string
-          - column: jobs.dedup_key
-            go_type: string
-          - column: save_receipts.expires_at
-            go_type: int64
-          - column: page_leases.expires_at
-            go_type: int64
-          - column: page_leases.epoch
-            go_type: int64
-          - column: pages.updated_at
-            go_type: int64
-          - column: workspaces.updated_at
-            go_type: int64
-          - column: workspaces.created_at
-            go_type: int64
-          - column: assets.created_at
-            go_type: int64
-          - column: users.created_at
-            go_type: int64
-          - column: jobs.run_at
-            go_type: int64
-          - column: account_tokens.expires_at
-            go_type: int64
-          - column: sessions.expires_at
+          - column: mail_jobs.run_at
             go_type: int64
           - db_type: INTEGER
             go_type: int
   - engine: sqlite
-    schema:
-      - internal/installation/storage/migrations
-      - internal/account/storage/migrations
-      - internal/session/storage/migrations
-      - internal/invitation/storage/migrations
-      - internal/email/storage/migrations
-      - internal/workspace/storage/migrations
-      - internal/page/storage/migrations
-      - internal/canvas/storage/migrations
-      - internal/editor/storage/migrations
-      - internal/image/storage/migrations
-    queries: internal/canvas/storage/queries
+    schema: internal/installation/storage/migrations
+    queries: internal/installation/storage/queries
     gen:
       go:
         package: storage
-        out: internal/canvas/storage
+        out: internal/installation/storage
         output_db_file_name: sqlc_db.go
         output_models_file_name: sqlc_models.go
         emit_empty_slices: true
         omit_unused_structs: true
         overrides:
-          - column: jobs.user_id
-            go_type: string
-          - column: jobs.asset_id
-            go_type: string
-          - column: jobs.dedup_key
-            go_type: string
-          - column: save_receipts.expires_at
-            go_type: int64
-          - column: page_leases.expires_at
-            go_type: int64
-          - column: page_leases.epoch
-            go_type: int64
-          - column: pages.updated_at
-            go_type: int64
-          - column: workspaces.updated_at
-            go_type: int64
-          - column: workspaces.created_at
-            go_type: int64
-          - column: assets.created_at
-            go_type: int64
-          - column: users.created_at
-            go_type: int64
-          - column: jobs.run_at
-            go_type: int64
-          - column: account_tokens.expires_at
-            go_type: int64
-          - column: sessions.expires_at
-            go_type: int64
-          - db_type: INTEGER
-            go_type: int
-  - engine: sqlite
-    schema:
-      - internal/installation/storage/migrations
-      - internal/account/storage/migrations
-      - internal/session/storage/migrations
-      - internal/invitation/storage/migrations
-      - internal/email/storage/migrations
-      - internal/workspace/storage/migrations
-      - internal/page/storage/migrations
-      - internal/canvas/storage/migrations
-      - internal/editor/storage/migrations
-      - internal/image/storage/migrations
-    queries: internal/editor/storage/queries
-    gen:
-      go:
-        package: storage
-        out: internal/editor/storage
-        output_db_file_name: sqlc_db.go
-        output_models_file_name: sqlc_models.go
-        emit_empty_slices: true
-        omit_unused_structs: true
-        overrides:
-          - column: jobs.user_id
-            go_type: string
-          - column: jobs.asset_id
-            go_type: string
-          - column: jobs.dedup_key
-            go_type: string
-          - column: save_receipts.expires_at
-            go_type: int64
-          - column: page_leases.expires_at
-            go_type: int64
-          - column: page_leases.epoch
-            go_type: int64
-          - column: pages.updated_at
-            go_type: int64
-          - column: workspaces.updated_at
-            go_type: int64
-          - column: workspaces.created_at
-            go_type: int64
-          - column: assets.created_at
-            go_type: int64
-          - column: users.created_at
-            go_type: int64
-          - column: jobs.run_at
-            go_type: int64
-          - column: account_tokens.expires_at
-            go_type: int64
-          - column: sessions.expires_at
-            go_type: int64
-          - db_type: INTEGER
-            go_type: int
-  - engine: sqlite
-    schema:
-      - internal/installation/storage/migrations
-      - internal/account/storage/migrations
-      - internal/session/storage/migrations
-      - internal/invitation/storage/migrations
-      - internal/email/storage/migrations
-      - internal/workspace/storage/migrations
-      - internal/page/storage/migrations
-      - internal/canvas/storage/migrations
-      - internal/editor/storage/migrations
-      - internal/image/storage/migrations
-    queries: internal/image/storage/queries
-    gen:
-      go:
-        package: storage
-        out: internal/image/storage
-        output_db_file_name: sqlc_db.go
-        output_models_file_name: sqlc_models.go
-        emit_empty_slices: true
-        omit_unused_structs: true
-        overrides:
-          - column: jobs.user_id
-            go_type: string
-          - column: jobs.asset_id
-            go_type: string
-          - column: jobs.dedup_key
-            go_type: string
-          - column: save_receipts.expires_at
-            go_type: int64
-          - column: page_leases.expires_at
-            go_type: int64
-          - column: page_leases.epoch
-            go_type: int64
-          - column: pages.updated_at
-            go_type: int64
-          - column: workspaces.updated_at
-            go_type: int64
-          - column: workspaces.created_at
-            go_type: int64
-          - column: assets.created_at
-            go_type: int64
-          - column: users.created_at
-            go_type: int64
-          - column: jobs.run_at
-            go_type: int64
-          - column: account_tokens.expires_at
-            go_type: int64
-          - column: sessions.expires_at
-            go_type: int64
           - db_type: INTEGER
             go_type: int

@@ -1,2 +1,2 @@
-// Package storage owns workspace queries, database binding and migrations.
+// Package storage owns the workspace schema, queries and repositories for its subdomains.
 package storage

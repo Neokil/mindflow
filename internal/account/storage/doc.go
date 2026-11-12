@@ -1,2 +1,2 @@
-// Package storage owns account queries, database binding and migrations.
+// Package storage owns the account schema, queries and repositories for its subdomains.
 package storage

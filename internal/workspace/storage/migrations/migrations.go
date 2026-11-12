@@ -8,6 +8,3 @@ var files embed.FS
 
 // Files returns the embedded SQL files consumed by Goose.
 func Files() embed.FS { return files }
-
-// Dependencies identifies domain schemas required before these migrations run.
-func Dependencies() []string { return []string{"account"} }

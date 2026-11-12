@@ -143,7 +143,7 @@ func catalogSource(root string) ([]byte, error) {
 	}
 	source.WriteString(")\nfunc discoveredMigrations()[]domainMigrations{return []domainMigrations{\n")
 	for _, candidate := range packages {
-		fmt.Fprintf(&source, "{name:%q,files:%smigrations.Files(),dependencies:%smigrations.Dependencies()},\n", candidate.name, candidate.name, candidate.name)
+		fmt.Fprintf(&source, "{name:%q,files:%smigrations.Files()},\n", candidate.name, candidate.name)
 	}
 	source.WriteString("}}\n")
 	generated, err := format.Source([]byte(source.String()))

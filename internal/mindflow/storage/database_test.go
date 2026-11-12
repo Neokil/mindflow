@@ -48,7 +48,7 @@ func TestRestoreRevokesCredentialsWithoutRemovingContent(t *testing.T) {
 	_, err = dbValue.SQLForTest().ExecContext(t.Context(), `INSERT INTO users(id,email,role,status,created_at) VALUES('u','test@example.com','admin','active',1);
  INSERT INTO sessions(id,user_id,verifier_hash,csrf,expires_at) VALUES('s','u','hash','csrf',9999999999);
  INSERT INTO account_tokens(id,user_id,purpose,token_hash,expires_at) VALUES('t','u','reset','hash',9999999999);
- INSERT INTO jobs(id,user_id,kind,payload,run_at) VALUES('j','u','mail','secret',1);
+ INSERT INTO mail_jobs(id,user_id,payload,run_at) VALUES('j','u','secret',1);
  INSERT INTO workspaces(id,owner_id,name,created_at,updated_at) VALUES('w','u','Keep me',1,1);`)
 	if err != nil {
 		t.Fatal(err)
@@ -61,7 +61,7 @@ func TestRestoreRevokesCredentialsWithoutRemovingContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, table := range []string{"sessions", "account_tokens", "jobs"} {
+	for _, table := range []string{"sessions", "account_tokens", "mail_jobs"} {
 		var n int
 		err = dbValue.SQLForTest().QueryRowContext(t.Context(), "SELECT count(*) FROM "+table).Scan(&n)
 		if err != nil {

@@ -2,7 +2,7 @@ package notification
 
 import (
 	"fmt"
-	"mindflow/internal/session"
+	"mindflow/internal/account/session"
 	"net/http"
 	"time"
 )

@@ -10,65 +10,65 @@ import (
 	"database/sql"
 )
 
-const activateAccount = `-- name: ActivateAccount :execresult
+const accountActivateAccount = `-- name: AccountActivateAccount :execresult
 UPDATE users SET password_hash=?,status='active' WHERE id=?
 `
 
-type ActivateAccountParams struct {
+type AccountActivateAccountParams struct {
 	PasswordHash string
 	ID           string
 }
 
-func (q *Queries) ActivateAccount(ctx context.Context, arg ActivateAccountParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, activateAccount, arg.PasswordHash, arg.ID)
+func (q *Queries) AccountActivateAccount(ctx context.Context, arg AccountActivateAccountParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, accountActivateAccount, arg.PasswordHash, arg.ID)
 }
 
-const activeUserByEmail = `-- name: ActiveUserByEmail :one
+const accountActiveUserByEmail = `-- name: AccountActiveUserByEmail :one
 SELECT id FROM users WHERE email=? AND status='active'
 `
 
-func (q *Queries) ActiveUserByEmail(ctx context.Context, email string) (string, error) {
-	row := q.db.QueryRowContext(ctx, activeUserByEmail, email)
+func (q *Queries) AccountActiveUserByEmail(ctx context.Context, email string) (string, error) {
+	row := q.db.QueryRowContext(ctx, accountActiveUserByEmail, email)
 	var id string
 	err := row.Scan(&id)
 	return id, err
 }
 
-const countAdministrators = `-- name: CountAdministrators :one
+const accountCountAdministrators = `-- name: AccountCountAdministrators :one
 SELECT count(*) FROM users WHERE role='admin' AND status='active'
 `
 
-func (q *Queries) CountAdministrators(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countAdministrators)
+func (q *Queries) AccountCountAdministrators(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, accountCountAdministrators)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const countEmail = `-- name: CountEmail :one
+const accountCountEmail = `-- name: AccountCountEmail :one
 SELECT count(*) FROM users WHERE email=?
 `
 
-func (q *Queries) CountEmail(ctx context.Context, email string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countEmail, email)
+func (q *Queries) AccountCountEmail(ctx context.Context, email string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, accountCountEmail, email)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const createAdministrator = `-- name: CreateAdministrator :execresult
+const accountCreateAdministrator = `-- name: AccountCreateAdministrator :execresult
 INSERT INTO users(id,email,password_hash,role,status,created_at) VALUES(?,?,?,'admin','active',?)
 `
 
-type CreateAdministratorParams struct {
+type AccountCreateAdministratorParams struct {
 	ID           string
 	Email        string
 	PasswordHash string
 	CreatedAt    int64
 }
 
-func (q *Queries) CreateAdministrator(ctx context.Context, arg CreateAdministratorParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, createAdministrator,
+func (q *Queries) AccountCreateAdministrator(ctx context.Context, arg AccountCreateAdministratorParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, accountCreateAdministrator,
 		arg.ID,
 		arg.Email,
 		arg.PasswordHash,
@@ -76,19 +76,19 @@ func (q *Queries) CreateAdministrator(ctx context.Context, arg CreateAdministrat
 	)
 }
 
-const createInvitedUser = `-- name: CreateInvitedUser :execresult
+const accountCreateInvitedUser = `-- name: AccountCreateInvitedUser :execresult
 INSERT INTO users(id,email,role,status,created_at) VALUES(?,?,?,'invited',?)
 `
 
-type CreateInvitedUserParams struct {
+type AccountCreateInvitedUserParams struct {
 	ID        string
 	Email     string
 	Role      string
 	CreatedAt int64
 }
 
-func (q *Queries) CreateInvitedUser(ctx context.Context, arg CreateInvitedUserParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, createInvitedUser,
+func (q *Queries) AccountCreateInvitedUser(ctx context.Context, arg AccountCreateInvitedUserParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, accountCreateInvitedUser,
 		arg.ID,
 		arg.Email,
 		arg.Role,
@@ -96,19 +96,19 @@ func (q *Queries) CreateInvitedUser(ctx context.Context, arg CreateInvitedUserPa
 	)
 }
 
-const deleteUser = `-- name: DeleteUser :execresult
+const accountDeleteUser = `-- name: AccountDeleteUser :execresult
 DELETE FROM users WHERE id=?
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, id string) (sql.Result, error) {
-	return q.db.ExecContext(ctx, deleteUser, id)
+func (q *Queries) AccountDeleteUser(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, accountDeleteUser, id)
 }
 
-const findUser = `-- name: FindUser :one
+const accountFindUser = `-- name: AccountFindUser :one
 SELECT id,email,role,status,appearance FROM users WHERE id=?
 `
 
-type FindUserRow struct {
+type AccountFindUserRow struct {
 	ID         string
 	Email      string
 	Role       string
@@ -116,9 +116,9 @@ type FindUserRow struct {
 	Appearance string
 }
 
-func (q *Queries) FindUser(ctx context.Context, id string) (FindUserRow, error) {
-	row := q.db.QueryRowContext(ctx, findUser, id)
-	var i FindUserRow
+func (q *Queries) AccountFindUser(ctx context.Context, id string) (AccountFindUserRow, error) {
+	row := q.db.QueryRowContext(ctx, accountFindUser, id)
+	var i AccountFindUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
@@ -129,35 +129,33 @@ func (q *Queries) FindUser(ctx context.Context, id string) (FindUserRow, error) 
 	return i, err
 }
 
-const listUsers = `-- name: ListUsers :many
-SELECT u.id,u.email,u.role,u.status,u.appearance, CAST(COALESCE((SELECT last_error FROM jobs WHERE user_id=u.id AND kind='mail' ORDER BY run_at DESC LIMIT 1),'') AS TEXT) AS mail_error FROM users u ORDER BY created_at
+const accountListUsers = `-- name: AccountListUsers :many
+SELECT u.id,u.email,u.role,u.status,u.appearance FROM users u ORDER BY created_at
 `
 
-type ListUsersRow struct {
+type AccountListUsersRow struct {
 	ID         string
 	Email      string
 	Role       string
 	Status     string
 	Appearance string
-	MailError  string
 }
 
-func (q *Queries) ListUsers(ctx context.Context) ([]ListUsersRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUsers)
+func (q *Queries) AccountListUsers(ctx context.Context) ([]AccountListUsersRow, error) {
+	rows, err := q.db.QueryContext(ctx, accountListUsers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListUsersRow{}
+	items := []AccountListUsersRow{}
 	for rows.Next() {
-		var i ListUsersRow
+		var i AccountListUsersRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Email,
 			&i.Role,
 			&i.Status,
 			&i.Appearance,
-			&i.MailError,
 		); err != nil {
 			return nil, err
 		}
@@ -172,38 +170,38 @@ func (q *Queries) ListUsers(ctx context.Context) ([]ListUsersRow, error) {
 	return items, nil
 }
 
-const setAppearance = `-- name: SetAppearance :execresult
+const accountSetAppearance = `-- name: AccountSetAppearance :execresult
 UPDATE users SET appearance=? WHERE id=?
 `
 
-type SetAppearanceParams struct {
+type AccountSetAppearanceParams struct {
 	Appearance string
 	ID         string
 }
 
-func (q *Queries) SetAppearance(ctx context.Context, arg SetAppearanceParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, setAppearance, arg.Appearance, arg.ID)
+func (q *Queries) AccountSetAppearance(ctx context.Context, arg AccountSetAppearanceParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, accountSetAppearance, arg.Appearance, arg.ID)
 }
 
-const updateUser = `-- name: UpdateUser :execresult
+const accountUpdateUser = `-- name: AccountUpdateUser :execresult
 UPDATE users SET role=?,status=? WHERE id=?
 `
 
-type UpdateUserParams struct {
+type AccountUpdateUserParams struct {
 	Role   string
 	Status string
 	ID     string
 }
 
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, updateUser, arg.Role, arg.Status, arg.ID)
+func (q *Queries) AccountUpdateUser(ctx context.Context, arg AccountUpdateUserParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, accountUpdateUser, arg.Role, arg.Status, arg.ID)
 }
 
-const userByEmail = `-- name: UserByEmail :one
+const accountUserByEmail = `-- name: AccountUserByEmail :one
 SELECT id,email,role,status,appearance,password_hash FROM users WHERE email=?
 `
 
-type UserByEmailRow struct {
+type AccountUserByEmailRow struct {
 	ID           string
 	Email        string
 	Role         string
@@ -212,9 +210,9 @@ type UserByEmailRow struct {
 	PasswordHash string
 }
 
-func (q *Queries) UserByEmail(ctx context.Context, email string) (UserByEmailRow, error) {
-	row := q.db.QueryRowContext(ctx, userByEmail, email)
-	var i UserByEmailRow
+func (q *Queries) AccountUserByEmail(ctx context.Context, email string) (AccountUserByEmailRow, error) {
+	row := q.db.QueryRowContext(ctx, accountUserByEmail, email)
+	var i AccountUserByEmailRow
 	err := row.Scan(
 		&i.ID,
 		&i.Email,
@@ -226,34 +224,274 @@ func (q *Queries) UserByEmail(ctx context.Context, email string) (UserByEmailRow
 	return i, err
 }
 
-const userEmailStatus = `-- name: UserEmailStatus :one
+const accountUserEmailStatus = `-- name: AccountUserEmailStatus :one
 SELECT email,status FROM users WHERE id=?
 `
 
-type UserEmailStatusRow struct {
+type AccountUserEmailStatusRow struct {
 	Email  string
 	Status string
 }
 
-func (q *Queries) UserEmailStatus(ctx context.Context, id string) (UserEmailStatusRow, error) {
-	row := q.db.QueryRowContext(ctx, userEmailStatus, id)
-	var i UserEmailStatusRow
+func (q *Queries) AccountUserEmailStatus(ctx context.Context, id string) (AccountUserEmailStatusRow, error) {
+	row := q.db.QueryRowContext(ctx, accountUserEmailStatus, id)
+	var i AccountUserEmailStatusRow
 	err := row.Scan(&i.Email, &i.Status)
 	return i, err
 }
 
-const userRoleStatus = `-- name: UserRoleStatus :one
+const accountUserRoleStatus = `-- name: AccountUserRoleStatus :one
 SELECT role,status FROM users WHERE id=?
 `
 
-type UserRoleStatusRow struct {
+type AccountUserRoleStatusRow struct {
 	Role   string
 	Status string
 }
 
-func (q *Queries) UserRoleStatus(ctx context.Context, id string) (UserRoleStatusRow, error) {
-	row := q.db.QueryRowContext(ctx, userRoleStatus, id)
-	var i UserRoleStatusRow
+func (q *Queries) AccountUserRoleStatus(ctx context.Context, id string) (AccountUserRoleStatusRow, error) {
+	row := q.db.QueryRowContext(ctx, accountUserRoleStatus, id)
+	var i AccountUserRoleStatusRow
 	err := row.Scan(&i.Role, &i.Status)
 	return i, err
+}
+
+const invitationCountValidTokens = `-- name: InvitationCountValidTokens :one
+SELECT count(*) FROM account_tokens t JOIN users u ON u.id=t.user_id WHERE t.token_hash=? AND t.purpose='invite' AND t.expires_at>? AND u.status='invited'
+`
+
+type InvitationCountValidTokensParams struct {
+	TokenHash string
+	ExpiresAt int64
+}
+
+func (q *Queries) InvitationCountValidTokens(ctx context.Context, arg InvitationCountValidTokensParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, invitationCountValidTokens, arg.TokenHash, arg.ExpiresAt)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const invitationCreateToken = `-- name: InvitationCreateToken :execresult
+INSERT INTO account_tokens(id,user_id,purpose,token_hash,expires_at) VALUES(?,?,'invite',?,?)
+`
+
+type InvitationCreateTokenParams struct {
+	ID        string
+	UserID    string
+	TokenHash string
+	ExpiresAt int64
+}
+
+func (q *Queries) InvitationCreateToken(ctx context.Context, arg InvitationCreateTokenParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, invitationCreateToken,
+		arg.ID,
+		arg.UserID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+}
+
+const invitationDeleteExpiredTokens = `-- name: InvitationDeleteExpiredTokens :exec
+DELETE FROM account_tokens WHERE purpose='invite' AND expires_at<=unixepoch()
+`
+
+func (q *Queries) InvitationDeleteExpiredTokens(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, invitationDeleteExpiredTokens)
+	return err
+}
+
+const invitationDeleteUserTokens = `-- name: InvitationDeleteUserTokens :execresult
+DELETE FROM account_tokens WHERE user_id=? AND purpose='invite'
+`
+
+func (q *Queries) InvitationDeleteUserTokens(ctx context.Context, userID string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, invitationDeleteUserTokens, userID)
+}
+
+const invitationFindToken = `-- name: InvitationFindToken :one
+SELECT user_id FROM account_tokens WHERE token_hash=? AND purpose='invite' AND expires_at>?
+`
+
+type InvitationFindTokenParams struct {
+	TokenHash string
+	ExpiresAt int64
+}
+
+func (q *Queries) InvitationFindToken(ctx context.Context, arg InvitationFindTokenParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, invitationFindToken, arg.TokenHash, arg.ExpiresAt)
+	var user_id string
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
+const invitationRevokeTokens = `-- name: InvitationRevokeTokens :exec
+DELETE FROM account_tokens WHERE purpose='invite'
+`
+
+func (q *Queries) InvitationRevokeTokens(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, invitationRevokeTokens)
+	return err
+}
+
+const passwordresetCountValidTokens = `-- name: PasswordresetCountValidTokens :one
+SELECT count(*) FROM account_tokens t JOIN users u ON u.id=t.user_id WHERE t.token_hash=? AND t.purpose='reset' AND t.expires_at>? AND u.status='active'
+`
+
+type PasswordresetCountValidTokensParams struct {
+	TokenHash string
+	ExpiresAt int64
+}
+
+func (q *Queries) PasswordresetCountValidTokens(ctx context.Context, arg PasswordresetCountValidTokensParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, passwordresetCountValidTokens, arg.TokenHash, arg.ExpiresAt)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const passwordresetCreateToken = `-- name: PasswordresetCreateToken :execresult
+INSERT INTO account_tokens(id,user_id,purpose,token_hash,expires_at) VALUES(?,?,'reset',?,?)
+`
+
+type PasswordresetCreateTokenParams struct {
+	ID        string
+	UserID    string
+	TokenHash string
+	ExpiresAt int64
+}
+
+func (q *Queries) PasswordresetCreateToken(ctx context.Context, arg PasswordresetCreateTokenParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, passwordresetCreateToken,
+		arg.ID,
+		arg.UserID,
+		arg.TokenHash,
+		arg.ExpiresAt,
+	)
+}
+
+const passwordresetDeleteExpiredTokens = `-- name: PasswordresetDeleteExpiredTokens :exec
+DELETE FROM account_tokens WHERE purpose='reset' AND expires_at<=unixepoch()
+`
+
+func (q *Queries) PasswordresetDeleteExpiredTokens(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, passwordresetDeleteExpiredTokens)
+	return err
+}
+
+const passwordresetDeleteUserTokens = `-- name: PasswordresetDeleteUserTokens :execresult
+DELETE FROM account_tokens WHERE user_id=? AND purpose='reset'
+`
+
+func (q *Queries) PasswordresetDeleteUserTokens(ctx context.Context, userID string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, passwordresetDeleteUserTokens, userID)
+}
+
+const passwordresetFindToken = `-- name: PasswordresetFindToken :one
+SELECT user_id FROM account_tokens WHERE token_hash=? AND purpose='reset' AND expires_at>?
+`
+
+type PasswordresetFindTokenParams struct {
+	TokenHash string
+	ExpiresAt int64
+}
+
+func (q *Queries) PasswordresetFindToken(ctx context.Context, arg PasswordresetFindTokenParams) (string, error) {
+	row := q.db.QueryRowContext(ctx, passwordresetFindToken, arg.TokenHash, arg.ExpiresAt)
+	var user_id string
+	err := row.Scan(&user_id)
+	return user_id, err
+}
+
+const passwordresetRevokeTokens = `-- name: PasswordresetRevokeTokens :exec
+DELETE FROM account_tokens WHERE purpose='reset'
+`
+
+func (q *Queries) PasswordresetRevokeTokens(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, passwordresetRevokeTokens)
+	return err
+}
+
+const sessionCreateSession = `-- name: SessionCreateSession :execresult
+INSERT INTO sessions(id,user_id,verifier_hash,csrf,expires_at) VALUES(?,?,?,?,?)
+`
+
+type SessionCreateSessionParams struct {
+	ID           string
+	UserID       string
+	VerifierHash string
+	Csrf         string
+	ExpiresAt    int64
+}
+
+func (q *Queries) SessionCreateSession(ctx context.Context, arg SessionCreateSessionParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, sessionCreateSession,
+		arg.ID,
+		arg.UserID,
+		arg.VerifierHash,
+		arg.Csrf,
+		arg.ExpiresAt,
+	)
+}
+
+const sessionDeleteExpiredSessions = `-- name: SessionDeleteExpiredSessions :exec
+DELETE FROM sessions WHERE expires_at<=unixepoch()
+`
+
+func (q *Queries) SessionDeleteExpiredSessions(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, sessionDeleteExpiredSessions)
+	return err
+}
+
+const sessionDeleteSession = `-- name: SessionDeleteSession :execresult
+DELETE FROM sessions WHERE id=?
+`
+
+func (q *Queries) SessionDeleteSession(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, sessionDeleteSession, id)
+}
+
+const sessionDeleteUserSessions = `-- name: SessionDeleteUserSessions :execresult
+DELETE FROM sessions WHERE user_id=?
+`
+
+func (q *Queries) SessionDeleteUserSessions(ctx context.Context, userID string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, sessionDeleteUserSessions, userID)
+}
+
+const sessionFindSession = `-- name: SessionFindSession :one
+SELECT id,user_id,csrf,verifier_hash FROM sessions WHERE id=? AND expires_at>?
+`
+
+type SessionFindSessionParams struct {
+	ID        string
+	ExpiresAt int64
+}
+
+type SessionFindSessionRow struct {
+	ID           string
+	UserID       string
+	Csrf         string
+	VerifierHash string
+}
+
+func (q *Queries) SessionFindSession(ctx context.Context, arg SessionFindSessionParams) (SessionFindSessionRow, error) {
+	row := q.db.QueryRowContext(ctx, sessionFindSession, arg.ID, arg.ExpiresAt)
+	var i SessionFindSessionRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Csrf,
+		&i.VerifierHash,
+	)
+	return i, err
+}
+
+const sessionRevokeSessions = `-- name: SessionRevokeSessions :exec
+DELETE FROM sessions
+`
+
+func (q *Queries) SessionRevokeSessions(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, sessionRevokeSessions)
+	return err
 }

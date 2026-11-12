@@ -3,11 +3,11 @@ package mindflow_test
 import (
 	"database/sql"
 	"encoding/json"
-	"mindflow/internal/canvas"
 	"mindflow/internal/email"
 	"mindflow/internal/installation"
 	"mindflow/internal/mindflow"
 	"mindflow/internal/mindflow/storage"
+	"mindflow/internal/workspace/page/canvas"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -100,7 +100,7 @@ func (c *testClient) login(email, password string) {
 func (c *testClient) token(email, purpose string) string {
 	c.t.Helper()
 	var raw string
-	err := c.db.QueryRowContext(c.t.Context(), "SELECT payload FROM jobs WHERE user_id=(SELECT id FROM users WHERE email=?) AND dedup_key=(SELECT id FROM users WHERE email=?)||':'||?", email, email, purpose).Scan(&raw)
+	err := c.db.QueryRowContext(c.t.Context(), "SELECT payload FROM mail_jobs WHERE user_id=(SELECT id FROM users WHERE email=?) AND dedup_key=(SELECT id FROM users WHERE email=?)||':'||?", email, email, purpose).Scan(&raw)
 	if err != nil {
 		c.t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestInvitationResetAndDeactivation(t *testing.T) {
 
 	client := fixture(t)
 	client.setup()
-	client.ok("POST", "/api/v1/admin/users", map[string]string{emailField: "friend@example.com", "role": "user"})
+	client.ok("POST", "/api/v1/admin/users", map[string]string{emailField: "friend@example.com", roleField: "user"})
 	old := client.token("friend@example.com", "invite")
 	var uid string
 	checkErr148 := client.db.QueryRowContext(t.Context(), "SELECT id FROM users WHERE email='friend@example.com'").Scan(&uid)
@@ -200,12 +200,12 @@ func TestInvitationResetAndDeactivation(t *testing.T) {
 	}
 	client.ok("DELETE", "/api/v1/admin/users/"+uid, map[string]bool{confirmField: true})
 	var n int
-	checkErr176 := client.db.QueryRowContext(t.Context(), "SELECT count(*) FROM jobs WHERE user_id=?", uid).Scan(&n)
+	checkErr176 := client.db.QueryRowContext(t.Context(), "SELECT count(*) FROM mail_jobs WHERE user_id=?", uid).Scan(&n)
 	if checkErr176 != nil {
 		t.Fatal(checkErr176)
 	}
 	if n != 0 {
-		t.Fatal("user jobs survived deletion")
+		t.Fatal("user mail_jobs survived deletion")
 	}
 }
 
@@ -246,3 +246,50 @@ const (
 )
 
 const tokenField = "token"
+
+func TestAccountDeletionCleansIndependentDomainsAtomically(t *testing.T) {
+	t.Parallel()
+	client := fixture(t)
+	client.setup()
+	client.ok("POST", "/api/v1/admin/users", map[string]string{emailField: "delete@example.com", roleField: "user"})
+	var userID string
+	err := client.db.QueryRowContext(t.Context(), "SELECT id FROM users WHERE email='delete@example.com'").Scan(&userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.db.ExecContext(t.Context(), `INSERT INTO workspaces(id,owner_id,name,created_at,updated_at) VALUES('deleted-workspace',?,'Delete',1,1);
+ INSERT INTO pages(id,workspace_id,name,position,document,updated_at) VALUES('deleted-page','deleted-workspace','Delete',0,'{}',1);
+ INSERT INTO assets(id,owner_id,original,mime,width,height,digest,created_at) VALUES('deleted-asset',?,x'00','image/png',1,1,'digest',1);
+ INSERT INTO asset_variants(asset_id,bucket,mime,data,width,height) VALUES('deleted-asset',1,'image/png',x'00',1,1);
+ INSERT INTO page_assets(page_id,asset_id) VALUES('deleted-page','deleted-asset');
+ INSERT INTO page_leases(page_id,session_id) VALUES('deleted-page','opaque-session');
+ INSERT INTO save_receipts(page_id,client_id,mutation_id,digest,revision,expires_at) VALUES('deleted-page','client','mutation','digest',1,9999999999);
+ INSERT INTO image_jobs(id,user_id,asset_id,payload,run_at) VALUES('deleted-preview',?,'deleted-asset','{}',1);
+ CREATE TRIGGER fail_mail_cleanup BEFORE DELETE ON mail_jobs BEGIN SELECT RAISE(ABORT,'test cleanup failure'); END;`, userID, userID, userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	endpoint := "/api/v1/admin/users/" + userID
+	if client.request("DELETE", endpoint, map[string]bool{confirmField: true}).Code != 500 {
+		t.Fatal("cleanup failure was not reported")
+	}
+	var count int
+	err = client.db.QueryRowContext(t.Context(), "SELECT count(*) FROM workspaces WHERE owner_id=?", userID).Scan(&count)
+	if err != nil || count != 1 {
+		t.Fatalf("failed deletion did not roll back workspace cleanup: %d, %v", count, err)
+	}
+	_, err = client.db.ExecContext(t.Context(), "DROP TRIGGER fail_mail_cleanup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.ok("DELETE", endpoint, map[string]bool{confirmField: true})
+	for _, table := range []string{"workspaces", "pages", "assets", "asset_variants", "page_assets", "page_leases", "save_receipts", "image_jobs", "mail_jobs", "account_tokens"} {
+		err = client.db.QueryRowContext(t.Context(), "SELECT count(*) FROM "+table).Scan(&count)
+		if err != nil || count != 0 {
+			t.Errorf("%s retained deleted user data: %d, %v", table, count, err)
+		}
+	}
+	client.ok("GET", "/api/v1/auth/me", nil)
+}
+
+const roleField = "role"

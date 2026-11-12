@@ -7,9 +7,9 @@ import (
 	"image/color"
 	"image/png"
 	"mime/multipart"
-	"mindflow/internal/canvas"
-	"mindflow/internal/editor"
-	imageasset "mindflow/internal/image"
+	imageasset "mindflow/internal/workspace/image"
+	"mindflow/internal/workspace/page/canvas"
+	"mindflow/internal/workspace/page/editor"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -169,7 +169,7 @@ func TestPrivateAssetsDuplicationAndUserCascade(t *testing.T) {
 	}
 	client.ok("DELETE", "/api/v1/workspaces/"+wid, map[string]any{"revision": 1, confirmField: true})
 	client.ok("GET", "/api/v1/assets/"+asset.ID+"/meta", nil)
-	client.ok("POST", "/api/v1/admin/users", map[string]string{emailField: "admin2@example.com", "role": "admin"})
+	client.ok("POST", "/api/v1/admin/users", map[string]string{emailField: "admin2@example.com", roleField: "admin"})
 	token := client.token("admin2@example.com", "invite")
 	client.ok("POST", "/api/v1/auth/accept-invite", map[string]string{tokenField: token, passwordField: "second admin password"})
 	other := &testClient{a: client.a, db: client.db, t: t}

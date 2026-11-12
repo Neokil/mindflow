@@ -2,7 +2,7 @@ package workspace
 
 import (
 	"context"
-	"mindflow/internal/session"
+	"mindflow/internal/account/session"
 	"mindflow/internal/workspace/storage"
 	"strings"
 	"time"
@@ -11,7 +11,7 @@ import (
 // ListWorkspaces lists only workspaces owned by the caller.
 func (a *Service) ListWorkspaces(ctx context.Context, actor session.Principal) (_ []Workspace, err error) {
 	defer func() { err = repositoryError(err) }()
-	rows, err := a.repository.ListWorkspaces(ctx, actor.ID)
+	rows, err := a.repository.WorkspaceListWorkspaces(ctx, actor.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (a *Service) CreateWorkspace(ctx context.Context, actor session.Principal, 
 		return Created{}, wrap("workspace.CreateWorkspace", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
-	_, err = a.repository.Within(transaction).CreateWorkspace(ctx, storage.CreateWorkspaceParams{ID: resourceID, OwnerID: actor.ID, Name: command.Name, CreatedAt: time.Now().Unix(), UpdatedAt: time.Now().Unix()})
+	_, err = a.repository.Within(transaction).WorkspaceCreateWorkspace(ctx, storage.WorkspaceCreateWorkspaceParams{ID: resourceID, OwnerID: actor.ID, Name: command.Name, CreatedAt: time.Now().Unix(), UpdatedAt: time.Now().Unix()})
 	if err != nil {
 		return Created{}, err
 	}
@@ -69,7 +69,7 @@ func (a *Service) RenameWorkspace(ctx context.Context, actor session.Principal, 
 	}
 	defer func() { _ = transaction.Rollback() }()
 	var revision int
-	workspaceRevisionRow, err := a.repository.Within(transaction).WorkspaceRevision(ctx, storage.WorkspaceRevisionParams{ID: resourceID, OwnerID: actor.ID})
+	workspaceRevisionRow, err := a.repository.Within(transaction).WorkspaceWorkspaceRevision(ctx, storage.WorkspaceWorkspaceRevisionParams{ID: resourceID, OwnerID: actor.ID})
 	revision = workspaceRevisionRow
 	if err != nil {
 		return Completed{}, err
@@ -77,7 +77,7 @@ func (a *Service) RenameWorkspace(ctx context.Context, actor session.Principal, 
 	if revision != command.Revision {
 		return Completed{}, failure("metadata_conflict", "Workspace changed. Refresh and retry.")
 	}
-	_, err = a.repository.Within(transaction).RenameWorkspace(ctx, storage.RenameWorkspaceParams{Name: strings.TrimSpace(command.Name), UpdatedAt: time.Now().Unix(), ID: resourceID})
+	_, err = a.repository.Within(transaction).WorkspaceRenameWorkspace(ctx, storage.WorkspaceRenameWorkspaceParams{Name: strings.TrimSpace(command.Name), UpdatedAt: time.Now().Unix(), ID: resourceID})
 	if err != nil {
 		return Completed{}, err
 	}
@@ -103,7 +103,7 @@ func (a *Service) DeleteWorkspace(ctx context.Context, actor session.Principal, 
 	}
 	defer func() { _ = transaction.Rollback() }()
 	var rev int
-	workspaceRevisionRow, err := a.repository.Within(transaction).WorkspaceRevision(ctx, storage.WorkspaceRevisionParams{ID: resourceID, OwnerID: actor.ID})
+	workspaceRevisionRow, err := a.repository.Within(transaction).WorkspaceWorkspaceRevision(ctx, storage.WorkspaceWorkspaceRevisionParams{ID: resourceID, OwnerID: actor.ID})
 	rev = workspaceRevisionRow
 	if err != nil {
 		return Completed{}, err
@@ -115,7 +115,7 @@ func (a *Service) DeleteWorkspace(ctx context.Context, actor session.Principal, 
 	if err != nil {
 		return Completed{}, err
 	}
-	_, err = a.repository.Within(transaction).DeleteWorkspace(ctx, storage.DeleteWorkspaceParams{ID: resourceID, OwnerID: actor.ID})
+	_, err = a.repository.Within(transaction).WorkspaceDeleteWorkspace(ctx, storage.WorkspaceDeleteWorkspaceParams{ID: resourceID, OwnerID: actor.ID})
 	if err != nil {
 		return Completed{}, err
 	}
@@ -139,14 +139,14 @@ func (a *Service) DuplicateWorkspace(ctx context.Context, actor session.Principa
 	defer func() { _ = transaction.Rollback() }()
 	var name string
 	source := resourceID
-	workspaceNameRow, err := a.repository.Within(transaction).WorkspaceName(ctx, storage.WorkspaceNameParams{ID: source, OwnerID: actor.ID})
+	workspaceNameRow, err := a.repository.Within(transaction).WorkspaceWorkspaceName(ctx, storage.WorkspaceWorkspaceNameParams{ID: source, OwnerID: actor.ID})
 	name = workspaceNameRow
 	if err != nil {
 		return Duplicated{}, err
 	}
 	resourceID = newID()
 	name = copyName(name)
-	_, err = a.repository.Within(transaction).CreateWorkspace(ctx, storage.CreateWorkspaceParams{ID: resourceID, OwnerID: actor.ID, Name: name, CreatedAt: time.Now().Unix(), UpdatedAt: time.Now().Unix()})
+	_, err = a.repository.Within(transaction).WorkspaceCreateWorkspace(ctx, storage.WorkspaceCreateWorkspaceParams{ID: resourceID, OwnerID: actor.ID, Name: name, CreatedAt: time.Now().Unix(), UpdatedAt: time.Now().Unix()})
 	if err != nil {
 		return Duplicated{}, err
 	}
@@ -174,7 +174,7 @@ func (a *Service) ReorderPages(ctx context.Context, actor session.Principal, res
 	defer func() { _ = transaction.Rollback() }()
 	var rev int
 	wid := resourceID
-	workspaceRevisionRow, err := a.repository.Within(transaction).WorkspaceRevision(ctx, storage.WorkspaceRevisionParams{ID: wid, OwnerID: actor.ID})
+	workspaceRevisionRow, err := a.repository.Within(transaction).WorkspaceWorkspaceRevision(ctx, storage.WorkspaceWorkspaceRevisionParams{ID: wid, OwnerID: actor.ID})
 	rev = workspaceRevisionRow
 	if err != nil {
 		return Completed{}, err
@@ -205,7 +205,7 @@ func (a *Service) ReorderPages(ctx context.Context, actor session.Principal, res
 			return Completed{}, notFound()
 		}
 	}
-	_, err = a.repository.Within(transaction).IncrementWorkspaceRevision(ctx, wid)
+	_, err = a.repository.Within(transaction).WorkspaceIncrementWorkspaceRevision(ctx, wid)
 	if err != nil {
 		return Completed{}, err
 	}

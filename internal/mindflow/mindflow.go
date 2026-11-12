@@ -6,24 +6,24 @@ import (
 	"io/fs"
 	"log/slog"
 	"mindflow/internal/account"
-	"mindflow/internal/authentication"
-	"mindflow/internal/canvas"
-	"mindflow/internal/editor"
+	"mindflow/internal/account/authentication"
+	"mindflow/internal/account/invitation"
+	"mindflow/internal/account/passwordreset"
+	"mindflow/internal/account/session"
 	"mindflow/internal/email"
 	"mindflow/internal/installation"
-	"mindflow/internal/invitation"
 	"mindflow/internal/mindflow/storage"
 	"mindflow/internal/notification"
-	"mindflow/internal/page"
-	"mindflow/internal/passwordreset"
-	"mindflow/internal/session"
 	"mindflow/internal/workspace"
+	"mindflow/internal/workspace/page"
+	"mindflow/internal/workspace/page/canvas"
+	"mindflow/internal/workspace/page/editor"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	imageasset "mindflow/internal/image"
+	imageasset "mindflow/internal/workspace/image"
 
 	web "mindflow/web"
 )
@@ -59,25 +59,25 @@ type App struct {
 // New composes domain services and registers HTTP routes.
 func New(ctx context.Context, data *storage.Database, config Config) (*App, error) {
 	service := &App{Config: config, Mux: http.NewServeMux(), Log: slog.Default(), limits: make(map[string]rateWindow)}
-	accounts, err := account.NewService(data.Accounts, credentialRevoker{data: data})
+	accounts, err := account.NewService(data.Accounts, data.Email, data.Workspaces)
 	if err != nil {
 		return nil, err
 	}
 	service.accounts = accounts
-	service.sessions = session.NewService(data.Sessions)
+	service.sessions = session.NewService(data.Accounts)
 	service.installation = installation.NewService(data.Installation, accounts, installation.Config{Dev: config.Dev, Bootstrap: config.Bootstrap})
 	service.mail = email.NewService(data.Email, service.installation, linkAuthorization{data: data})
-	service.invitations = invitation.NewService(data.Invitations, accounts, service.mail, service.installation)
-	service.passwordResets = passwordreset.NewService(data.PasswordResets, accounts, service.mail, service.installation)
+	service.invitations = invitation.NewService(data.Accounts, accounts, service.mail, service.installation)
+	service.passwordResets = passwordreset.NewService(data.Accounts, accounts, service.mail, service.installation)
 	service.authentication = authentication.NewService(accounts, service.sessions, config.Dev)
 	service.notifications = notification.NewService(service.authentication)
-	service.images = imageasset.NewService(data.Images, service.notifications.Publish)
-	service.editors, err = editor.NewService(ctx, data.Editor, service.notifications.Publish)
+	service.images = imageasset.NewService(data.Workspaces, service.notifications.Publish)
+	service.editors, err = editor.NewService(ctx, data.Workspaces, service.notifications.Publish)
 	if err != nil {
 		return nil, err
 	}
-	service.canvases = canvas.NewService(data.Canvas, service.images, service.editors, data.Workspaces, service.notifications.Publish)
-	service.pages = page.NewService(data.Pages, service.canvases, service.images, service.notifications.Publish)
+	service.canvases = canvas.NewService(data.Workspaces, service.images, service.editors, data.Workspaces, service.notifications.Publish)
+	service.pages = page.NewService(data.Workspaces, service.canvases, service.images, service.notifications.Publish)
 	service.workspace = workspace.NewService(data.Workspaces, service.pages, service.images, service.notifications.Publish)
 	service.accounts.RegisterHTTP(service)
 	service.authentication.RegisterHTTP(service)

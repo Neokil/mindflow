@@ -125,14 +125,14 @@ func verifyPassword(encoded, password string) bool {
 
 func (a *Service) guardLastAdmin(ctx context.Context, transaction *storage.Transaction, id, newRole, newStatus string) error {
 	var role, status string
-	userRoleStatusRow, err := a.repository.Within(transaction).UserRoleStatus(ctx, id)
+	userRoleStatusRow, err := a.repository.Within(transaction).AccountUserRoleStatus(ctx, id)
 	role = userRoleStatusRow.Role
 	status = userRoleStatusRow.Status
 	if err != nil {
 		return err
 	}
 	var count int
-	countAdministratorsRow, err := a.repository.Within(transaction).CountAdministrators(ctx)
+	countAdministratorsRow, err := a.repository.Within(transaction).AccountCountAdministrators(ctx)
 	count = int(countAdministratorsRow)
 	if err != nil {
 		return err
@@ -149,13 +149,17 @@ func (a *Service) ListUsers(ctx context.Context, actor User) (_ []UserDelivery, 
 	}
 	defer func() { err = repositoryError(err) }()
 
-	rows, err := a.repository.ListUsers(ctx)
+	rows, err := a.repository.AccountListUsers(ctx)
 	if err != nil {
 		return nil, err
 	}
 	users := make([]UserDelivery, 0, len(rows))
 	for _, row := range rows {
-		users = append(users, UserDelivery{User: User{ID: row.ID, Email: row.Email, Role: row.Role, Status: row.Status, Appearance: row.Appearance}, MailError: row.MailError})
+		mailError, deliveryErr := a.mail.DeliveryError(ctx, row.ID)
+		if deliveryErr != nil {
+			return nil, deliveryErr
+		}
+		users = append(users, UserDelivery{User: User{ID: row.ID, Email: row.Email, Role: row.Role, Status: row.Status, Appearance: row.Appearance}, MailError: mailError})
 	}
 
 	return users, nil
@@ -175,7 +179,7 @@ func (a *Service) UpdateUser(ctx context.Context, actor User, resourceID string,
 	}
 	defer func() { _ = transaction.Rollback() }()
 	var role, status string
-	userRoleStatusRow, err := a.repository.Within(transaction).UserRoleStatus(ctx, resourceID)
+	userRoleStatusRow, err := a.repository.Within(transaction).AccountUserRoleStatus(ctx, resourceID)
 	role = userRoleStatusRow.Role
 	status = userRoleStatusRow.Status
 	if err != nil {
@@ -189,12 +193,12 @@ func (a *Service) UpdateUser(ctx context.Context, actor User, resourceID string,
 	if err != nil {
 		return Completed{}, err
 	}
-	_, err = a.repository.Within(transaction).UpdateUser(ctx, storage.UpdateUserParams{Role: command.Role, Status: command.Status, ID: resourceID})
+	_, err = a.repository.Within(transaction).AccountUpdateUser(ctx, storage.AccountUpdateUserParams{Role: command.Role, Status: command.Status, ID: resourceID})
 	if err != nil {
 		return Completed{}, err
 	}
 	if command.Status != StatusActive {
-		err = a.revoker.RevokeUser(ctx, transaction, resourceID)
+		err = a.revokeCredentials(ctx, transaction, resourceID)
 		if err != nil {
 			return Completed{}, err
 		}
@@ -223,7 +227,15 @@ func (a *Service) DeleteUser(ctx context.Context, actor User, resourceID string,
 	if err != nil {
 		return Completed{}, err
 	}
-	_, err = a.repository.Within(transaction).DeleteUser(ctx, resourceID)
+	err = a.content.DeleteOwnerWithin(ctx, transaction, resourceID)
+	if err != nil {
+		return Completed{}, err
+	}
+	err = a.mail.CancelUserWithin(ctx, transaction, resourceID)
+	if err != nil {
+		return Completed{}, err
+	}
+	_, err = a.repository.Within(transaction).AccountDeleteUser(ctx, resourceID)
 	if err != nil {
 		return Completed{}, err
 	}
@@ -236,7 +248,7 @@ func (a *Service) SetAppearance(ctx context.Context, actor User, value string) e
 	if value != "system" && value != "light" && value != "dark" {
 		return invalid("Invalid appearance.")
 	}
-	_, err := a.repository.SetAppearance(ctx, storage.SetAppearanceParams{Appearance: value, ID: actor.ID})
+	_, err := a.repository.AccountSetAppearance(ctx, storage.AccountSetAppearanceParams{Appearance: value, ID: actor.ID})
 
 	return err
 }

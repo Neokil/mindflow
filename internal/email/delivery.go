@@ -101,7 +101,7 @@ func Send(ctx context.Context, config Config, toValue, subject, body string) err
 func (a *Service) runMail(ctx context.Context) {
 	var resourceID, payload string
 	var attempts int
-	dueMailRow, err := a.repository.DueMail(ctx, time.Now().Unix())
+	dueMailRow, err := a.repository.EmailDueMail(ctx, time.Now().Unix())
 	resourceID = dueMailRow.ID
 	payload = dueMailRow.Payload
 	attempts = dueMailRow.Attempts
@@ -110,7 +110,7 @@ func (a *Service) runMail(ctx context.Context) {
 	}
 	var job mailJob
 	if json.Unmarshal([]byte(payload), &job) != nil {
-		_, _ = a.repository.DeleteJob(ctx, resourceID)
+		_, _ = a.repository.EmailDeleteJob(ctx, resourceID)
 
 		return
 	}
@@ -119,7 +119,7 @@ func (a *Service) runMail(ctx context.Context) {
 		return
 	}
 	if !valid {
-		_, _ = a.repository.DeleteJob(ctx, resourceID)
+		_, _ = a.repository.EmailDeleteJob(ctx, resourceID)
 
 		return
 	}
@@ -128,19 +128,19 @@ func (a *Service) runMail(ctx context.Context) {
 		err = Send(ctx, s, job.To, job.Subject, job.Body)
 	}
 	if err == nil {
-		_, _ = a.repository.DeleteJob(ctx, resourceID)
+		_, _ = a.repository.EmailDeleteJob(ctx, resourceID)
 
 		return
 	}
 	// Deliberately do not store server error text that could echo credentials or links.
 	attempts++
 	if attempts >= maxMailAttempts {
-		_, _ = a.repository.FailMail(ctx, storage.FailMailParams{Attempts: attempts, ID: resourceID})
+		_, _ = a.repository.EmailFailMail(ctx, storage.EmailFailMailParams{Attempts: attempts, ID: resourceID})
 
 		return
 	}
 	delay := int64(retryBaseSeconds * (1 << min(attempts, maxMailAttempts)))
-	_, _ = a.repository.RetryMail(ctx, storage.RetryMailParams{Attempts: attempts, RunAt: time.Now().Unix() + delay, ID: resourceID})
+	_, _ = a.repository.EmailRetryMail(ctx, storage.EmailRetryMailParams{Attempts: attempts, RunAt: time.Now().Unix() + delay, ID: resourceID})
 }
 
 var errSTARTTLSRequired = errors.New("SMTP server does not support STARTTLS")

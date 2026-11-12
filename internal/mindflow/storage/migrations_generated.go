@@ -4,30 +4,16 @@ package storage
 
 import (
 	accountmigrations "mindflow/internal/account/storage/migrations"
-	canvasmigrations "mindflow/internal/canvas/storage/migrations"
-	editormigrations "mindflow/internal/editor/storage/migrations"
 	emailmigrations "mindflow/internal/email/storage/migrations"
-	imagemigrations "mindflow/internal/image/storage/migrations"
 	installationmigrations "mindflow/internal/installation/storage/migrations"
-	invitationmigrations "mindflow/internal/invitation/storage/migrations"
-	pagemigrations "mindflow/internal/page/storage/migrations"
-	passwordresetmigrations "mindflow/internal/passwordreset/storage/migrations"
-	sessionmigrations "mindflow/internal/session/storage/migrations"
 	workspacemigrations "mindflow/internal/workspace/storage/migrations"
 )
 
 func discoveredMigrations() []domainMigrations {
 	return []domainMigrations{
-		{name: "account", files: accountmigrations.Files(), dependencies: accountmigrations.Dependencies()},
-		{name: "canvas", files: canvasmigrations.Files(), dependencies: canvasmigrations.Dependencies()},
-		{name: "editor", files: editormigrations.Files(), dependencies: editormigrations.Dependencies()},
-		{name: "email", files: emailmigrations.Files(), dependencies: emailmigrations.Dependencies()},
-		{name: "image", files: imagemigrations.Files(), dependencies: imagemigrations.Dependencies()},
-		{name: "installation", files: installationmigrations.Files(), dependencies: installationmigrations.Dependencies()},
-		{name: "invitation", files: invitationmigrations.Files(), dependencies: invitationmigrations.Dependencies()},
-		{name: "page", files: pagemigrations.Files(), dependencies: pagemigrations.Dependencies()},
-		{name: "passwordreset", files: passwordresetmigrations.Files(), dependencies: passwordresetmigrations.Dependencies()},
-		{name: "session", files: sessionmigrations.Files(), dependencies: sessionmigrations.Dependencies()},
-		{name: "workspace", files: workspacemigrations.Files(), dependencies: workspacemigrations.Dependencies()},
+		{name: "account", files: accountmigrations.Files()},
+		{name: "email", files: emailmigrations.Files()},
+		{name: "installation", files: installationmigrations.Files()},
+		{name: "workspace", files: workspacemigrations.Files()},
 	}
 }

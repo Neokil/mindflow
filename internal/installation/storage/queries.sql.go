@@ -10,40 +10,40 @@ import (
 	"database/sql"
 )
 
-const completeSetup = `-- name: CompleteSetup :execresult
+const installationCompleteSetup = `-- name: InstallationCompleteSetup :execresult
 UPDATE app_settings SET initialized=1,config=? WHERE id=1
 `
 
-func (q *Queries) CompleteSetup(ctx context.Context, config string) (sql.Result, error) {
-	return q.db.ExecContext(ctx, completeSetup, config)
+func (q *Queries) InstallationCompleteSetup(ctx context.Context, config string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, installationCompleteSetup, config)
 }
 
-const settings = `-- name: Settings :one
+const installationSettings = `-- name: InstallationSettings :one
 SELECT config FROM app_settings WHERE id=1
 `
 
-func (q *Queries) Settings(ctx context.Context) (string, error) {
-	row := q.db.QueryRowContext(ctx, settings)
+func (q *Queries) InstallationSettings(ctx context.Context) (string, error) {
+	row := q.db.QueryRowContext(ctx, installationSettings)
 	var config string
 	err := row.Scan(&config)
 	return config, err
 }
 
-const setupStatus = `-- name: SetupStatus :one
+const installationSetupStatus = `-- name: InstallationSetupStatus :one
 SELECT initialized FROM app_settings WHERE id=1
 `
 
-func (q *Queries) SetupStatus(ctx context.Context) (int, error) {
-	row := q.db.QueryRowContext(ctx, setupStatus)
+func (q *Queries) InstallationSetupStatus(ctx context.Context) (int, error) {
+	row := q.db.QueryRowContext(ctx, installationSetupStatus)
 	var initialized int
 	err := row.Scan(&initialized)
 	return initialized, err
 }
 
-const updateSettings = `-- name: UpdateSettings :execresult
+const installationUpdateSettings = `-- name: InstallationUpdateSettings :execresult
 UPDATE app_settings SET config=? WHERE id=1
 `
 
-func (q *Queries) UpdateSettings(ctx context.Context, config string) (sql.Result, error) {
-	return q.db.ExecContext(ctx, updateSettings, config)
+func (q *Queries) InstallationUpdateSettings(ctx context.Context, config string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, installationUpdateSettings, config)
 }

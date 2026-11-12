@@ -13,7 +13,7 @@ func (a *Service) VerifyCredentials(ctx context.Context, address, password strin
 	email := strings.ToLower(strings.TrimSpace(address))
 	var user User
 	var hash string
-	userByEmailRow, err := a.repository.UserByEmail(ctx, email)
+	userByEmailRow, err := a.repository.AccountUserByEmail(ctx, email)
 	user.ID = userByEmailRow.ID
 	user.Email = userByEmailRow.Email
 	user.Role = userByEmailRow.Role

@@ -1,9 +1,0 @@
--- +goose Up
-CREATE TABLE IF NOT EXISTS page_leases (
- page_id TEXT NOT NULL PRIMARY KEY REFERENCES pages(id) ON DELETE CASCADE,
- session_id TEXT REFERENCES sessions(id) ON DELETE SET NULL,
- client_id TEXT NOT NULL DEFAULT '', epoch INTEGER NOT NULL DEFAULT 0, expires_at INTEGER NOT NULL DEFAULT 0
-);
-
--- +goose Down
-DROP TABLE IF EXISTS page_leases;

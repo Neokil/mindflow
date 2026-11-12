@@ -83,7 +83,7 @@ func (a *Service) Setup(ctx context.Context, _ account.User, command SetupComman
 	}
 	defer func() { _ = transaction.Rollback() }()
 	var init int
-	setupStatusRow, err := a.repository.Within(transaction).SetupStatus(ctx)
+	setupStatusRow, err := a.repository.Within(transaction).InstallationSetupStatus(ctx)
 	init = setupStatusRow
 	if err != nil {
 		return Completed{}, err
@@ -99,7 +99,7 @@ func (a *Service) Setup(ctx context.Context, _ account.User, command SetupComman
 	if err != nil {
 		return Completed{}, wrap("encode settings", err)
 	}
-	_, err = a.repository.Within(transaction).CompleteSetup(ctx, string(raw))
+	_, err = a.repository.Within(transaction).InstallationCompleteSetup(ctx, string(raw))
 	if err != nil {
 		return Completed{}, err
 	}
@@ -112,7 +112,7 @@ func (a *Service) SetupTestEmail(ctx context.Context, _ account.User, command Se
 	defer func() { err = repositoryError(err) }()
 
 	var init int
-	setupStatusRow, err := a.repository.SetupStatus(ctx)
+	setupStatusRow, err := a.repository.InstallationSetupStatus(ctx)
 	init = setupStatusRow
 	if err != nil {
 		return Completed{}, err
@@ -160,14 +160,14 @@ func (a *Service) UpdateSettings(ctx context.Context, actor account.User, comman
 	if err != nil {
 		return Completed{}, wrap("encode settings", err)
 	}
-	_, err = a.repository.UpdateSettings(ctx, string(raw))
+	_, err = a.repository.InstallationUpdateSettings(ctx, string(raw))
 
 	return Completed{OK: true}, err
 }
 
 func (a *Service) settings(ctx context.Context) (Settings, error) {
 	var raw string
-	settingsRow, err := a.repository.Settings(ctx)
+	settingsRow, err := a.repository.InstallationSettings(ctx)
 	raw = settingsRow
 
 	var s Settings
@@ -181,7 +181,7 @@ func (a *Service) settings(ctx context.Context) (Settings, error) {
 // Initialized reports whether first-run setup is complete.
 func (a *Service) Initialized(ctx context.Context) (bool, error) {
 	var n int
-	setupStatusRow, err := a.repository.SetupStatus(ctx)
+	setupStatusRow, err := a.repository.InstallationSetupStatus(ctx)
 	n = setupStatusRow
 
 	return n == 1, err

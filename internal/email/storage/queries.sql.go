@@ -10,70 +10,81 @@ import (
 	"database/sql"
 )
 
-const deleteJob = `-- name: DeleteJob :execresult
-DELETE FROM jobs WHERE id=? AND kind='mail'
+const emailDeleteJob = `-- name: EmailDeleteJob :execresult
+DELETE FROM mail_jobs WHERE id=?
 `
 
-func (q *Queries) DeleteJob(ctx context.Context, id string) (sql.Result, error) {
-	return q.db.ExecContext(ctx, deleteJob, id)
+func (q *Queries) EmailDeleteJob(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, emailDeleteJob, id)
 }
 
-const deletePurposeMail = `-- name: DeletePurposeMail :execresult
-DELETE FROM jobs WHERE user_id=? AND kind='mail' AND dedup_key=?
+const emailDeletePurposeMail = `-- name: EmailDeletePurposeMail :execresult
+DELETE FROM mail_jobs WHERE user_id=? AND dedup_key=?
 `
 
-type DeletePurposeMailParams struct {
+type EmailDeletePurposeMailParams struct {
 	UserID   string
 	DedupKey string
 }
 
-func (q *Queries) DeletePurposeMail(ctx context.Context, arg DeletePurposeMailParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, deletePurposeMail, arg.UserID, arg.DedupKey)
+func (q *Queries) EmailDeletePurposeMail(ctx context.Context, arg EmailDeletePurposeMailParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, emailDeletePurposeMail, arg.UserID, arg.DedupKey)
 }
 
-const deleteUserMail = `-- name: DeleteUserMail :execresult
-DELETE FROM jobs WHERE user_id=? AND kind='mail'
+const emailDeleteUserMail = `-- name: EmailDeleteUserMail :execresult
+DELETE FROM mail_jobs WHERE user_id=?
 `
 
-func (q *Queries) DeleteUserMail(ctx context.Context, userID string) (sql.Result, error) {
-	return q.db.ExecContext(ctx, deleteUserMail, userID)
+func (q *Queries) EmailDeleteUserMail(ctx context.Context, userID string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, emailDeleteUserMail, userID)
 }
 
-const dueMail = `-- name: DueMail :one
-SELECT id,payload,attempts FROM jobs WHERE kind='mail' AND run_at<=? AND attempts<8 ORDER BY run_at LIMIT 1
+const emailDeliveryError = `-- name: EmailDeliveryError :one
+SELECT CAST(COALESCE((SELECT last_error FROM mail_jobs WHERE user_id=? ORDER BY run_at DESC LIMIT 1),'') AS TEXT)
 `
 
-type DueMailRow struct {
+func (q *Queries) EmailDeliveryError(ctx context.Context, userID string) (string, error) {
+	row := q.db.QueryRowContext(ctx, emailDeliveryError, userID)
+	var column_1 string
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const emailDueMail = `-- name: EmailDueMail :one
+SELECT id,payload,attempts FROM mail_jobs WHERE run_at<=? AND attempts<8 ORDER BY run_at LIMIT 1
+`
+
+type EmailDueMailRow struct {
 	ID       string
 	Payload  string
 	Attempts int
 }
 
-func (q *Queries) DueMail(ctx context.Context, runAt int64) (DueMailRow, error) {
-	row := q.db.QueryRowContext(ctx, dueMail, runAt)
-	var i DueMailRow
+func (q *Queries) EmailDueMail(ctx context.Context, runAt int64) (EmailDueMailRow, error) {
+	row := q.db.QueryRowContext(ctx, emailDueMail, runAt)
+	var i EmailDueMailRow
 	err := row.Scan(&i.ID, &i.Payload, &i.Attempts)
 	return i, err
 }
 
-const failMail = `-- name: FailMail :execresult
-UPDATE jobs SET attempts=?,payload='{}',last_error='Email delivery failed. Check SMTP settings and resend.' WHERE id=? AND kind='mail'
+const emailFailMail = `-- name: EmailFailMail :execresult
+UPDATE mail_jobs SET attempts=?,payload='{}',last_error='Email delivery failed. Check SMTP settings and resend.' WHERE id=?
 `
 
-type FailMailParams struct {
+type EmailFailMailParams struct {
 	Attempts int
 	ID       string
 }
 
-func (q *Queries) FailMail(ctx context.Context, arg FailMailParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, failMail, arg.Attempts, arg.ID)
+func (q *Queries) EmailFailMail(ctx context.Context, arg EmailFailMailParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, emailFailMail, arg.Attempts, arg.ID)
 }
 
-const queueMail = `-- name: QueueMail :execresult
-INSERT INTO jobs(id,user_id,kind,dedup_key,payload,run_at) VALUES(?,?,'mail',?,?,?)
+const emailQueueMail = `-- name: EmailQueueMail :execresult
+INSERT INTO mail_jobs(id,user_id,dedup_key,payload,run_at) VALUES(?,?,?,?,?)
 `
 
-type QueueMailParams struct {
+type EmailQueueMailParams struct {
 	ID       string
 	UserID   string
 	DedupKey string
@@ -81,8 +92,8 @@ type QueueMailParams struct {
 	RunAt    int64
 }
 
-func (q *Queries) QueueMail(ctx context.Context, arg QueueMailParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, queueMail,
+func (q *Queries) EmailQueueMail(ctx context.Context, arg EmailQueueMailParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, emailQueueMail,
 		arg.ID,
 		arg.UserID,
 		arg.DedupKey,
@@ -91,25 +102,25 @@ func (q *Queries) QueueMail(ctx context.Context, arg QueueMailParams) (sql.Resul
 	)
 }
 
-const retryMail = `-- name: RetryMail :execresult
-UPDATE jobs SET attempts=?,run_at=?,last_error='Email delivery failed; retry scheduled.' WHERE id=? AND kind='mail'
+const emailRetryMail = `-- name: EmailRetryMail :execresult
+UPDATE mail_jobs SET attempts=?,run_at=?,last_error='Email delivery failed; retry scheduled.' WHERE id=?
 `
 
-type RetryMailParams struct {
+type EmailRetryMailParams struct {
 	Attempts int
 	RunAt    int64
 	ID       string
 }
 
-func (q *Queries) RetryMail(ctx context.Context, arg RetryMailParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, retryMail, arg.Attempts, arg.RunAt, arg.ID)
+func (q *Queries) EmailRetryMail(ctx context.Context, arg EmailRetryMailParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, emailRetryMail, arg.Attempts, arg.RunAt, arg.ID)
 }
 
-const revokeMail = `-- name: RevokeMail :exec
-DELETE FROM jobs WHERE kind='mail'
+const emailRevokeMail = `-- name: EmailRevokeMail :exec
+DELETE FROM mail_jobs
 `
 
-func (q *Queries) RevokeMail(ctx context.Context) error {
-	_, err := q.db.ExecContext(ctx, revokeMail)
+func (q *Queries) EmailRevokeMail(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, emailRevokeMail)
 	return err
 }

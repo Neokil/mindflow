@@ -35,7 +35,7 @@ func (a *Service) Process(ctx context.Context) { a.runMail(ctx) }
 
 // QueueWithin replaces a superseded message and queues the new credential link atomically.
 func (a *Service) QueueWithin(ctx context.Context, transaction *storage.Transaction, userID, purpose, to, subject, body, tokenHash string) error {
-	_, err := a.repository.Within(transaction).DeletePurposeMail(ctx, storage.DeletePurposeMailParams{UserID: userID, DedupKey: userID + ":" + purpose})
+	_, err := a.repository.Within(transaction).EmailDeletePurposeMail(ctx, storage.EmailDeletePurposeMailParams{UserID: userID, DedupKey: userID + ":" + purpose})
 	if err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func (a *Service) QueueWithin(ctx context.Context, transaction *storage.Transact
 	if err != nil {
 		return wrap("encode credential email", err)
 	}
-	_, err = a.repository.Within(transaction).QueueMail(ctx, storage.QueueMailParams{ID: newID(), UserID: userID, DedupKey: userID + ":" + purpose, Payload: string(payload), RunAt: time.Now().Unix()})
+	_, err = a.repository.Within(transaction).EmailQueueMail(ctx, storage.EmailQueueMailParams{ID: newID(), UserID: userID, DedupKey: userID + ":" + purpose, Payload: string(payload), RunAt: time.Now().Unix()})
 
 	return err
 }

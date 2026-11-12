@@ -3,7 +3,7 @@ package notification
 import (
 	"context"
 	"fmt"
-	"mindflow/internal/session"
+	"mindflow/internal/account/session"
 	"net/http"
 	"sync"
 )

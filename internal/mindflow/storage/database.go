@@ -5,16 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	accountstorage "mindflow/internal/account/storage"
-	canvasstorage "mindflow/internal/canvas/storage"
-	editorstorage "mindflow/internal/editor/storage"
 	emailstorage "mindflow/internal/email/storage"
-	imagestorage "mindflow/internal/image/storage"
 	installationstorage "mindflow/internal/installation/storage"
-	invitationstorage "mindflow/internal/invitation/storage"
 	"mindflow/internal/mindflow/storage/transaction"
-	pagestorage "mindflow/internal/page/storage"
-	resetstorage "mindflow/internal/passwordreset/storage"
-	sessionstorage "mindflow/internal/session/storage"
 	workspacestorage "mindflow/internal/workspace/storage"
 	"net/url"
 	"os"
@@ -26,18 +19,11 @@ import (
 
 // Database owns a SQLite connection and its domain storage adapters.
 type Database struct {
-	connection     *sql.DB
-	Accounts       *accountstorage.Repository
-	Sessions       *sessionstorage.Repository
-	Invitations    *invitationstorage.Repository
-	PasswordResets *resetstorage.Repository
-	Email          *emailstorage.Repository
-	Installation   *installationstorage.Repository
-	Workspaces     *workspacestorage.Repository
-	Pages          *pagestorage.Repository
-	Canvas         *canvasstorage.Repository
-	Editor         *editorstorage.Repository
-	Images         *imagestorage.Repository
+	connection   *sql.DB
+	Accounts     *accountstorage.Repository
+	Email        *emailstorage.Repository
+	Installation *installationstorage.Repository
+	Workspaces   *workspacestorage.Repository
 }
 
 // Open opens the database without modifying its schema.
@@ -59,7 +45,7 @@ func Open(ctx context.Context, path string) (*Database, error) {
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
-	return &Database{connection: connection, Accounts: accountstorage.NewRepository(connection), Sessions: sessionstorage.NewRepository(connection), Invitations: invitationstorage.NewRepository(connection), PasswordResets: resetstorage.NewRepository(connection), Email: emailstorage.NewRepository(connection), Installation: installationstorage.NewRepository(connection), Workspaces: workspacestorage.NewRepository(connection), Pages: pagestorage.NewRepository(connection), Canvas: canvasstorage.NewRepository(connection), Editor: editorstorage.NewRepository(connection), Images: imagestorage.NewRepository(connection)}, nil
+	return &Database{connection: connection, Accounts: accountstorage.NewRepository(connection), Email: emailstorage.NewRepository(connection), Installation: installationstorage.NewRepository(connection), Workspaces: workspacestorage.NewRepository(connection)}, nil
 }
 
 // OpenData opens the database and applies every discovered domain's pending migrations.
@@ -110,7 +96,7 @@ func (a *Database) Begin(ctx context.Context) (*transaction.Transaction, error) 
 
 // SetupComplete reports whether the installation domain has been initialized.
 func (a *Database) SetupComplete(ctx context.Context) (bool, error) {
-	initialized, err := a.Installation.SetupStatus(ctx)
+	initialized, err := a.Installation.InstallationSetupStatus(ctx)
 	if err != nil {
 		return false, fmt.Errorf("read installation state: %w", err)
 	}
@@ -125,15 +111,15 @@ func (a *Database) RevokeCredentials(ctx context.Context) error {
 		return err
 	}
 	defer func() { _ = transaction.Rollback() }()
-	err = a.Sessions.RevokeAllWithin(ctx, transaction)
+	err = a.Accounts.SessionRevokeAllWithin(ctx, transaction)
 	if err != nil {
 		return err
 	}
-	err = a.Invitations.RevokeAllWithin(ctx, transaction)
+	err = a.Accounts.InvitationRevokeAllWithin(ctx, transaction)
 	if err != nil {
 		return err
 	}
-	err = a.PasswordResets.RevokeAllWithin(ctx, transaction)
+	err = a.Accounts.PasswordresetRevokeAllWithin(ctx, transaction)
 	if err != nil {
 		return err
 	}
@@ -141,7 +127,7 @@ func (a *Database) RevokeCredentials(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	err = a.Editor.RevokeWithin(ctx, transaction)
+	err = a.Workspaces.RevokeWithin(ctx, transaction)
 	if err != nil {
 		return err
 	}

@@ -3,9 +3,7 @@ package storage_test
 import (
 	"io/fs"
 	"mindflow/internal/mindflow/storage"
-	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -77,7 +75,7 @@ func extended(t *testing.T, name, sql string) []storage.MigrationSetForTest {
 func TestIndependentVersionsAndIdempotency(t *testing.T) {
 	t.Parallel()
 	database := fresh(t)
-	catalog := extended(t, "canvas", "-- +goose Up\nCREATE TABLE canvas_upgrade_probe(id INTEGER PRIMARY KEY);\n-- +goose Down\nDROP TABLE canvas_upgrade_probe;\n")
+	catalog := extended(t, "workspace", "-- +goose Up\nCREATE TABLE canvas_upgrade_probe(id INTEGER PRIMARY KEY);\n-- +goose Down\nDROP TABLE canvas_upgrade_probe;\n")
 	err := database.MigrateForTest(t.Context(), catalog)
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +86,7 @@ func TestIndependentVersionsAndIdempotency(t *testing.T) {
 	}
 	for _, domain := range storage.MigrationCatalogForTest() {
 		expected := int64(1)
-		if domain.Name == "canvas" || domain.Name == "installation" {
+		if domain.Name == "workspace" {
 			expected = 2
 		}
 		actual := version(t, database, domain.Name)
@@ -101,15 +99,15 @@ func TestIndependentVersionsAndIdempotency(t *testing.T) {
 func TestFailedMigrationRollsBackAndCanRetry(t *testing.T) {
 	t.Parallel()
 	database := fresh(t)
-	bad := extended(t, "canvas", "-- +goose Up\nCREATE TABLE failed_upgrade_probe(id INTEGER);\nINSERT INTO nonexistent_table VALUES(1);\n-- +goose Down\nDROP TABLE failed_upgrade_probe;\n")
+	bad := extended(t, "workspace", "-- +goose Up\nCREATE TABLE failed_upgrade_probe(id INTEGER);\nINSERT INTO nonexistent_table VALUES(1);\n-- +goose Down\nDROP TABLE failed_upgrade_probe;\n")
 	if database.MigrateForTest(t.Context(), bad) == nil {
 		t.Fatal("invalid migration succeeded")
 	}
-	if version(t, database, "canvas") != 1 {
+	if version(t, database, "workspace") != 1 {
 		t.Fatal("failed migration advanced history")
 	}
 	assertTable(t, database, "failed_upgrade_probe", false)
-	good := extended(t, "canvas", "-- +goose Up\nCREATE TABLE failed_upgrade_probe(id INTEGER);\n-- +goose Down\nDROP TABLE failed_upgrade_probe;\n")
+	good := extended(t, "workspace", "-- +goose Up\nCREATE TABLE failed_upgrade_probe(id INTEGER);\n-- +goose Down\nDROP TABLE failed_upgrade_probe;\n")
 	err := database.MigrateForTest(t.Context(), good)
 	if err != nil {
 		t.Fatal(err)
@@ -120,7 +118,7 @@ func TestFailedMigrationRollsBackAndCanRetry(t *testing.T) {
 func TestNewerDomainRefusesOtherPendingChanges(t *testing.T) {
 	t.Parallel()
 	database := fresh(t)
-	_, err := database.SQLForTest().ExecContext(t.Context(), "INSERT INTO goose_canvas_version(version_id,is_applied) VALUES(99,1)")
+	_, err := database.SQLForTest().ExecContext(t.Context(), "INSERT INTO goose_workspace_version(version_id,is_applied) VALUES(99,1)")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,79 +127,6 @@ func TestNewerDomainRefusesOtherPendingChanges(t *testing.T) {
 		t.Fatal("older binary accepted newer canvas history")
 	}
 	assertTable(t, database, "must_not_apply", false)
-}
-
-func TestLegacyUpgradePreservesContent(t *testing.T) {
-	t.Parallel()
-	path := filepath.Join(t.TempDir(), "legacy.sqlite")
-	database, err := storage.Open(t.Context(), path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = database.Close() }()
-	baseline, err := os.ReadFile("testdata/legacy_v2.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = database.SQLForTest().ExecContext(t.Context(), string(baseline))
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = database.SQLForTest().ExecContext(t.Context(), `INSERT INTO app_settings(id,initialized,config) VALUES(1,1,'{"remembered":true}');
- INSERT INTO users(id,email,role,status,created_at) VALUES('owner','owner@example.invalid','admin','active',1);
- INSERT INTO workspaces(id,owner_id,name,created_at,updated_at) VALUES('workspace','owner','Preserve',1,1);
- INSERT INTO pages(id,workspace_id,name,position,document,updated_at) VALUES('page','workspace','Original',0,'{"schemaVersion":1}',1);
- INSERT INTO assets(id,owner_id,original,mime,width,height,digest,created_at) VALUES('asset','owner',x'000102','image/png',1,1,'hash',1);`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = database.Migrate(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = database.Migrate(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
-	var name, document, config string
-	var image []byte
-	err = database.SQLForTest().QueryRowContext(t.Context(), "SELECT w.name,p.document,s.config,a.original FROM workspaces w JOIN pages p ON p.workspace_id=w.id CROSS JOIN app_settings s CROSS JOIN assets a WHERE w.id='workspace'").Scan(&name, &document, &config, &image)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if name != "Preserve" || document != "{\"schemaVersion\":1}" || config != "{\"remembered\":true}" || string(image) != "\x00\x01\x02" {
-		t.Fatal("legacy upgrade changed stored content")
-	}
-	assertTable(t, database, "schema_migrations", false)
-	for _, domain := range storage.MigrationCatalogForTest() {
-		if version(t, database, domain.Name) == 0 {
-			t.Fatalf("legacy domain %s was not adopted by Goose", domain.Name)
-		}
-	}
-}
-
-func TestUnknownLegacyAndBadDependenciesAreRejected(t *testing.T) {
-	t.Parallel()
-	database, err := storage.Open(t.Context(), filepath.Join(t.TempDir(), "future.sqlite"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = database.Close() }()
-	_, err = database.SQLForTest().ExecContext(t.Context(), "CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY); INSERT INTO schema_migrations VALUES(99)")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if database.Migrate(t.Context()) == nil {
-		t.Fatal("newer legacy schema accepted")
-	}
-	assertTable(t, database, "goose_account_version", false)
-	clean := fresh(t)
-	for _, catalog := range [][]storage.MigrationSetForTest{{{Name: firstDomain, Dependencies: []string{"missing"}}}, {{Name: firstDomain, Dependencies: []string{"two"}}, {Name: "two", Dependencies: []string{firstDomain}}}} {
-		err = clean.MigrateForTest(t.Context(), catalog)
-		if err == nil || !strings.Contains(err.Error(), "invalid domain migration dependency") {
-			t.Fatalf("wrong catalog validation result: %v", err)
-		}
-	}
 }
 
 func assertTable(t *testing.T, database *storage.Database, name string, expected bool) {
@@ -216,4 +141,36 @@ func assertTable(t *testing.T, database *storage.Database, name string, expected
 	}
 }
 
-const firstDomain = "one"
+func TestEachDomainMigratesWithoutOtherSchemas(t *testing.T) {
+	t.Parallel()
+	for _, domain := range storage.MigrationCatalogForTest() {
+		t.Run(domain.Name, func(t *testing.T) {
+			t.Parallel()
+			database, err := storage.Open(t.Context(), filepath.Join(t.TempDir(), "isolated.sqlite"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = database.Close() }()
+			provider, err := goose.NewProvider(goose.DialectSQLite3, database.SQLForTest(), domain.Files, goose.WithTableName("goose_"+domain.Name+"_version"), goose.WithDisableGlobalRegistry(true))
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = provider.Up(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = database.Check(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = provider.DownTo(t.Context(), 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = provider.Up(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
