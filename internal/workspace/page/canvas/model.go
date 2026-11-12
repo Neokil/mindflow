@@ -6,30 +6,39 @@ import (
 	"regexp"
 )
 
+// ImageCrop identifies a rectangle in normalized original-image coordinates.
+type ImageCrop struct {
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+}
+
 // Element is an independently transformed canvas object.
 type Element struct {
-	ID            string    `json:"id"`
-	Type          string    `json:"type"`
-	X             float64   `json:"x"`
-	Y             float64   `json:"y"`
-	Width         float64   `json:"width"`
-	Height        float64   `json:"height"`
-	Rotation      float64   `json:"rotation"`
-	GroupID       string    `json:"groupId,omitempty"`
-	Shape         string    `json:"shape,omitempty"`
-	Fill          string    `json:"fill,omitempty"`
-	Border        string    `json:"border,omitempty"`
-	BorderWidth   float64   `json:"borderWidth,omitempty"`
-	Text          string    `json:"text,omitempty"`
-	FontSize      float64   `json:"fontSize,omitempty"`
-	Bold          bool      `json:"bold,omitempty"`
-	Italic        bool      `json:"italic,omitempty"`
-	Align         string    `json:"align,omitempty"`
-	VerticalAlign string    `json:"verticalAlign,omitempty"`
-	Color         string    `json:"color,omitempty"`
-	AssetID       string    `json:"assetId,omitempty"`
-	Points        []float64 `json:"points,omitempty"`
-	PenWidth      float64   `json:"penWidth,omitempty"`
+	ID            string     `json:"id"`
+	Type          string     `json:"type"`
+	X             float64    `json:"x"`
+	Y             float64    `json:"y"`
+	Width         float64    `json:"width"`
+	Height        float64    `json:"height"`
+	Rotation      float64    `json:"rotation"`
+	GroupID       string     `json:"groupId,omitempty"`
+	Shape         string     `json:"shape,omitempty"`
+	Fill          string     `json:"fill,omitempty"`
+	Border        string     `json:"border,omitempty"`
+	BorderWidth   float64    `json:"borderWidth,omitempty"`
+	Text          string     `json:"text,omitempty"`
+	FontSize      float64    `json:"fontSize,omitempty"`
+	Bold          bool       `json:"bold,omitempty"`
+	Italic        bool       `json:"italic,omitempty"`
+	Align         string     `json:"align,omitempty"`
+	VerticalAlign string     `json:"verticalAlign,omitempty"`
+	Crop          *ImageCrop `json:"crop,omitempty"`
+	Color         string     `json:"color,omitempty"`
+	AssetID       string     `json:"assetId,omitempty"`
+	Points        []float64  `json:"points,omitempty"`
+	PenWidth      float64    `json:"penWidth,omitempty"`
 }
 
 // Settings stores a page's background and grid preferences.
@@ -109,6 +118,11 @@ func validateElement(entry Element) error {
 	if entry.VerticalAlign != "" && entry.VerticalAlign != "top" && entry.VerticalAlign != "middle" && entry.VerticalAlign != "bottom" {
 		return invalid("Invalid vertical alignment.")
 	}
+	cropErr := validateImageCrop(entry)
+	if cropErr != nil {
+		return cropErr
+	}
+
 	switch entry.Type {
 	case "shape":
 		if entry.Shape != "rectangle" && entry.Shape != "circle" && entry.Shape != "star" {
@@ -185,3 +199,14 @@ type SaveDocumentCommand struct {
 }
 
 var colorPattern = regexp.MustCompile(`^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$`)
+
+func validateImageCrop(entry Element) error {
+	if entry.Crop != nil {
+		c := entry.Crop
+		if entry.Type != elementImage || !Finite(c.X) || !Finite(c.Y) || !Finite(c.Width) || !Finite(c.Height) || c.X < 0 || c.Y < 0 || c.Width <= 0 || c.Height <= 0 || c.X+c.Width > 1+1e-9 || c.Y+c.Height > 1+1e-9 {
+			return invalid("Invalid image crop.")
+		}
+	}
+
+	return nil
+}

@@ -1,3 +1,4 @@
+export type ImageCrop = { x: number; y: number; width: number; height: number };
 export type CanvasElement = {
   id: string;
   type: "image" | "shape" | "text" | "stroke";
@@ -17,6 +18,7 @@ export type CanvasElement = {
   italic?: boolean;
   align?: "left" | "center" | "right";
   verticalAlign?: "top" | "middle" | "bottom";
+  crop?: ImageCrop;
   color?: string;
   assetId?: string;
   points?: number[];
@@ -123,9 +125,24 @@ export function validClipboardElements(
       !["top", "middle", "bottom"].includes(e.verticalAlign)
     )
       return false;
+    if (e.crop !== undefined && (e.type !== "image" || !validImageCrop(e.crop)))
+      return false;
     return e.width > 0 && e.height > 0;
   });
 }
 
+export function validImageCrop(value: unknown): value is ImageCrop {
+  if (!value || typeof value !== "object") return false;
+  const crop = value as ImageCrop;
+  return (
+    [crop.x, crop.y, crop.width, crop.height].every(Number.isFinite) &&
+    crop.x >= 0 &&
+    crop.y >= 0 &&
+    crop.width > 0 &&
+    crop.height > 0 &&
+    crop.x + crop.width <= 1 + 1e-9 &&
+    crop.y + crop.height <= 1 + 1e-9
+  );
+}
 export const wholeFontSize = (value: number) =>
   Math.max(1, Math.min(2000, Math.round(value)));

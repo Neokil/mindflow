@@ -22,9 +22,14 @@ function ImageContent({
   const [failed, setFailed] = useState(false);
   const assetID = e.assetId!;
   const renderWidth =
-    Math.ceil((e.width * zoom * (devicePixelRatio || 1)) / 64) * 64;
+    Math.ceil(
+      ((e.width / (e.crop?.width || 1)) * zoom * (devicePixelRatio || 1)) / 64,
+    ) * 64;
   const renderHeight =
-    Math.ceil((e.height * zoom * (devicePixelRatio || 1)) / 64) * 64;
+    Math.ceil(
+      ((e.height / (e.crop?.height || 1)) * zoom * (devicePixelRatio || 1)) /
+        64,
+    ) * 64;
   useEffect(() => {
     let canceled = false;
     let retry: ReturnType<typeof setTimeout>;
@@ -82,6 +87,16 @@ function ImageContent({
   return image ? (
     <KImage
       image={image}
+      crop={
+        e.crop
+          ? {
+              x: e.crop.x * image.naturalWidth,
+              y: e.crop.y * image.naturalHeight,
+              width: e.crop.width * image.naturalWidth,
+              height: e.crop.height * image.naturalHeight,
+            }
+          : undefined
+      }
       x={-e.width / 2}
       y={-e.height / 2}
       width={e.width}

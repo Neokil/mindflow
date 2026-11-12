@@ -146,3 +146,9 @@ The frontend package override pins `minimatch` to 11.0.8 to resolve development-
 After quality, browser and container verification succeed, pushes to `main` publish `neokil/mindflow:edge` and a `sha-<short-commit>` tag. Pushing a semantic version tag such as `v0.1.0` publishes `neokil/mindflow:0.1.0`; stable versions also receive `latest`. Prerelease tags do not replace `latest`. Pull requests and manual CI runs do not publish images.
 
 The image job uses the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` to authenticate to Docker Hub. It builds Linux amd64 and arm64 images with commit-pinned official Docker actions, following the [Docker GitHub Actions workflow](https://docs.docker.com/build/ci/github-actions/). The image name is fixed to `neokil/mindflow`, independently of the login username. No publishing credentials are needed by the test jobs. Use a version tag or digest for stable deployments; the TrueNAS example defaults to `edge` for initial development.
+
+## Element editing
+
+In Select mode, hovering over movable elements shows a grab cursor and dragging shows a grabbing cursor. Text properties support whole-number font sizes (1–2,000) and horizontal/vertical alignment.
+
+To crop, select one image, open Selection properties and choose **Crop image**. Draw or adjust the rectangle or trim percentages, then Apply. Cancel discards the draft. Reset crop followed by Apply restores the full original. Crops support undo/redo and retain the original file.

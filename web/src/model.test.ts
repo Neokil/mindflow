@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { uid, wholeFontSize } from "./model";
+import { uid, wholeFontSize, validClipboardElements } from "./model";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -15,4 +15,24 @@ it("rounds font sizes and enforces their supported range", () => {
   expect(wholeFontSize(28.6)).toBe(29);
   expect(wholeFontSize(0)).toBe(1);
   expect(wholeFontSize(2500)).toBe(2000);
+});
+
+it("rejects clipboard image crops outside the original image", () => {
+  const image = {
+    id: "image",
+    type: "image",
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    rotation: 0,
+    crop: { x: 0.2, y: 0.1, width: 0.5, height: 0.6 },
+  };
+  expect(validClipboardElements([image])).toBe(true);
+  expect(
+    validClipboardElements([{ ...image, crop: { ...image.crop, width: 0.9 } }]),
+  ).toBe(false);
+  expect(
+    validClipboardElements([{ ...image, crop: { ...image.crop, height: 0 } }]),
+  ).toBe(false);
 });

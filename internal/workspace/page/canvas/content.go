@@ -138,12 +138,17 @@ func (a *Service) ValidateAssetsWithin(ctx context.Context, transaction *storage
 
 func (a *Service) enqueueImageVariants(ctx context.Context, owner string, d Document) {
 	targets := map[string][2]float64{}
-	for _, e := range d.Elements {
-		if e.Type == elementImage {
-			target := targets[e.AssetID]
-			target[0] = math.Max(target[0], e.Width)
-			target[1] = math.Max(target[1], e.Height)
-			targets[e.AssetID] = target
+	for _, entry := range d.Elements {
+		if entry.Type == elementImage {
+			target := targets[entry.AssetID]
+			width, height := entry.Width, entry.Height
+			if entry.Crop != nil {
+				width /= entry.Crop.Width
+				height /= entry.Crop.Height
+			}
+			target[0] = math.Max(target[0], width)
+			target[1] = math.Max(target[1], height)
+			targets[entry.AssetID] = target
 		}
 	}
 	for id, target := range targets {

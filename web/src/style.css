@@ -1426,3 +1426,65 @@ kbd {
     max-width: 125px;
   }
 }
+
+.crop-preview {
+  position: relative;
+  margin: 20px auto;
+  overflow: hidden;
+  touch-action: none;
+  cursor: crosshair;
+  background: var(--bg);
+}
+.crop-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  pointer-events: none;
+}
+.crop-selection {
+  position: absolute;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 1000px #0006;
+  cursor: move;
+  box-sizing: border-box;
+}
+.crop-corner {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: white;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+}
+.crop-corner.nw {
+  left: -6px;
+  top: -6px;
+  cursor: nwse-resize;
+}
+.crop-corner.ne {
+  right: -6px;
+  top: -6px;
+  cursor: nesw-resize;
+}
+.crop-corner.sw {
+  left: -6px;
+  bottom: -6px;
+  cursor: nesw-resize;
+}
+.crop-corner.se {
+  right: -6px;
+  bottom: -6px;
+  cursor: nwse-resize;
+}
+.crop-fields {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.crop-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}

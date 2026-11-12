@@ -13,6 +13,7 @@ import {
 import type { CanvasElement, Point } from "../../model";
 import { clone, duplicateElements, uid } from "../../model";
 import { PageSession, localImages } from "../../session";
+import ImageCropDialog from "./ImageCropDialog";
 import CanvasControls from "./CanvasControls";
 import CanvasScene from "./CanvasScene";
 import CanvasTextEditor from "./CanvasTextEditor";
@@ -49,6 +50,7 @@ export default function Canvas({
     [error, setError] = useState("");
   const [editing, setEditing] = useState<string>(),
     [textValue, setTextValue] = useState("");
+  const [cropping, setCropping] = useState<CanvasElement>();
   const gesture = useRef<
     | {
         kind: "pan" | "lasso" | "pen";
@@ -85,6 +87,7 @@ export default function Canvas({
     if (!session.editable) {
       setPending([]);
       setEditing(undefined);
+      setCropping(undefined);
       gesture.current = undefined;
       preview.current?.points([]);
     }
@@ -629,8 +632,25 @@ export default function Canvas({
           onReorder={reorder}
           onDelete={remove}
           onEditText={startText}
+          onCrop={setCropping}
           onSettings={(settings) => session.edit({ ...session.doc, settings })}
           onClose={() => setInspector(false)}
+        />
+      )}
+      {cropping && session.editable && (
+        <ImageCropDialog
+          element={cropping}
+          onClose={() => setCropping(undefined)}
+          onApply={(values) => {
+            editElements(
+              session.doc.elements.map((element) =>
+                element.id === cropping.id
+                  ? { ...element, ...values }
+                  : element,
+              ),
+            );
+            setCropping(undefined);
+          }}
         />
       )}
       {selected.length > 0 && !inspector && (

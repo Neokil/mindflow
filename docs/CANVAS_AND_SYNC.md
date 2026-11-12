@@ -24,7 +24,7 @@ The element list defines back-to-front stacking. Initial groups are non-nested c
 
 Store shape geometry in local coordinates. Store stroke points in a normalized local coordinate system with a pen width; transforms resize/rotate the resulting geometry. For nonuniform resizing, propose keeping the stroke's scalar pen width unchanged while its path stretches. This needs a visual prototype check.
 
-Text stores plain Unicode text and one style object for the entire element: font size, bold, italic, alignment, color, and a bundled or consistently available font family. No HTML or per-word styles are persisted. Use the same font metrics for canvas display and the HTML input overlay.
+Text stores plain Unicode text and one style object for the entire element: whole-number font size, bold, italic, horizontal alignment, vertical alignment (top/middle/bottom), color, and a bundled or consistently available font family. No HTML or per-word styles are persisted. Use the same font metrics for canvas display and the HTML input overlay.
 
 Page settings include background (dots/plain), grid spacing, and snapping enabled. Default spacing is 20 world units and must be configurable to a positive value. Proposed snapping default is off. Light/dark appearance follows system settings initially, with user preference stored in SQLite.
 
@@ -53,7 +53,7 @@ Use viewport culling, a spatial lookup for candidate elements, bounded decoded-i
 | Corner image handle | Resize with original selection aspect ratio preserved. |
 | Side image handle | Resize without preserving aspect ratio. |
 | Text side handle | Change box width and wrapping without changing font size. |
-| Text corner handle | Uniformly scale text box and font size. |
+| Text corner handle | Uniformly scale text box and round font size to a whole number. |
 | Rotation handle | Rotate selected element(s). |
 | Escape | Cancel gesture/placement, then clear selection if idle. |
 
@@ -210,3 +210,9 @@ Test save retry after a committed-but-lost acknowledgment, edits during an in-fl
 ## Implementation notes
 
 The prototype uses Konva with a renderer-independent persisted model. In-memory camera state survives page-tab switches. A page with a pending recovery copy must save or discard that copy before taking control again, preventing a second displacement from overwriting earlier local work. An unmodified page can automatically reacquire its expired lease after reconnecting; ambiguous saves are retried with their original mutation identity first. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for actual browser and performance results.
+
+### Image crop representation
+
+An optional image `crop` stores `{x, y, width, height}` as fractions of the original image. Missing crop means the full source. Bounds are validated on the client and server. Rendering converts the crop to pixels in whichever original/variant is decoded. Required variant resolution accounts for the retained fraction, so a narrow crop does not magnify a low-resolution preview. Applying a crop adjusts the element bounds while retaining the source pixels at their existing world positions, including rotation. Reset reverses that calculation. Originals and other placements remain unchanged. Crop edits use normal document history, autosave, duplication and recovery.
+
+Text `verticalAlign` defaults to `top` for existing documents. The renderer uses [Konva vertical alignment](https://konvajs.org/api/Konva.Text.html); the textarea overlay measures wrapping with matching font metrics and applies the corresponding top padding. New font sizes and corner-resize results are integers; legacy fractional sizes are rounded for display and input.

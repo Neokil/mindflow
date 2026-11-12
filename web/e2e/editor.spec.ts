@@ -288,6 +288,77 @@ test("image placement, independent resize handles, rotation, and variants", asyn
   ).toHaveCount(0);
   await expect(page.getByTestId("element-count")).toHaveText("2 elements");
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  const source = (await document(page, name)).elements[1];
+  await expect(page.getByTestId("element-count")).toHaveText("2 elements");
+  await clickCanvas(page, 300, 450);
+  await page
+    .getByRole("button", { name: "Selection properties", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Crop image", exact: true }).click();
+  await expect(page.getByTestId("crop-selection")).toBeVisible();
+  const preview = await page.getByTestId("crop-preview").boundingBox();
+  if (!preview) throw new Error("Crop preview missing");
+  await page.mouse.move(
+    preview.x + preview.width * 0.2,
+    preview.y + preview.height * 0.2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    preview.x + preview.width * 0.8,
+    preview.y + preview.height * 0.8,
+    { steps: 8 },
+  );
+  await page.mouse.up();
+  await expect(page.getByLabel("Crop left (%)", { exact: true })).toHaveValue(
+    "20",
+  );
+  await page.getByLabel("Crop left (%)", { exact: true }).fill("25");
+  await page.getByLabel("Crop top (%)", { exact: true }).fill("10");
+  await page.getByLabel("Crop right (%)", { exact: true }).fill("25");
+  await page.getByLabel("Crop bottom (%)", { exact: true }).fill("10");
+  await page.getByRole("button", { name: "Apply crop", exact: true }).click();
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  const cropped = (await document(page, name)).elements[1];
+  expect(cropped.crop).toEqual({ x: 0.25, y: 0.1, width: 0.5, height: 0.8 });
+  expect(cropped.width).toBeCloseTo(source.width / 2);
+  expect(cropped.height).toBeCloseTo(source.height * 0.8);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  expect((await document(page, name)).elements[1].crop).toBeUndefined();
+  await page.getByRole("button", { name: "Redo", exact: true }).click();
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  await page.getByRole("button", { name: "Crop image", exact: true }).click();
+  await page.getByRole("button", { name: "Reset crop", exact: true }).click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  expect((await document(page, name)).elements[1].crop).toEqual(cropped.crop);
+  await page
+    .getByRole("button", { name: "Back to workspaces", exact: true })
+    .click();
+  await page.getByRole("button", { name: `Open ${name}`, exact: true }).click();
+  await expect(page.getByTestId("element-count")).toHaveText("2 elements");
+  await expect(async () => {
+    await clickCanvas(page, 300, 450);
+    await expect(
+      page.getByRole("button", { name: "Selection properties", exact: true }),
+    ).toBeVisible({ timeout: 500 });
+  }).toPass({ timeout: 10000 });
+  await page
+    .getByRole("button", { name: "Selection properties", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Crop image", exact: true }).click();
+  await expect(page.getByLabel("Crop left (%)", { exact: true })).toHaveValue(
+    "25",
+  );
+  await page.screenshot({
+    path: `../.cache/e2e/crop-${info.project.name}.png`,
+  });
+  await page.getByRole("button", { name: "Reset crop", exact: true }).click();
+  await page.getByRole("button", { name: "Apply crop", exact: true }).click();
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  const restored = (await document(page, name)).elements[1];
+  expect(restored.width).toBeCloseTo(source.width);
+  expect(restored.height).toBeCloseTo(source.height);
+  expect(restored.assetId).toBe(source.assetId);
 });
 test("move cursors, whole font sizes and vertical text alignment", async ({
   page,

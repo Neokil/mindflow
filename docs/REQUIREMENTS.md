@@ -98,6 +98,7 @@ All element types support selection, movement, resizing, rotation, duplication, 
 - Group and ungroup elements for manipulation together.
 - Bring elements forward and send them backward in the stacking order.
 - Undo and redo edits within the current editing session.
+- Hovering a movable element shows a grab cursor; dragging shows a grabbing cursor. Drawing tools and read-only elements keep their appropriate cursors.
 - Turn snap-to-grid on and off.
 
 Snap-to-grid is a positioning aid. Its toggle is separate from the visible background choice, so showing dots need not force snapping. Exact grid spacing and snapping rules will be decided during interaction design.
@@ -112,6 +113,7 @@ Images can be added through file upload, drag-and-drop, and clipboard paste. Eac
 - Side resize handles resize without preserving aspect ratio, allowing stretching.
 - Images support rotation and the shared editing operations.
 - Images are stored with the user's server-side content.
+- Images can be cropped using a preview with a movable rectangle, corner handles and percentage controls. Apply commits the crop; Cancel leaves the image unchanged. Reset restores the full original. Cropping preserves the original file and supports undo/redo.
 
 Adding images by URL is outside the first-release scope. Supported image formats and upload limits will be determined during technical design.
 
@@ -125,9 +127,10 @@ Shapes support configurable fill color, border color, and border thickness, alon
 
 Users can create and edit text elements with basic formatting:
 
-- Font size.
+- Font size in whole numbers (1–2,000); inputs reject fractions and corner resizing rounds to a whole number.
 - Bold and italic.
-- Text alignment.
+- Horizontal text alignment (left, center, right).
+- Vertical text alignment (top, middle, bottom), including while editing.
 - Text color.
 
 Text elements support the shared editing operations, including rotation and resizing. The precise effect of resizing on text wrapping and font size will be settled during interaction design.

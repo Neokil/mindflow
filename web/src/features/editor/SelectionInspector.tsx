@@ -24,6 +24,7 @@ type Props = {
   onReorder: (direction: number) => void;
   onDelete: () => void;
   onEditText: (element: CanvasElement) => void;
+  onCrop: (element: CanvasElement) => void;
   onSettings: (settings: CanvasDocument["settings"]) => void;
   onClose: () => void;
 };
@@ -42,6 +43,7 @@ export default function SelectionInspector({
   onReorder,
   onDelete,
   onEditText,
+  onCrop,
   onSettings,
   onClose,
 }: Props) {
@@ -240,6 +242,15 @@ export default function SelectionInspector({
                 </>
               )}
             </>
+          )}
+          {first.type === "image" && selected.length === 1 && (
+            <button
+              className="secondary full"
+              disabled={!editable}
+              onClick={() => onCrop(first)}
+            >
+              Crop image
+            </button>
           )}
           <hr />
           <div className="selection-actions">
