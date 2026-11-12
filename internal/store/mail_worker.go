@@ -1,4 +1,4 @@
-package app
+package store
 
 import (
 	"context"
@@ -70,7 +70,7 @@ func sendMail(ctx context.Context, c SMTPConfig, to, subject, body string) error
 	}
 	return client.Quit()
 }
-func (a *App) RunWorkers(ctx context.Context) {
+func (a *Repositories) RunWorkers(ctx context.Context) {
 	tick := time.NewTicker(2 * time.Second)
 	defer tick.Stop()
 	for {
@@ -79,12 +79,12 @@ func (a *App) RunWorkers(ctx context.Context) {
 			return
 		case <-tick.C:
 			a.runMail(ctx)
-			a.runVariant(ctx)
+			a.RunVariant(ctx)
 			a.cleanup(ctx)
 		}
 	}
 }
-func (a *App) runMail(ctx context.Context) {
+func (a *Repositories) runMail(ctx context.Context) {
 	var id, payload string
 	var attempts int
 	if err := a.DB.QueryRowContext(ctx, "SELECT id,payload,attempts FROM jobs WHERE kind='mail' AND run_at<=? AND attempts<8 ORDER BY run_at LIMIT 1", now()).Scan(&id, &payload, &attempts); err != nil {
@@ -103,7 +103,7 @@ func (a *App) runMail(ctx context.Context) {
 		_, _ = a.DB.ExecContext(ctx, "DELETE FROM jobs WHERE id=?", id)
 		return
 	}
-	s, err := a.settings()
+	s, err := a.settings(ctx)
 	if err == nil {
 		err = sendMail(ctx, s.SMTP, job.To, job.Subject, job.Body)
 	}
@@ -119,4 +119,8 @@ func (a *App) runMail(ctx context.Context) {
 	}
 	delay := int64(15 * (1 << min(attempts, 8)))
 	_, _ = a.DB.ExecContext(ctx, "UPDATE jobs SET attempts=?,run_at=?,last_error='Email delivery failed; retry scheduled.' WHERE id=?", attempts, now()+delay, id)
+}
+
+func (a *Repositories) SendMail(ctx context.Context, c SMTPConfig, to, subject, body string) error {
+	return sendMail(ctx, c, to, subject, body)
 }

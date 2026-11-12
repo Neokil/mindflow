@@ -86,7 +86,10 @@ func main() {
 	if addr == "" {
 		addr = ":8080"
 	}
-	a := app.New(db, app.Config{Dev: os.Getenv("MINDFLOW_DEV") == "1", Bootstrap: bootstrap})
+	a, err := app.New(db, app.Config{Dev: os.Getenv("MINDFLOW_DEV") == "1", Bootstrap: bootstrap})
+	if err != nil {
+		log.Fatal(err)
+	}
 	srv := &http.Server{Addr: addr, Handler: a, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 60 * time.Second, IdleTimeout: 90 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

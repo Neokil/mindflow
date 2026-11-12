@@ -1,8 +1,8 @@
-package app
+package store
 
 import "context"
 
-func (a *App) cleanup(ctx context.Context) {
+func (a *Repositories) cleanup(ctx context.Context) {
 	tx, err := a.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return

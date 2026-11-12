@@ -1,6 +1,7 @@
 package app
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,11 +9,14 @@ import (
 	"strings"
 	"testing"
 
+	"mindflow/internal/domain"
+
 	"mindflow/internal/store"
 )
 
 type testClient struct {
 	a      *App
+	db     *sql.DB
 	cookie *http.Cookie
 	csrf   string
 	t      *testing.T
@@ -25,7 +29,11 @@ func fixture(t *testing.T) *testClient {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	return &testClient{a: New(db, Config{Dev: true, Bootstrap: "operator-secret"}), t: t}
+	a, err := New(db, Config{Dev: true, Bootstrap: "operator-secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &testClient{a: a, db: db, t: t}
 }
 func (c *testClient) request(method, path string, body any) *httptest.ResponseRecorder {
 	c.t.Helper()
@@ -69,10 +77,10 @@ func (c *testClient) login(email, password string) {
 func (c *testClient) token(email, purpose string) string {
 	c.t.Helper()
 	var raw string
-	if err := c.a.DB.QueryRow("SELECT payload FROM jobs WHERE user_id=(SELECT id FROM users WHERE email=?) AND dedup_key=(SELECT id FROM users WHERE email=?)||':'||?", email, email, purpose).Scan(&raw); err != nil {
+	if err := c.db.QueryRow("SELECT payload FROM jobs WHERE user_id=(SELECT id FROM users WHERE email=?) AND dedup_key=(SELECT id FROM users WHERE email=?)||':'||?", email, email, purpose).Scan(&raw); err != nil {
 		c.t.Fatal(err)
 	}
-	var job mailJob
+	var job struct{ Body string }
 	json.Unmarshal([]byte(raw), &job)
 	parts := strings.Split(job.Body, "/")
 	return strings.Split(parts[len(parts)-1], "\n")[0]
@@ -89,7 +97,7 @@ func TestSetupAuthenticationAndLastAdmin(t *testing.T) {
 		t.Fatal("setup repeated")
 	}
 	var uid string
-	c.a.DB.QueryRow("SELECT id FROM users WHERE email='owner@example.com'").Scan(&uid)
+	c.db.QueryRow("SELECT id FROM users WHERE email='owner@example.com'").Scan(&uid)
 	if c.request("PATCH", "/api/v1/admin/users/"+uid, map[string]string{"status": "inactive"}).Code != 400 {
 		t.Fatal("last admin disabled")
 	}
@@ -122,7 +130,7 @@ func TestInvitationResetAndDeactivation(t *testing.T) {
 	c.ok("POST", "/api/v1/admin/users", map[string]string{"email": "friend@example.com", "role": "user"})
 	old := c.token("friend@example.com", "invite")
 	var uid string
-	c.a.DB.QueryRow("SELECT id FROM users WHERE email='friend@example.com'").Scan(&uid)
+	c.db.QueryRow("SELECT id FROM users WHERE email='friend@example.com'").Scan(&uid)
 	c.ok("POST", "/api/v1/admin/users/"+uid+"/invite", map[string]any{})
 	token := c.token("friend@example.com", "invite")
 	if c.request("POST", "/api/v1/auth/accept-invite", map[string]string{"token": old, "password": "a long friend password"}).Code != 400 {
@@ -132,7 +140,7 @@ func TestInvitationResetAndDeactivation(t *testing.T) {
 	if c.request("POST", "/api/v1/auth/accept-invite", map[string]string{"token": token, "password": "a long friend password"}).Code != 400 {
 		t.Fatal("token reused")
 	}
-	friend := &testClient{a: c.a, t: t}
+	friend := &testClient{a: c.a, db: c.db, t: t}
 	friend.login("friend@example.com", "a long friend password")
 	if friend.request("GET", "/api/v1/admin/users", nil).Code != 403 {
 		t.Fatal("regular user reached administration")
@@ -150,8 +158,10 @@ func TestInvitationResetAndDeactivation(t *testing.T) {
 	}
 	c.ok("DELETE", "/api/v1/admin/users/"+uid, map[string]bool{"confirm": true})
 	var n int
-	c.a.DB.QueryRow("SELECT count(*) FROM jobs WHERE user_id=?", uid).Scan(&n)
+	c.db.QueryRow("SELECT count(*) FROM jobs WHERE user_id=?", uid).Scan(&n)
 	if n != 0 {
 		t.Fatal("user jobs survived deletion")
 	}
 }
+
+func emptyDocument() domain.Document { return domain.NewDocument() }

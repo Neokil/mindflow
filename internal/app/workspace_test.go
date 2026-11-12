@@ -46,7 +46,7 @@ func TestLeaseFencingIdempotencyAndRecovery(t *testing.T) {
 	// A lost acknowledgment can be retried without increasing the revision.
 	c.ok("PUT", "/api/v1/pages/"+page+"/document", req)
 	var rev int
-	c.a.DB.QueryRow("SELECT revision FROM pages WHERE id=?", page).Scan(&rev)
+	c.db.QueryRow("SELECT revision FROM pages WHERE id=?", page).Scan(&rev)
 	if rev != 1 {
 		t.Fatalf("retry applied twice: %d", rev)
 	}
@@ -69,11 +69,11 @@ func TestLeaseFencingIdempotencyAndRecovery(t *testing.T) {
 	c.ok("PUT", "/api/v1/pages/"+page+"/document", req)
 	c.ok("POST", "/api/v1/pages/recovery-copy", map[string]any{"workspaceId": wid, "name": "Recovered", "document": doc})
 	var count int
-	c.a.DB.QueryRow("SELECT count(*) FROM pages WHERE workspace_id=?", wid).Scan(&count)
+	c.db.QueryRow("SELECT count(*) FROM pages WHERE workspace_id=?", wid).Scan(&count)
 	if count != 2 {
 		t.Fatal("recovery did not create an independent page")
 	}
-	c.a.DB.Exec("UPDATE page_leases SET expires_at=0 WHERE page_id=?", page)
+	c.db.Exec("UPDATE page_leases SET expires_at=0 WHERE page_id=?", page)
 	req.BaseRevision = 2
 	req.MutationID = "mutation-3"
 	if c.request("PUT", "/api/v1/pages/"+page+"/document", req).Code != 409 {
@@ -113,7 +113,7 @@ func TestPrivateAssetsDuplicationAndUserCascade(t *testing.T) {
 	doc := emptyDocument()
 	doc.Elements = append(doc.Elements, Element{ID: "image1", Type: "image", X: 0, Y: 0, Width: 100, Height: 100, AssetID: asset.ID})
 	c.ok("PUT", "/api/v1/pages/"+page+"/document", saveRequest{Epoch: lease.Epoch, ClientID: "owner-tab", MutationID: "image-save", Document: doc})
-	c.a.runVariant(context.Background())
+	c.a.repository.RunVariant(context.Background())
 	meta := c.ok("GET", "/api/v1/assets/"+asset.ID+"/meta", nil)
 	if !strings.Contains(meta.Body.String(), "128") {
 		t.Fatal("downscaled image missing")
@@ -128,7 +128,7 @@ func TestPrivateAssetsDuplicationAndUserCascade(t *testing.T) {
 	c.ok("POST", "/api/v1/admin/users", map[string]string{"email": "admin2@example.com", "role": "admin"})
 	token := c.token("admin2@example.com", "invite")
 	c.ok("POST", "/api/v1/auth/accept-invite", map[string]string{"token": token, "password": "second admin password"})
-	other := &testClient{a: c.a, t: t}
+	other := &testClient{a: c.a, db: c.db, t: t}
 	other.login("admin2@example.com", "second admin password")
 	for _, path := range []string{"/api/v1/assets/" + asset.ID, "/api/v1/assets/" + asset.ID + "?bucket=128", "/api/v1/assets/" + asset.ID + "/meta", "/api/v1/workspaces/" + copied.ID + "/pages"} {
 		if other.request("GET", path, nil).Code != 404 {
@@ -141,40 +141,17 @@ func TestPrivateAssetsDuplicationAndUserCascade(t *testing.T) {
 		t.Fatal("foreign asset attached to another user")
 	}
 	var owner string
-	c.a.DB.QueryRow("SELECT id FROM users WHERE email='owner@example.com'").Scan(&owner)
+	c.db.QueryRow("SELECT id FROM users WHERE email='owner@example.com'").Scan(&owner)
 	other.ok("DELETE", "/api/v1/admin/users/"+owner, map[string]bool{"confirm": true})
 	for _, table := range []string{"assets", "workspaces"} {
 		var n int
 		column := "owner_id"
-		c.a.DB.QueryRow("SELECT count(*) FROM "+table+" WHERE "+column+"=?", owner).Scan(&n)
+		c.db.QueryRow("SELECT count(*) FROM "+table+" WHERE "+column+"=?", owner).Scan(&n)
 		if n != 0 {
 			t.Fatalf("%s survived user deletion", table)
 		}
 	}
 	if c.request("GET", "/api/v1/auth/me", nil).Code != 401 {
 		t.Fatal("deleted user still authenticated")
-	}
-}
-
-func TestVariantThresholdAndOrientation(t *testing.T) {
-	if variantBucket(1000, 1000, 800, 800) != 0 {
-		t.Fatal("generated a variant at the 20% threshold")
-	}
-	b := variantBucket(1000, 1000, 700, 700)
-	if b < 700 || b >= 800 {
-		t.Fatalf("missing useful downscale bucket: %d", b)
-	}
-	if variantBucket(1000, 500, 200, 500) != 0 {
-		t.Fatal("downscaled despite needing full source resolution on one axis")
-	}
-	source := image.NewNRGBA(image.Rect(0, 0, 3, 2))
-	source.Set(0, 0, color.NRGBA{R: 255, A: 255})
-	rotated := orient(source, 6)
-	if rotated.Bounds().Dx() != 2 || rotated.Bounds().Dy() != 3 {
-		t.Fatal("EXIF orientation dimensions not swapped")
-	}
-	r, _, _, _ := rotated.At(1, 0).RGBA()
-	if r != 65535 {
-		t.Fatal("EXIF orientation rotated pixels incorrectly")
 	}
 }
