@@ -13,7 +13,7 @@ COPY cmd/ ./cmd/
 COPY internal/ ./internal/
 COPY web/embed.go ./web/embed.go
 COPY --from=frontend /app/web/dist/ ./web/dist/
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /mindflow ./cmd/mindflow
+RUN go run ./cmd/genmigrations -check && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /mindflow ./cmd/mindflow
 
 FROM alpine:3.23
 RUN apk add --no-cache ca-certificates tzdata && addgroup -g 10001 mindflow && adduser -D -H -u 10001 -G mindflow mindflow && mkdir /data && chown 10001:10001 /data

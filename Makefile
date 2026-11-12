@@ -51,7 +51,9 @@ $(GOLANGCI):
 	GOBIN="$(@D)" go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_VERSION)
 
 generate: $(SQLC)
+	go run ./cmd/genmigrations
 	$(SQLC) generate
 
 check-generated: $(SQLC)
+	go run ./cmd/genmigrations -check
 	$(SQLC) diff

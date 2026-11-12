@@ -106,6 +106,10 @@ try:
             assert all(flag in cookie for flag in ('Secure', 'HttpOnly', 'SameSite=Lax'))
             csrf = result['csrf']
 
+        # The standalone migration command discovers every embedded domain and is repeatable.
+        for _ in range(2):
+            docker('run', '--rm', '--read-only', '--cap-drop', 'ALL',
+                   '-v', f'{volume}:/data', args.image, 'migrate')
         start(volume)
         wait_for(lambda: request('/health/ready')[0] == {'ok': True})
         startup = subprocess.run(['docker', 'logs', app], capture_output=True, text=True, check=True)
@@ -173,7 +177,7 @@ try:
         login()
         assert call(f'/pages/{page}/document')['document'] == document
         assert request('/api/v1/assets/' + asset['id'])[0] == original
-        print('PASS: production HTTPS cookies and SSE streaming, implicit TLS/STARTTLS email and invitation delivery, owner isolation, BLOBs/variants, save retries/takeover, non-root read-only runtime, restart persistence, snapshot restore and credential revocation')
+        print('PASS: standalone repeatable domain migrations, production HTTPS cookies and SSE streaming, implicit TLS/STARTTLS email and invitation delivery, owner isolation, BLOBs/variants, save retries/takeover, non-root read-only runtime, restart persistence, snapshot restore and credential revocation')
 finally:
     # These identifiers are unique to this invocation; never touch normal app resources.
     for container in (app, fixture):
