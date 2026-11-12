@@ -1,0 +1,13 @@
+node_modules/
+web/dist/*
+!web/dist/.gitkeep
+.cache/
+data/
+*.sqlite*
+/mindflow
+coverage/
+playwright-report/
+test-results/
+.DS_Store
+
+*.tsbuildinfo
