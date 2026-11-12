@@ -217,3 +217,21 @@ These features are explicitly deferred:
 - Backup and restore procedures.
 
 These details must be resolved as needed before implementation; they do not expand the agreed first-release feature scope.
+
+## Technical interview clarifications — 12 November 2026
+
+The following product behavior was clarified during technical design. These decisions refine the sections above:
+
+- Browser support targets current stable desktop Chrome and Firefox. Safari and Edge are not part of the initial acceptance matrix.
+- One session can edit a page at a time. Other sessions open it read-only, see saved updates automatically, and can explicitly take control, making the prior editor read-only.
+- If takeover displaces unsaved changes, retain them in memory and offer saving them as a separate page rather than overwriting newer work.
+- Text formatting applies to the whole element. Side handles change width/wrapping; corner handles scale the text and font size.
+- The freehand lasso selects only elements it fully contains.
+- Grid spacing defaults to 20 canvas units, is configurable, and applies when moving and resizing with snapping enabled.
+- Accept PNG, JPEG, and WebP images, initially limited to 20 MB each. Keep originals and generate smaller variants when useful, with a reduction threshold of more than 20%, accounting for zoom and display density.
+- Invitations expire after seven days, password-reset links after one hour, and login sessions after 30 days unless revoked earlier.
+- Prevent deletion or deactivation of the last active administrator.
+- Administrators can update SMTP settings and the public application URL after setup and send a test email.
+- TrueNAS manages backups. All durable application data, including images, is stored in SQLite.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md), [CANVAS_AND_SYNC.md](CANVAS_AND_SYNC.md), and [DEPLOYMENT.md](DEPLOYMENT.md) for the technical drafts. Proposed implementation defaults in those documents are distinguished from interview decisions.

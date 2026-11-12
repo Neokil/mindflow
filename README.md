@@ -16,6 +16,14 @@ Intended for desktop browsers and hosting on a private server, preferably TrueNA
 
 ## Status
 
-Product requirements are documented; implementation and technical architecture have not started. Setup and development instructions will be added with the implementation.
+Product requirements and technical design drafts are documented. Implementation has not started. The planned stack is Go, React/TypeScript with Vite, and SQLite storing all application data, including images. Konva will be evaluated in an early editor prototype.
+
+Setup and development instructions will be added with the implementation.
 
 See [REQUIREMENTS.md](docs/REQUIREMENTS.md) for agreed behavior, acceptance criteria, and deferred features, including workspace sharing, export, and Linwood Butterfly import.
+
+Technical drafts:
+
+- [Architecture](docs/ARCHITECTURE.md): components, data model, API, authentication, and authorization.
+- [Canvas and synchronization](docs/CANVAS_AND_SYNC.md): interactions, image variants, autosave, editor takeover, and recovery.
+- [Deployment and operations](docs/DEPLOYMENT.md): TrueNAS, Cloudflare Tunnel, SQLite snapshots, upgrades, and verification.
