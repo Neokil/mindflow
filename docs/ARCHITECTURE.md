@@ -39,50 +39,59 @@ Use Go's `net/http` and `ServeMux` for routing, `database/sql` for database acce
 
 Use explicit SQL and versioned migrations. Select a maintained SQLite driver and image-processing library during the prototype; record their versions and licenses before implementation depends on them. Pin toolchains and dependencies rather than using floating versions in release builds.
 
-## 3. Application boundaries
+## 3. Domain packages and collaboration
 
-| Backend area | Responsibilities |
+Organize production code around individual business responsibilities. Each stored domain contains its models, policies, operations, SQL queries, generated query code and schema declarations. Domains that expose HTTP operations also own their route handlers. There is no shared storage, repository, service, error, result or identifier package.
+
+| Package | Owned responsibility |
 | --- | --- |
-| HTTP | Routing, validation, error responses, request limits, static assets, SSE. |
-| Identity | Setup, invitations, passwords, sessions, authorization, account administration. |
-| Workspace | Workspace/page metadata, duplication, order, deletion, ownership. |
-| Document | Page document validation, revisions, save idempotency, asset references. |
-| Editor control | Per-page leases, renewal, release, takeover, fencing stale editors. |
-| Media | Upload validation, original BLOBs, variants, protected image responses. |
-| Background work | Durable image/email jobs, bounded retries, cleanup. |
-| Persistence | Queries, transactions, migrations, database configuration. |
+| `account` | Accounts, password policy and hashing, roles, activation status, appearance and last-administrator rules. |
+| `session` | Persisted sessions, secret verifiers, expiry, logout and revocation. |
+| `authentication` | Sign-in orchestration and request/session/CSRF/administrator middleware, using accounts and sessions. |
+| `invitation` | Invite-only account creation, invitation links, resending and activation. |
+| `passwordreset` | Forgotten-password requests, administrator resets and one-time reset redemption. |
+| `email` | SMTP transport, queued email, retries, cancellation and test delivery. |
+| `installation` | First-run setup, public URL and SMTP settings, schema installation and integrity checks. |
+| `workspace` | Workspace metadata, recency and coordination of its page lifecycle. |
+| `page` | Page metadata, ordering, creation, duplication, deletion and recovery copies. |
+| `canvas` | Document content, element validation, copying element identities, image references and idempotent saves. |
+| `editor` | Single-editor leases, renewal, takeover and stale-writer fencing. |
+| `image` | Original images, preview sizes, protected image access and variant processing. |
+| `notification` | Owner-scoped realtime events, subscribers and SSE lifecycle. |
 
-Organize backend code by domain. `authentication` owns account models and policies, sessions, invitations, passwords, SMTP delivery and their persistence. `workspace` owns workspace/page models, canvas documents, editor leases, images, preview workers and their persistence. Each package contains its use cases and SQL queries; generated storage code is private to the owning domain.
+The product root, `internal/mindflow`, composes these domains and supplies common HTTP mechanics. It installs middleware, encodes responses, enforces origins and request limits, serves the frontend, starts workers and coordinates shutdown. It contains no account, workspace, canvas, email or image controllers. `internal/architecture` contains only tests.
 
-Implemented repository layout:
+A stored domain has this layout, with files named for its own concepts:
 
 ```text
-cmd/mindflow/                    Entry point and operator commands
-internal/authentication/         Account/session policies, operations and HTTP middleware
-internal/authentication/queries/ Account, session, invitation and mail SQL
-internal/authentication/dbquery/ sqlc-generated typed query methods
-internal/workspace/              Workspace/page/canvas/media policies and operations
-internal/workspace/queries/      Workspace, page, lease, image and preview-job SQL
-internal/workspace/dbquery/      sqlc-generated typed query methods
-internal/database/              SQLite connection setup, schema migrations and integrity checks
-internal/app/                   HTTP adapters, SSE and composition root
-internal/architecture/          Tests enforcing domain storage boundaries
-internal/fault/                 Shared typed failures and error context
-internal/identifier/            Opaque IDs, secret digests and Unix timestamps
-internal/result/                Small shared success responses
-web/src/features/               Account, workspace and editor components
-api/openapi.yaml                API contract
-deploy/                         Container and TrueNAS YAML
-docs/                           Product and technical documents
+internal/<domain>/
+  model/service/policy files    Domain types and behavior
+  http.go                      Domain-owned controllers, where applicable
+  schema.sql                   Domain storage declarations
+  schema.go                    Embedded declarations for installation
+  queries/queries.sql          Explicit, named SQL
+  queries.sql.go               sqlc-generated typed queries in the same package
+  sqlc_db.go                   Generated transaction/query binding
+  *_test.go                    Focused domain tests
 ```
 
-`app.New` composes the services explicitly and registers HTTP adapters. Authenticated routes use `authentication.Service.Middleware` to verify the session and install the caller in the request context; write requests also require CSRF verification. Administrator routes compose `RequireAdministrator`, and account-management operations check administrator access themselves. Workspace SQL always includes ownership checks. Administrator privileges grant no access to another user's content.
+Collaborations are ordinary method calls with explicit constructor dependencies or small interfaces declared by the consuming domain. Examples:
 
-Domain services keep their database handle private. They bind generated queries to the current transaction with `dbquery.New(transaction)`, preserving atomic ownership/revision checks, lease fencing, saves and token redemption. Contexts propagate from HTTP requests or startup through transactions and queries. `sqlc.yaml` uses the migration schema as the source for type checking; the generated code is committed. Runtime domain queries live in SQL files; connection/migration DDL and SQLite integrity PRAGMAs remain in `database`.
+- Authentication asks the account domain to verify credentials, then asks sessions to issue a session. Request authentication verifies a session and reloads the account's current status.
+- Invitations create an invited account and queue mail through their respective domains. Redemption asks accounts to change the password; account credential changes invoke a revocation port that coordinates sessions, invitations, password resets and queued mail in the same transaction.
+- Workspace creation asks pages to create a blank page. Workspace duplication asks pages to copy their metadata and canvas content. Image removal goes through the image domain.
+- Canvas saving asks editor control to validate the lease inside the save transaction and asks images to check ownership. A workspace-activity port records parent recency without introducing a canvas/workspace import cycle.
+- Email obtains saved SMTP configuration through an installation interface and checks credential-link validity through invitation/reset interfaces before delivering queued mail.
 
-Boundary tests prevent either domain from using the other's generated queries, prevent authentication from depending on workspace internals, and keep SQL out of HTTP handlers. The workspace domain can use the authenticated principal type without accessing account storage. The operator coordinates account revocation and editor-control invalidation during a stopped-instance restore.
+Services keep their database handles private. A caller-owned `*sql.Tx` is passed explicitly through collaborating operations, so ownership checks, token consumption, saves, asset references and revocation remain atomic. Within its own package, a domain binds its generated queries to that transaction with `New(transaction)`. Application composition uses `NewService`, never another domain's query constructor. HTTP controllers call domain operations and do not construct queries. Contexts propagate through the complete operation.
 
-Use ordinary Go methods, explicit constructors and SQL transactions. Avoid generic command dispatch, reflection-based wiring, an ORM, or additional runtime frameworks. sqlc is a build-time tool and adds no runtime dependency. The shared schema accommodates SQLite foreign keys and cascading user deletion; SQL ownership and domain policies stay with their domains.
+The SQLite file remains compatible with schema version 2. Existing `account_tokens` rows are partitioned by invitation/reset purpose, and `jobs` rows by email/preview kind. Every mutating query for those shared tables contains its domain's purpose/kind guard. Pages own metadata and lifecycle; canvas owns the document/revision fields stored on page rows. Read joins support ownership checks and projections. These storage details preserve existing data without a format migration; they do not create a shared persistence package.
+
+Installation receives the domain schema declarations explicitly from the product root and applies them transactionally. `sqlc.yaml` checks every domain's queries against those declarations. Generated code is committed beside the owning domain and adds no runtime generator dependency. SQLite connection setup, migration DDL and integrity PRAGMAs belong to installation.
+
+Boundary tests verify that the former horizontal packages are absent, stored domains own their schema/query files, outside code cannot construct a domain's generated queries, controllers do not bypass their service, and SQL writes remain with their owner or guarded row partition. Domain failures expose a small behavioral error contract to the HTTP boundary; helper implementation stays local to its domain.
+
+Use explicit constructors, ordinary Go methods, local interfaces and SQL transactions. Avoid generic command dispatch, reflection-based wiring, shared repository containers and additional runtime frameworks.
 
 ## 4. Frontend architecture
 

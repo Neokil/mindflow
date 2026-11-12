@@ -49,7 +49,7 @@ make test-e2e
 make verify-container
 ```
 
-Go lint and sqlc tools install automatically into `.cache/tools` at pinned versions. After SQL changes, run `make generate` and commit the generated files.
+Go lint and sqlc tools install automatically into `.cache/tools` at pinned versions. Backend behavior, HTTP controllers, schema and queries live with each individual domain; see [domain boundaries](docs/ARCHITECTURE.md#3-domain-packages-and-collaboration). After SQL changes, run `make generate` and commit the generated files.
 
 The first browser-test run requires `cd web && npx playwright install chromium firefox`. Tests use temporary data and never contact a real email provider. Container verification requires Docker, Python 3 and OpenSSL; it runs an isolated HTTPS proxy and TLS SMTP fixture, then checks persistence and snapshot restore. GitHub Actions runs lint, tests, Chrome/Firefox acceptance, dependency auditing and container verification on pushes and pull requests.
 
