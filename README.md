@@ -1,29 +1,54 @@
 # mindflow
 
-A minimalistic, self-hosted infinite canvas web app for images, shapes, text, and freehand drawing, with an interface inspired by Apple applications.
+A minimalistic, self-hosted infinite canvas for images, shapes, text, and freehand drawing. Private workspaces, tabbed pages, and a quiet interface inspired by Apple applications.
 
-## Planned first release
+## Run locally
 
-- Invite-only email/password accounts and user administration.
-- Private workspaces with tabbed canvas pages.
-- Infinite panning, cursor-centered zoom, and freehand lasso selection.
-- Image upload, drag-and-drop, and clipboard paste.
-- Circles, rectangles, stars, basic formatted text, and mouse drawing.
-- Element transforms, grouping, undo/redo, and optional snap-to-grid.
-- Autosave, temporary disconnected editing, and light/dark modes.
+Requires Go 1.26.11 and Node.js 22.12+ (the container build uses Node 26).
 
-Intended for desktop browsers and hosting on a private server, preferably TrueNAS.
+```sh
+cd web
+npm ci
+npm run build
+cd ..
+MINDFLOW_DEV=1 go run ./cmd/mindflow
+```
 
-## Status
+Open **http://localhost:8080**. On first startup, copy the one-time setup credential from the server log into the setup screen. Create the first administrator, enter the application URL, and configure SMTP with TLS/STARTTLS. `MINDFLOW_DEV=1` permits localhost HTTP; omit it behind your production HTTPS domain.
 
-Product requirements and technical design drafts are documented. Implementation has not started. The planned stack is Go, React/TypeScript with Vite, and SQLite storing all application data, including images. Konva will be evaluated in an early editor prototype.
+For frontend development, run `make dev` and `make frontend` in separate terminals, then open **http://localhost:5173**. Application data stays in `data/mindflow.sqlite`, including images; set `MINDFLOW_DATA` to change the directory.
 
-Setup and development instructions will be added with the implementation.
+## Features
 
-See [REQUIREMENTS.md](docs/REQUIREMENTS.md) for agreed behavior, acceptance criteria, and deferred features, including workspace sharing, export, and Linwood Butterfly import.
+- Invite-only email/password accounts, password recovery, and user administration.
+- Private workspaces and reorderable page tabs; rename, duplicate, and delete both.
+- Infinite pan/zoom, freehand lasso, shapes, formatted text, mouse drawing, and image placement.
+- Resize/rotate, multi-select, grouping, stacking, copy/paste, session undo/redo, and optional grid snapping.
+- Autosave, temporary disconnected editing, single-editor control with takeover, and recovery to a separate page.
+- Original images and smaller display variants stored in SQLite; light/dark appearance.
 
-Technical drafts:
+Scroll to zoom around the cursor; Cmd/Ctrl + drag to pan. The keyboard button in the editor lists shortcuts. Browser support targets desktop Chrome and Firefox.
 
-- [Architecture](docs/ARCHITECTURE.md): components, data model, API, authentication, and authorization.
-- [Canvas and synchronization](docs/CANVAS_AND_SYNC.md): interactions, image variants, autosave, editor takeover, and recovery.
-- [Deployment and operations](docs/DEPLOYMENT.md): TrueNAS, Cloudflare Tunnel, SQLite snapshots, upgrades, and verification.
+## Deploy
+
+```sh
+docker compose -f deploy/compose.yaml up --build -d
+docker compose -f deploy/compose.yaml logs mindflow
+```
+
+The container serves HTTP on port 8080 and stores everything under `/data`. Route your existing Cloudflare Tunnel to that port and use your public HTTPS URL during setup. For TrueNAS, adapt [deploy/truenas.yaml](deploy/truenas.yaml) with your built image and dataset path; no public image has been published.
+
+See [Running mindflow](docs/RUNNING.md) for TrueNAS installation, SMTP, snapshot/restore, and upgrade instructions.
+
+## Verify
+
+```sh
+make test
+make test-e2e
+```
+
+The first browser-test run requires `cd web && npx playwright install chromium firefox`. Tests use a temporary database and never send real invitation emails.
+
+Product/design documents: [requirements](docs/REQUIREMENTS.md), [architecture](docs/ARCHITECTURE.md), [canvas and saving](docs/CANVAS_AND_SYNC.md), [deployment design](docs/DEPLOYMENT.md), [implementation and validation](docs/IMPLEMENTATION.md), and [API contract](api/openapi.yaml).
+
+Workspace sharing, export, and Linwood Butterfly import remain deferred.

@@ -98,7 +98,7 @@ Proposed algorithm:
 1. A saved image placement supplies width/height in world units. Combine its size with zoom and device pixel ratio when computing the useful render resolution; world size alone is not a screen-pixel size.
 2. Preserve source aspect ratio in the encoded image. For source dimensions `(Ow, Oh)` and required screen dimensions `(Rw, Rh)`, use `s = min(1, max(Rw/Ow, Rh/Oh))`. This covers both axes even when the canvas element is intentionally stretched.
 3. Generate a variant only if the rounded resolution still has a linear scale below `0.8`. At exactly 20% reduction, keep the existing version. Never upscale beyond the original.
-4. Round requested sizes upward into a bounded set of size buckets, proposed longest edges 128, 256, 512, 1024, 2048, 4096, and 8192 pixels; reuse variants across placements of the same owned asset.
+4. Round requested sizes upward into a bounded set of size buckets, proposed longest edges 128, 256, 512, 1024, 2048, 4096, and 8192 pixels, with an additional per-asset bucket just below 80% of original resolution when needed to bridge the final size gap; reuse variants across placements of the same owned asset.
 5. On save, enqueue a default-view variant, using world size at 100% zoom as a baseline. The active client can also request an authorized on-demand variant for its current zoom/display density, including for a read-only view. These are media requests, not document edits.
 6. The client chooses the smallest available variant that covers its render resolution, or the original if necessary. Existing decoded content remains visible during generation. Initial display may use the original when no smaller version exists yet.
 
@@ -206,3 +206,7 @@ Before committing to Konva, verify:
 Proposed performance goals on a recorded representative desktop: median pan/zoom frame time at or below 16.7 ms and 95th percentile below 33.3 ms after visible assets load; local transform feedback within 50 ms; ordinary save acknowledgment within one second on the home-server path excluding upload, debounce, and external-network delays. Report actual fixture sizes, hardware, browser versions, memory, network, and image-decoding costs rather than presenting these targets as guarantees.
 
 Test save retry after a committed-but-lost acknowledgment, edits during an in-flight save, disconnect with pending uploads, lease expiry, simultaneous acquisition/takeover, disconnected old-editor reconnect, session revocation, server restart, page deletion, and read-only refresh while a recovery copy exists. Verify that stale saves never overwrite accepted work and that user content cannot cross ownership boundaries.
+
+## Implementation notes
+
+The prototype uses Konva with a renderer-independent persisted model. In-memory camera state survives page-tab switches. A page with a pending recovery copy must save or discard that copy before taking control again, preventing a second displacement from overwriting earlier local work. An unmodified page can automatically reacquire its expired lease after reconnecting; ambiguous saves are retried with their original mutation identity first. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for actual browser and performance results.

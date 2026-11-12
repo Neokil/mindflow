@@ -1,0 +1,112 @@
+# Running mindflow
+
+mindflow runs as one Go application with an embedded React frontend and a SQLite database. Original images, variants, accounts, settings, and queued jobs are all in the database. Run one instance per database.
+
+## Local development
+
+Use Go 1.26.11 and a Node version accepted by Vite (22.12+; tested with 26.13.1). Install packages with `cd web && npm ci`. Start the backend with `make dev` and the frontend with `make frontend`. Open `http://localhost:5173`; Vite proxies API requests to port 8080.
+
+The default backend data directory is `./data`. Release binaries require `make build` first; the frontend output is embedded at Go compilation time. Rebuild the Go binary after rebuilding the frontend when testing the bundled application.
+
+Configuration:
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `MINDFLOW_ADDR` | `:8080` | HTTP bind address. |
+| `MINDFLOW_DATA` | `data` (container: `/data`) | Persistent database directory. |
+| `MINDFLOW_DEV` | unset | Set to `1` only for local HTTP development. |
+
+The service does not rely on forwarding headers for authentication, URL generation, or client-IP limits. Public URL comes from setup. Rate limiting currently uses the direct peer address, so users behind a tunnel share the limit. Do not add untrusted forwarded-IP support without a trusted-proxy policy.
+
+## Container installation
+
+From a checkout, run:
+
+```sh
+docker compose -f deploy/compose.yaml up --build -d
+docker compose -f deploy/compose.yaml logs mindflow
+```
+
+The named volume `mindflow-data` stores `/data`. The container uses UID/GID `10001:10001`, a read-only root filesystem, and temporary writable `/tmp`. Its built-in health check uses `mindflow healthcheck`.
+
+Production requires HTTPS at the browser. The application itself serves ordinary HTTP on the origin port. Point your existing Cloudflare Tunnel at the container/host's reachable HTTP address; `localhost` refers to the connector's own network namespace, so use a host or service address appropriate to your setup. Keep the origin port inside the trusted network and bypass Cloudflare caching for `/api/*`, including protected image responses and events. Verify SSE streaming; polling provides a fallback.
+
+For local testing of a container over plain HTTP, explicitly set `MINDFLOW_DEV=1`. Production secure cookies intentionally do not work through a plain HTTP public URL.
+
+### TrueNAS Custom App
+
+1. Build and push the image to a registry accessible to your TrueNAS server:
+
+   ```sh
+   docker build -t YOUR_REGISTRY/mindflow:0.1.0 .
+   docker push YOUR_REGISTRY/mindflow:0.1.0
+   ```
+
+2. Create a local dataset for application data, for example `/mnt/POOL/apps/mindflow`. Grant UID/GID `10001:10001` read/write and directory traversal permissions. Do not put the database on an SMB/NFS mount.
+3. Edit [deploy/truenas.yaml](../deploy/truenas.yaml), replacing `YOUR_REGISTRY`, `POOL`, the dataset path, and the host port as needed.
+4. In Apps → Discover Apps → three-dot menu → Custom App → Install via YAML, paste the edited YAML.
+5. Read the application startup log for its one-time setup credential. Open your configured public hostname and complete setup.
+6. Verify login, saving across restart, SMTP test delivery, and snapshot restore on your installed TrueNAS version.
+
+No registry image has been published by this implementation. The host's Docker daemon must be running to build or test the container. An amd64 server needs an amd64 image: build on that architecture or use Docker Buildx with an explicit platform. The pure-Go application can be cross-compiled, but image builds must still be validated on the target.
+
+## First-run setup and accounts
+
+The server prints a random setup credential only while the database is uninitialized. It changes on restart until setup completes. Treat access to startup logs as operator access. Public setup status never reveals it.
+
+Enter the credential, first administrator email/password, public application URL, and SMTP settings. Production URL must use HTTPS and have no extra path/query/fragment. You can send a test email before completing setup. The completed setup transaction prevents further first-administrator creation.
+
+SMTP supports required STARTTLS or implicit TLS with certificate verification. Common ports are 587 (STARTTLS) and 465 (TLS), but use your provider's settings. Enter a permitted sender address. The app makes no changes to DNS or your email provider.
+
+Administrators can invite users, resend invitations, trigger resets, deactivate/reactivate users, delete users, and assign roles. At least one active administrator must remain. Administration does not grant access to another user's workspaces/images.
+
+Invitations last seven days; reset links last one hour. Resending supersedes older links. Login sessions last 30 days unless revoked. Passwords must contain 15–128 characters. Email sending is queued in SQLite and retries failures; user management shows delivery problems. Check SMTP settings and resend after fixing a terminal failure. Stored SMTP passwords are not returned to the browser; a blank password on settings update retains the existing secret.
+
+## Editing, saving, and recovery
+
+Each page has one server-enforced editor. Other sessions show saved changes read-only and can explicitly take control. Page tabs preserve in-session undo and pending changes. Autosave is debounced by 750 ms; continuous edits are saved at most five seconds apart, excluding an unfinished pointer gesture and network/upload delays.
+
+On connection loss, loaded content remains editable in memory. Reconnecting checks control and revision before saving. If another editor took over, the old tab keeps a recovery copy and offers saving it as an independent page. Do not close that tab until recovery is saved. Browser-native unsaved-change warnings are best-effort; forced termination/crashes do not preserve drafts.
+
+Original PNG/JPEG/WebP uploads are retained, up to 20 MiB and 40 megapixels (maximum 16,384 pixels per side). Variants are generated asynchronously for smaller render sizes. Unsupported animated images are rejected. Files are never served publicly. Removing an image retains its asset until the retaining page is deleted so undo/recovery remain possible. Duplicates can share immutable images within the same account; deleting an original does not break a duplicate.
+
+## Backup and restore
+
+TrueNAS handles scheduling, retention, and replication. Snapshot the complete `/data` dataset atomically, including `mindflow.sqlite` and its WAL/sidecar files. Do not copy only the live `.sqlite` file. If live snapshot consistency has not been verified on your storage configuration, stop the app before taking the snapshot.
+
+Restore procedure:
+
+1. Stop the application and take a safety snapshot of its current dataset.
+2. Restore the entire dataset from one snapshot, preserving ownership and permissions. Do not mix sidecar/database files from different snapshots.
+3. Before reopening access, use the matching application image to check data and revoke restored credentials. With the local Compose deployment stopped:
+
+   ```sh
+   docker compose -f deploy/compose.yaml run --rm mindflow check-data
+   docker compose -f deploy/compose.yaml run --rm mindflow revoke-credentials
+   docker compose -f deploy/compose.yaml up -d
+   ```
+
+   On TrueNAS, perform the equivalent one-off commands against the restored dataset with the normal app stopped; do not start a second app against the same database. For a local binary, use `MINDFLOW_DATA=/path/to/data ./mindflow check-data` and `./mindflow revoke-credentials` with the same data setting.
+4. Sign in again and verify workspace contents, images, new saves, SMTP, and user status.
+
+`revoke-credentials` removes sessions, invite/reset links, queued token emails, and editor control. Passwords, users, workspaces, and media remain. Resend needed invitations afterward. Snapshot restore can resurrect accounts/content deleted after the snapshot; review those changes before exposing the app again.
+
+Deleting live records does not immediately shrink SQLite files or erase retained snapshots. Infrastructure dataset permissions, encryption, retention, and access remain the operator's responsibility.
+
+## Upgrades and diagnostics
+
+Take a snapshot, stop the old container, deploy a pinned new image, and check readiness after migrations. Migrations are transactional and the app refuses newer unsupported database schemas. Rollback uses the old image plus its matching pre-upgrade snapshot. Do not assume an old binary can read an upgraded database.
+
+`/health/live` reports process health; `/health/ready` verifies database access. An uninitialized instance can be ready to serve setup. SMTP failures do not take the canvas offline. Logs include server errors without document bodies, passwords, cookies, or email link tokens (apart from the intentionally printed first-run setup credential).
+
+Image decoding and processing are serialized to bound memory; the database uses WAL, full synchronization, foreign keys, and one serialized connection. Start with two CPUs and 1 GiB memory, then measure your own image workload. This is a starting allocation rather than a guaranteed minimum. Keep enough free disk for originals, variants, WAL growth, and snapshots.
+
+## Tests
+
+```sh
+make test
+cd web && npx playwright install chromium firefox
+cd .. && make test-e2e
+```
+
+Browser tests run a temporary backend on `127.0.0.1:8087` with a temporary SQLite database and a local, non-delivering SMTP target. Test data is removed afterward. They exercise setup/login, canvas composition, lasso/grouping, images/transforms/variants, persistence, two-session takeover with disconnected recovery, and a large-page fixture. Backend tests cover access isolation, token lifecycle, revocation/deletion, and save fencing/idempotency. Unit tests cover geometry and save-state edge cases.

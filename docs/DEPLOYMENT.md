@@ -1,6 +1,6 @@
 # mindflow — Deployment and operations
 
-Status: deployment design draft, 12 November 2026. Commands, image names, and installable manifests will be added with implementation; this document is not an installation guide for an existing release.
+Status: deployment design draft, 12 November 2026. Implementation and manifests are now available; use [RUNNING.md](RUNNING.md) for current commands and installation steps. This document preserves the deployment design.
 
 Related documents: [Architecture](ARCHITECTURE.md), [Canvas and synchronization](CANVAS_AND_SYNC.md), [Requirements](REQUIREMENTS.md).
 

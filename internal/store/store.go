@@ -42,6 +42,20 @@ func migrate(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec(schema)
-	return err
+	var version int
+	if err = db.QueryRow("SELECT COALESCE(MAX(version),0) FROM schema_migrations").Scan(&version); err != nil {
+		return err
+	}
+	if version > 2 {
+		return fmt.Errorf("database schema %d is newer than this application supports", version)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err = tx.Exec(schema); err != nil {
+		return err
+	}
+	return tx.Commit()
 }

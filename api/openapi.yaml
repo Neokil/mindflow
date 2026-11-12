@@ -1,0 +1,3252 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "mindflow API",
+    "version": "0.1.0",
+    "description": "Same-origin API. All content endpoints enforce ownership, including for administrators. Mutation requests use a session-bound X-CSRF-Token. See docs/CANVAS_AND_SYNC.md for revision and lease semantics."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "paths": {
+    "/setup/status": {
+      "get": {
+        "summary": "GET /setup/status",
+        "operationId": "get_setup_status",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/setup/complete": {
+      "post": {
+        "summary": "POST /setup/complete",
+        "operationId": "post_setup_complete",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "credential": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "settings": {
+                    "$ref": "#/components/schemas/Settings"
+                  }
+                },
+                "required": [
+                  "credential",
+                  "email",
+                  "password",
+                  "settings"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/setup/test-email": {
+      "post": {
+        "summary": "POST /setup/test-email",
+        "operationId": "post_setup_test_email",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "credential": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "settings": {
+                    "$ref": "#/components/schemas/Settings"
+                  }
+                },
+                "required": [
+                  "credential",
+                  "email",
+                  "settings"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "POST /auth/login",
+        "operationId": "post_auth_login",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    },
+                    "csrf": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "POST /auth/logout",
+        "operationId": "post_auth_logout",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "GET /auth/me",
+        "operationId": "get_auth_me",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    },
+                    "csrf": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/auth/preferences": {
+      "patch": {
+        "summary": "PATCH /auth/preferences",
+        "operationId": "patch_auth_preferences",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "appearance": {
+                    "enum": [
+                      "system",
+                      "light",
+                      "dark"
+                    ]
+                  }
+                },
+                "required": [
+                  "appearance"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "summary": "POST /auth/forgot-password",
+        "operationId": "post_auth_forgot_password",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "summary": "POST /auth/reset-password",
+        "operationId": "post_auth_reset_password",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token",
+                  "password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/accept-invite": {
+      "post": {
+        "summary": "POST /auth/accept-invite",
+        "operationId": "post_auth_accept_invite",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "token",
+                  "password"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "summary": "GET /admin/users",
+        "operationId": "get_admin_users",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "user": {
+                        "$ref": "#/components/schemas/User"
+                      },
+                      "mailError": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /admin/users",
+        "operationId": "post_admin_users",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "enum": [
+                      "admin",
+                      "user"
+                    ]
+                  }
+                },
+                "required": [
+                  "email"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{id}": {
+      "patch": {
+        "summary": "PATCH /admin/users/{id}",
+        "operationId": "patch_admin_users_id",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "enum": [
+                      "admin",
+                      "user"
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "active",
+                      "inactive",
+                      "invited"
+                    ]
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /admin/users/{id}",
+        "operationId": "delete_admin_users_id",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "confirm": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "confirm"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{id}/invite": {
+      "post": {
+        "summary": "POST /admin/users/{id}/invite",
+        "operationId": "post_admin_users_id_invite",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/users/{id}/reset": {
+      "post": {
+        "summary": "POST /admin/users/{id}/reset",
+        "operationId": "post_admin_users_id_reset",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/settings": {
+      "get": {
+        "summary": "GET /admin/settings",
+        "operationId": "get_admin_settings",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "settings": {
+                      "$ref": "#/components/schemas/Settings"
+                    },
+                    "passwordConfigured": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      },
+      "put": {
+        "summary": "PUT /admin/settings",
+        "operationId": "put_admin_settings",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Settings"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/settings/test-email": {
+      "post": {
+        "summary": "POST /admin/settings/test-email",
+        "operationId": "post_admin_settings_test_email",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces": {
+      "get": {
+        "summary": "GET /workspaces",
+        "operationId": "get_workspaces",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Workspace"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /workspaces",
+        "operationId": "post_workspaces",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}": {
+      "patch": {
+        "summary": "PATCH /workspaces/{id}",
+        "operationId": "patch_workspaces_id",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "name",
+                  "revision"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /workspaces/{id}",
+        "operationId": "delete_workspaces_id",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "revision": {
+                    "type": "integer"
+                  },
+                  "confirm": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "revision",
+                  "confirm"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/duplicate": {
+      "post": {
+        "summary": "POST /workspaces/{id}/duplicate",
+        "operationId": "post_workspaces_id_duplicate",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/pages": {
+      "get": {
+        "summary": "GET /workspaces/{id}/pages",
+        "operationId": "get_workspaces_id_pages",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Page"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "POST /workspaces/{id}/pages",
+        "operationId": "post_workspaces_id_pages",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/page-order": {
+      "put": {
+        "summary": "PUT /workspaces/{id}/page-order",
+        "operationId": "put_workspaces_id_page_order",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "revision": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "ids",
+                  "revision"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{id}": {
+      "patch": {
+        "summary": "PATCH /pages/{id}",
+        "operationId": "patch_pages_id",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "name",
+                  "revision"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /pages/{id}",
+        "operationId": "delete_pages_id",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "revision": {
+                    "type": "integer"
+                  },
+                  "confirm": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "revision",
+                  "confirm"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{id}/duplicate": {
+      "post": {
+        "summary": "POST /pages/{id}/duplicate",
+        "operationId": "post_pages_id_duplicate",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{id}/document": {
+      "get": {
+        "summary": "GET /pages/{id}/document",
+        "operationId": "get_pages_id_document",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "document": {
+                      "$ref": "#/components/schemas/Document"
+                    },
+                    "revision": {
+                      "type": "integer"
+                    },
+                    "metadataRevision": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "put": {
+        "summary": "PUT /pages/{id}/document",
+        "operationId": "put_pages_id_document",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "revision": {
+                      "type": "integer"
+                    },
+                    "mutationId": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/recovery-copy": {
+      "post": {
+        "summary": "POST /pages/recovery-copy",
+        "operationId": "post_pages_recovery_copy",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "document": {
+                    "$ref": "#/components/schemas/Document"
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "name",
+                  "document"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{id}/lease": {
+      "post": {
+        "summary": "POST /pages/{id}/lease",
+        "operationId": "post_pages_id_lease",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lease"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeaseRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "GET /pages/{id}/lease",
+        "operationId": "get_pages_id_lease",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lease"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "clientId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/events": {
+      "get": {
+        "summary": "GET /events",
+        "operationId": "get_events",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/assets": {
+      "post": {
+        "summary": "POST /assets",
+        "operationId": "post_assets",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetMetadata"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assets/{id}": {
+      "get": {
+        "summary": "GET /assets/{id}",
+        "operationId": "get_assets_id",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bucket",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/assets/{id}/meta": {
+      "get": {
+        "summary": "GET /assets/{id}/meta",
+        "operationId": "get_assets_id_meta",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetMetadata"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/assets/{id}/variant": {
+      "post": {
+        "summary": "POST /assets/{id}/variant",
+        "operationId": "post_assets_id_variant",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "width": {
+                    "type": "number"
+                  },
+                  "height": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "width",
+                  "height"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "mindflow_session"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "requestID"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "requestID": {
+            "type": "string"
+          }
+        }
+      },
+      "CanvasSettings": {
+        "type": "object",
+        "required": [
+          "background",
+          "gridSize",
+          "snap"
+        ],
+        "properties": {
+          "background": {
+            "enum": [
+              "dots",
+              "plain"
+            ]
+          },
+          "gridSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "snap": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Element": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "x",
+          "y",
+          "width",
+          "height",
+          "rotation"
+        ],
+        "description": "Type-specific fields are additionally validated by the server: shape and colors/border for shapes; assetId for images; text/fontSize/color/align for text; points/color/penWidth for strokes. Coordinates use the element center; rotations are radians.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "shape": {
+            "type": "string"
+          },
+          "fill": {
+            "type": "string"
+          },
+          "border": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "align": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "assetId": {
+            "type": "string"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "rotation": {
+            "type": "number"
+          },
+          "borderWidth": {
+            "type": "number"
+          },
+          "fontSize": {
+            "type": "number"
+          },
+          "penWidth": {
+            "type": "number"
+          },
+          "type": {
+            "enum": [
+              "image",
+              "shape",
+              "text",
+              "stroke"
+            ]
+          },
+          "bold": {
+            "type": "boolean"
+          },
+          "italic": {
+            "type": "boolean"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 40000
+          }
+        },
+        "additionalProperties": false
+      },
+      "Document": {
+        "type": "object",
+        "required": [
+          "schemaVersion",
+          "elements",
+          "settings"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "elements": {
+            "type": "array",
+            "maxItems": 10000,
+            "items": {
+              "$ref": "#/components/schemas/Element"
+            }
+          },
+          "settings": {
+            "$ref": "#/components/schemas/CanvasSettings"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SaveRequest": {
+        "type": "object",
+        "required": [
+          "baseRevision",
+          "epoch",
+          "clientId",
+          "mutationId",
+          "document"
+        ],
+        "properties": {
+          "baseRevision": {
+            "type": "integer"
+          },
+          "epoch": {
+            "type": "integer"
+          },
+          "clientId": {
+            "type": "string"
+          },
+          "mutationId": {
+            "type": "string"
+          },
+          "document": {
+            "$ref": "#/components/schemas/Document"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LeaseRequest": {
+        "type": "object",
+        "required": [
+          "clientId",
+          "action"
+        ],
+        "properties": {
+          "clientId": {
+            "type": "string"
+          },
+          "action": {
+            "enum": [
+              "acquire",
+              "renew",
+              "release",
+              "takeover"
+            ]
+          },
+          "epoch": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Lease": {
+        "type": "object",
+        "properties": {
+          "editable": {
+            "type": "boolean"
+          },
+          "epoch": {
+            "type": "integer"
+          },
+          "expiresAt": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          }
+        }
+      },
+      "SMTP": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "mode": {
+            "enum": [
+              "tls",
+              "starttls"
+            ]
+          }
+        }
+      },
+      "Settings": {
+        "type": "object",
+        "required": [
+          "publicURL",
+          "smtp"
+        ],
+        "properties": {
+          "publicURL": {
+            "type": "string",
+            "format": "uri"
+          },
+          "smtp": {
+            "$ref": "#/components/schemas/SMTP"
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "appearance": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "admin",
+              "user"
+            ]
+          }
+        }
+      },
+      "Workspace": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "updatedAt": {
+            "type": "integer"
+          },
+          "pageCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "Page": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "metadataRevision": {
+            "type": "integer"
+          },
+          "position": {
+            "type": "integer"
+          }
+        }
+      },
+      "AssetMetadata": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    }
+  }
+}
