@@ -16,6 +16,7 @@ import (
 	"mindflow/internal/mindflow/storage"
 	"mindflow/internal/notification"
 	"mindflow/internal/workspace"
+	"mindflow/internal/workspace/butterfly"
 	"mindflow/internal/workspace/page"
 	"mindflow/internal/workspace/page/canvas"
 	"mindflow/internal/workspace/page/comment"
@@ -110,6 +111,7 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	service.passwordResets.RegisterHTTP(service)
 	service.mail.RegisterHTTP(service)
 	service.workspace.RegisterHTTP(service)
+	butterfly.NewService(data.Workspaces, service.workspace, service.pages, service.images, publish).RegisterHTTP(service)
 	service.sharing.RegisterHTTP(service)
 	service.comments.RegisterHTTP(service)
 	service.pages.RegisterHTTP(service)

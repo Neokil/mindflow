@@ -32,16 +32,16 @@ func (a *Service) CreateWorkspace(ctx context.Context, actor session.Principal, 
 	if validateNameErr != nil {
 		return Created{}, validateNameErr
 	}
-	resourceID := newID()
 	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Created{}, wrap("workspace.CreateWorkspace", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
-	_, err = a.repository.Within(transaction).WorkspaceCreateWorkspace(ctx, storage.WorkspaceCreateWorkspaceParams{ID: resourceID, OwnerID: actor.ID, Name: command.Name, CreatedAt: time.Now().Unix(), UpdatedAt: time.Now().Unix()})
+	resourceID, err := a.CreateWithin(ctx, transaction, actor.ID, command.Name)
 	if err != nil {
 		return Created{}, err
 	}
+
 	pid, err := a.pages.CreateBlankWithin(ctx, transaction, resourceID, "Untitled")
 	if err != nil {
 		return Created{}, err
@@ -235,4 +235,17 @@ func copyName(name string) string {
 	}
 
 	return string(r) + " copy"
+}
+
+// CreateWithin creates a private workspace without pages inside the caller's transaction.
+func (a *Service) CreateWithin(ctx context.Context, transaction *storage.Transaction, ownerID, name string) (string, error) {
+	name = strings.TrimSpace(name)
+	err := ValidateName(name)
+	if err != nil {
+		return "", err
+	}
+	resourceID := newID()
+	_, err = a.repository.Within(transaction).WorkspaceCreateWorkspace(ctx, storage.WorkspaceCreateWorkspaceParams{ID: resourceID, OwnerID: ownerID, Name: name, CreatedAt: time.Now().Unix(), UpdatedAt: time.Now().Unix()})
+
+	return resourceID, err
 }

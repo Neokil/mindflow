@@ -286,31 +286,58 @@ func (a *Service) UploadAsset(ctx context.Context, actor session.Principal, raw 
 // UploadWorkspaceAsset retains originals under the target workspace owner's lifetime.
 func (a *Service) UploadWorkspaceAsset(ctx context.Context, actor session.Principal, workspaceID string, raw []byte) (_ AssetInfo, err error) {
 	defer func() { err = repositoryError(err) }()
+	original, err := a.Prepare(raw)
+	if err != nil {
+		return AssetInfo{}, err
+	}
+
+	return a.storePrepared(ctx, actor, workspaceID, original)
+}
+
+// PreparedImage contains validated original bytes, ready for an atomic workspace import.
+type PreparedImage struct {
+	raw           []byte
+	width, height int
+	mime          string
+}
+
+// Prepare validates an original image without writing it to storage.
+func (a *Service) Prepare(raw []byte) (PreparedImage, error) {
 	a.mediaMu.Lock()
 	defer a.mediaMu.Unlock()
+	if len(raw) > maxOriginalBytes {
+		return PreparedImage{}, invalid("Choose an image up to 20 MiB.")
+	}
+
 	config, format, err := image.DecodeConfig(bytes.NewReader(raw))
 	if err != nil || (format != "png" && format != "jpeg" && format != "webp") {
-		return AssetInfo{}, invalid("Supported image formats are PNG, JPEG, and WebP.")
+		return PreparedImage{}, invalid("Supported image formats are PNG, JPEG, and WebP.")
 	}
 	if config.Width <= 0 || config.Height <= 0 || config.Width > maxImageDimension || config.Height > maxImageDimension || int64(config.Width)*int64(config.Height) > maxImagePixels {
-		return AssetInfo{}, invalid("Image dimensions exceed the 40-megapixel or 16,384-pixel limit.")
+		return PreparedImage{}, invalid("Image dimensions exceed the 40-megapixel or 16,384-pixel limit.")
 	}
 	if format == "png" && bytes.Contains(raw, []byte("acTL")) || format == "webp" && bytes.Contains(raw, []byte("ANIM")) {
-		return AssetInfo{}, invalid("Animated images are not supported yet.")
+		return PreparedImage{}, invalid("Animated images are not supported yet.")
 	}
 	// Decode once to reject truncated or malformed files before storing them.
 	_, _, err = image.Decode(bytes.NewReader(raw))
 	if err != nil {
-		return AssetInfo{}, invalid("The image could not be decoded.")
+		return PreparedImage{}, invalid("The image could not be decoded.")
 	}
 	width, height := config.Width, config.Height
 	if jpegOrientation(raw) >= orientationTranspose {
 		width, height = height, width
 	}
-	mime := "image/" + format
+
+	return PreparedImage{raw: raw, width: width, height: height, mime: "image/" + format}, nil
+}
+
+func (a *Service) storePrepared(ctx context.Context, actor session.Principal, workspaceID string, original PreparedImage) (AssetInfo, error) {
+	raw, width, height, mime := original.raw, original.width, original.height, original.mime
+
 	hash := sha256.Sum256(raw)
 	resourceID := newID()
-	err = a.repository.CreateScopedAsset(ctx, actor.ID, workspaceID, storage.ImageCreateAssetParams{ID: resourceID, OwnerID: actor.ID, Original: raw, Mime: mime, Width: width, Height: height, Digest: hex.EncodeToString(hash[:]), CreatedAt: time.Now().Unix()})
+	err := a.repository.CreateScopedAsset(ctx, actor.ID, workspaceID, storage.ImageCreateAssetParams{ID: resourceID, OwnerID: actor.ID, Original: raw, Mime: mime, Width: width, Height: height, Digest: hex.EncodeToString(hash[:]), CreatedAt: time.Now().Unix()})
 	if err != nil {
 		return AssetInfo{}, err
 	}
@@ -344,3 +371,17 @@ func (a *Service) GetAsset(ctx context.Context, actor session.Principal, resourc
 
 	return Blob{Data: raw, MIME: mime, Width: width, Height: height}, nil
 }
+
+// StoreWithin stores a validated original in the caller's workspace transaction.
+func (a *Service) StoreWithin(ctx context.Context, transaction *storage.Transaction, ownerID, workspaceID string, original PreparedImage) (AssetInfo, error) {
+	resourceID := newID()
+	hash := sha256.Sum256(original.raw)
+	err := a.repository.CreateImportedAssetWithin(ctx, transaction, workspaceID, storage.ImageCreateAssetParams{ID: resourceID, OwnerID: ownerID, Original: original.raw, Mime: original.mime, Width: original.width, Height: original.height, Digest: hex.EncodeToString(hash[:]), CreatedAt: time.Now().Unix()})
+	if err != nil {
+		return AssetInfo{}, err
+	}
+
+	return AssetInfo{ID: resourceID, Width: original.width, Height: original.height, MIME: original.mime, Variants: []int{}}, nil
+}
+
+const maxOriginalBytes = 20 << 20

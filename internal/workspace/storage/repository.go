@@ -154,3 +154,13 @@ func (a *Repository) DeleteOwnerWithin(ctx context.Context, transaction *Transac
 
 	return queries.WorkspaceDeleteOwnerImages(ctx, ownerID)
 }
+
+// CreateImportedAssetWithin creates and scopes an original in an atomic workspace import.
+func (a *Repository) CreateImportedAssetWithin(ctx context.Context, transaction *Transaction, workspaceID string, params ImageCreateAssetParams) error {
+	_, err := a.Within(transaction).ImageCreateAsset(ctx, params)
+	if err != nil {
+		return err
+	}
+
+	return a.Within(transaction).SharingScopeAsset(ctx, SharingScopeAssetParams{ID: params.ID, WorkspaceID: sql.NullString{String: workspaceID, Valid: true}})
+}

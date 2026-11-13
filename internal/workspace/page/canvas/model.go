@@ -43,9 +43,10 @@ type Element struct {
 
 // Settings stores a page's background and grid preferences.
 type Settings struct {
-	Background string  `json:"background"`
-	GridSize   float64 `json:"gridSize"`
-	Snap       bool    `json:"snap"`
+	BackgroundColor string  `json:"backgroundColor,omitempty"`
+	Background      string  `json:"background"`
+	GridSize        float64 `json:"gridSize"`
+	Snap            bool    `json:"snap"`
 }
 
 // Document is versioned renderer-independent page content.
@@ -76,6 +77,9 @@ func ValidateDocument(document Document) error {
 	}
 	if len(document.Elements) > maxElements {
 		return invalid("A page can contain at most 10,000 elements.")
+	}
+	if document.Settings.BackgroundColor != "" && !ValidColor(document.Settings.BackgroundColor) {
+		return invalid("Invalid canvas background color.")
 	}
 	if document.Settings.Background != "dots" && document.Settings.Background != "plain" {
 		return invalid("Invalid canvas background.")

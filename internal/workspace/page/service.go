@@ -69,3 +69,31 @@ func (a *Service) CountWithin(ctx context.Context, transaction *storage.Transact
 func (a *Service) PositionWithin(ctx context.Context, transaction *storage.Transaction, index int, id, workspaceID string) (int64, error) {
 	return a.repository.PositionWithin(ctx, transaction, index, id, workspaceID)
 }
+
+// CreateDocumentWithin validates and attaches imported page content atomically.
+func (a *Service) CreateDocumentWithin(ctx context.Context, transaction *storage.Transaction, ownerID, workspaceID, name string, document canvas.Document) (string, error) {
+	err := ValidateName(name)
+	if err != nil {
+		return "", err
+	}
+	err = canvas.ValidateDocument(document)
+	if err != nil {
+		return "", err
+	}
+	raw, err := json.Marshal(document)
+	if err != nil {
+		return "", wrap("encode imported canvas", err)
+	}
+	if len(raw) > maxImportedDocumentBytes {
+		return "", invalid("An imported page exceeds the 16 MiB document limit.")
+	}
+	resourceID, err := a.CreateWithin(ctx, transaction, workspaceID, name, string(raw))
+	if err != nil {
+		return "", err
+	}
+	err = a.canvas.ValidateAssetsWithin(ctx, transaction, ownerID, resourceID, document)
+
+	return resourceID, err
+}
+
+const maxImportedDocumentBytes = 16 << 20

@@ -34,3 +34,20 @@ func TestImageCropAndVerticalAlignmentValidation(t *testing.T) {
 		t.Fatal("accepted invalid vertical alignment")
 	}
 }
+
+func TestCanvasBackgroundColorValidation(t *testing.T) {
+	t.Parallel()
+	for _, color := range []string{"", "#000000", "#ffffff80", "transparent"} {
+		document := canvas.NewDocument()
+		document.Settings.BackgroundColor = color
+		err := canvas.ValidateDocument(document)
+		if err != nil {
+			t.Errorf("rejected supported background %q: %v", color, err)
+		}
+	}
+	document := canvas.NewDocument()
+	document.Settings.BackgroundColor = "url(https://example.invalid/image.png)"
+	if canvas.ValidateDocument(document) == nil {
+		t.Fatal("accepted a URL as a background color")
+	}
+}
