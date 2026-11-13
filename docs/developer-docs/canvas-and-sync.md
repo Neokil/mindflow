@@ -12,6 +12,10 @@ Element bounds are centered local coordinates with rotation. Lasso containment u
 
 Text input uses matching Konva/textarea font metrics and wrapping. Image crop rectangles are normalized against the original; display-resolution requests account for crop fraction, zoom, and display density. Smaller variants are generated only when useful below the 0.8 scale threshold, never by replacing/upscaling the original. Jobs are bounded and deduplicated, and existing decoded content can remain visible while a better variant is generated.
 
+## Editor layout
+
+`App` owns the session-only collapsed-header state. The workspace layout uses a flex column within the dynamic viewport, with update notices above its content frame. Collapsing hides the app header, workspace heading, and page tabs through CSS without remounting `WorkspaceEditor` or `Canvas`; the canvas's existing resize observer updates its viewport. A floating arrow restores navigation and remains clear of drawing controls on coarse-pointer devices. Dashboard navigation always shows the normal header.
+
 ## Touch and Pencil input
 
 `useCanvasInput` routes Pointer Events for mouse, touch, and pen into the same creation, lasso, and stroke handlers. DOM pointer capture keeps a gesture active when its pointer leaves the stage. Coalesced Pencil samples are collected where the browser exposes them. Konva retains its native mouse/touch dragging and Transformer behavior; the input hook explicitly stops and restores those operations before switching to navigation or handling cancellation.

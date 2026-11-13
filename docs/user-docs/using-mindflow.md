@@ -35,6 +35,10 @@ Pages open fitted to their content; your camera position is retained when switch
 
 The keyboard button in the editor lists shortcuts. Hovering over movable elements shows a grab cursor; dragging shows a grabbing cursor.
 
+## More canvas space
+
+Use the small **up arrow at the top center** of an open workspace to hide the app header, workspace heading, and page tabs. The canvas expands to fill the available viewport; the **down arrow** restores navigation. Drawing tools remain available, and zoom, selection, undo history, and unsaved work are preserved. Errors, editor-control messages, and application-update notices still appear. This display choice stays in the current tab until reload and also applies when opening another workspace; the workspace list always shows the app header.
+
 ## Tablets and Pencil
 
 On an iPad, use Safari. Choose a tool, then drag with one finger or Pencil to create a shape, text box, image, or pen stroke. In Select mode, drag a freehand lasso or drag an object to move it. Selection handles resize/rotate objects; use **Selection properties** in the bottom bar to change appearance, edit text, crop, group, duplicate, or delete without a right-click. Double-tap text with a finger to edit it, then choose **Done** to dismiss the editor. In Select mode, double-tap any object with the Pencil tip to open its properties beside the tap, just like a mouse right-click; for text, choose **Edit text** in that panel.
