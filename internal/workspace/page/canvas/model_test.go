@@ -21,7 +21,7 @@ func TestImageCropAndVerticalAlignmentValidation(t *testing.T) {
 			t.Errorf("accepted invalid crop: %+v", crop)
 		}
 	}
-	document.Elements = []canvas.Element{{ID: "text", Type: "text", Width: 100, Height: 100, FontSize: 24, Color: "#000000", Align: "left"}}
+	document.Elements = []canvas.Element{{ID: "text", Type: "text", Width: 100, Height: 100, FontSize: 24, Color: testBlack, Align: "left"}}
 	for _, alignment := range []string{"", "top", "middle", "bottom"} {
 		document.Elements[0].VerticalAlign = alignment
 		err = canvas.ValidateDocument(document)
@@ -37,7 +37,7 @@ func TestImageCropAndVerticalAlignmentValidation(t *testing.T) {
 
 func TestCanvasBackgroundColorValidation(t *testing.T) {
 	t.Parallel()
-	for _, color := range []string{"", "#000000", "#ffffff80", "transparent"} {
+	for _, color := range []string{"", testBlack, "#ffffff80", testTransparent} {
 		document := canvas.NewDocument()
 		document.Settings.BackgroundColor = color
 		err := canvas.ValidateDocument(document)
@@ -51,3 +51,30 @@ func TestCanvasBackgroundColorValidation(t *testing.T) {
 		t.Fatal("accepted a URL as a background color")
 	}
 }
+
+func TestGroupLockStateIsConsistent(t *testing.T) {
+	t.Parallel()
+	document := canvas.NewDocument()
+	document.Elements = []canvas.Element{
+		{ID: "one", Type: "shape", Shape: "rectangle", Width: 100, Height: 100, Fill: testTransparent, Border: testBlack, GroupID: "group", Locked: true},
+		{ID: "two", Type: "shape", Shape: "circle", Width: 100, Height: 100, Fill: testTransparent, Border: testBlack, GroupID: "group", Locked: true},
+	}
+	err := canvas.ValidateDocument(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	document.Elements[1].Locked = false
+	if canvas.ValidateDocument(document) == nil {
+		t.Fatal("accepted a partially locked group")
+	}
+	document.Elements = document.Elements[:1]
+	document.Elements[0].GroupID = ""
+	if canvas.ValidateDocument(document) == nil {
+		t.Fatal("accepted locked ungrouped element")
+	}
+}
+
+const (
+	testBlack       = "#000000"
+	testTransparent = "transparent"
+)

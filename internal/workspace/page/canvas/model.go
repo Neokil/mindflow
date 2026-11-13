@@ -24,6 +24,7 @@ type Element struct {
 	Height        float64    `json:"height"`
 	Rotation      float64    `json:"rotation"`
 	GroupID       string     `json:"groupId,omitempty"`
+	Locked        bool       `json:"locked,omitempty"`
 	Shape         string     `json:"shape,omitempty"`
 	Fill          string     `json:"fill,omitempty"`
 	Border        string     `json:"border,omitempty"`
@@ -89,6 +90,7 @@ func ValidateDocument(document Document) error {
 	}
 	ids := map[string]bool{}
 	groups := map[string]bool{}
+	locks := map[string]bool{}
 	for _, entry := range document.Elements {
 		if entry.ID == "" || len(entry.ID) > maxIdentifierLength || ids[entry.ID] {
 			return invalid("Invalid or duplicate element ID.")
@@ -99,6 +101,13 @@ func ValidateDocument(document Document) error {
 		}
 		if entry.GroupID != "" {
 			groups[entry.GroupID] = true
+			if locked, exists := locks[entry.GroupID]; exists && locked != entry.Locked {
+				return invalid("All group members must have the same lock state.")
+			}
+			locks[entry.GroupID] = entry.Locked
+		}
+		if entry.Locked && entry.GroupID == "" {
+			return invalid("Only groups can be locked.")
 		}
 		validationErr := validateElement(entry)
 		if validationErr != nil {
