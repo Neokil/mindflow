@@ -37,6 +37,12 @@ The public application URL comes from setup. Forwarded headers are not trusted f
 
 The TrueNAS YAML uses a one-shot `migrate` service with `depends_on: condition: service_completed_successfully`. It runs the image's `migrate` command with the same data mount and UID/GID as the server. It has no network access, published port, or HTTP health check. The server also checks pending migrations on startup, so ordinary container restarts remain safe.
 
+The YAML also defines a top-level `x-portals` entry for **Web UI** at `http://<TrueNAS-address>:30098/`. TrueNAS replaces the `0.0.0.0` placeholder with its address. This is portal metadata, separate from Docker's port mapping. Keep its port synchronized with the published host port.
+
+Existing YAML apps may not gain the button simply by saving an edit: the current [TrueNAS custom-app update path](https://github.com/truenas/middleware/blob/master/src/middlewared/middlewared/plugins/apps/crud.py) skips refreshing portal metadata, although initial creation reads it. Avoid recreating an app just to add a shortcut without first protecting its data. You can continue using a browser bookmark for the existing installation. The TrueNAS user documentation still [describes YAML apps as lacking the Web UI button](https://apps.truenas.com/managing-apps/managing-installed-apps/), so behavior depends on the installed release and metadata state.
+
+The direct portal uses HTTP to match the mapped service. For normal production sign-in through your reverse proxy or Cloudflare Tunnel, use the configured public HTTPS origin instead; you can set that hostname, scheme, and port in `x-portals`.
+
 `MINDFLOW_DATA` is a directory, not a database filename. With `/data`, the app creates `/data/mindflow.sqlite` automatically; do not create an empty database file manually. Both containers need write access to the dataset and its SQLite/WAL files. The supplied `create_host_path: false` deliberately requires the host directory to exist. A migration service cannot fix a missing mount, read-only dataset, or insufficient TrueNAS ACL permissions. Grant UID/GID `568:568` access through the dataset permissions/ACL editor, including traversal where needed, while retaining your existing ACL entries.
 
 Images are built for Linux amd64 and arm64. Use the appropriate architecture for your server.

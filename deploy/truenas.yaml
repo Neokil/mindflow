@@ -31,3 +31,11 @@ services:
     ports: ["30098:8080"]
     restart: unless-stopped
     stop_grace_period: 30s
+
+# 0.0.0.0 is replaced by the TrueNAS address in the Apps UI.
+x-portals:
+  - name: Web UI
+    host: 0.0.0.0
+    port: 30098
+    scheme: http
+    path: /
