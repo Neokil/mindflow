@@ -2,6 +2,10 @@
 
 Sign in to see your own and shared workspaces. Create a workspace, open it, and use the page tabs to organize separate canvases. Workspaces and pages can be renamed, duplicated, or deleted; page tabs can be reordered. Workspace lifecycle and sharing management belong to the owner.
 
+## Passwords
+
+Account passwords must contain 8–128 characters. Setup, invitation acceptance, and password reset offer **Suggest good password**: six randomly selected English words with random punctuation, generated locally in your browser. The suggested value is shown so you can save it; **Hide password** masks it again. Long, unrelated words are easier to remember than random character strings while providing many possible combinations. Use a unique password for mindflow.
+
 ## Import from Butterfly
 
 On the workspace list, choose **Import workspace**, select a `.bfly` export, enter a workspace name, and choose **Import**. Review the conversion notes, then choose **Open workspace**. The new workspace is private; existing workspaces and the source file are unchanged. A failed import leaves no partial workspace.
@@ -34,6 +38,24 @@ Pages open fitted to their content; your camera position is retained when switch
 | Cancel | Escape. |
 
 The keyboard button in the editor lists shortcuts. Hovering over movable elements shows a grab cursor; dragging shows a grabbing cursor.
+
+## Lists and highlighting
+
+While editing text, choose **Bulleted list**, **Numbered list**, or **Checklist** in the formatting bar beside Done. Each line is an item; choose **Plain text** to remove list formatting. The same choices are available under **List style** in object properties. Lists support wrapping, text styles, resizing, and up to 1,000 items. In Select mode, click or tap a checklist box to check/uncheck it. Changes autosave and support undo/redo. Editing requires page control and an unlocked element. Checkmarks follow unchanged lines when text is inserted or removed; changing an item's wording clears its checkmark.
+
+Choose **Highlighter (M)** to mark text, images, or other canvas content. It draws a wide translucent stroke in Sprout green by default, with adjustable color and thickness. Multiply blending keeps underlying content visible. Highlights can be selected, resized, rotated, moved, grouped, or deleted like pen strokes, and support mouse, touch, and Pencil input.
+
+## Import PDF
+
+Choose **Import PDF** in the canvas toolbar, select a file, then choose its placement:
+
+| Placement | Result |
+| --- | --- |
+| One mindflow page per PDF page | Creates new tabbed pages with one page image each, in PDF order. Existing pages remain intact. |
+| All pages as images on this canvas | Adds page images in a vertical column on the current canvas as one undoable insertion. |
+| Embedded PDF viewer | Keeps the original PDF as one canvas object with a first-page preview. Double-click it, or choose **Open PDF viewer** in its properties, to browse pages in the in-app read-only viewer. |
+
+Image imports can be annotated with the pen/highlighter. The retained PDF viewer does not support annotations; canvas marks do not become annotations inside PDF pages. PDF imports support up to **50 MiB and 100 pages**. Password-protected documents are rejected; export an unlocked copy first. Rendering is local to the browser, with bounded image resolution (up to 2×, capped at 2,400 pixels on the longest edge), so image imports are not vector copies. Rendering errors are shown before canvas insertion; new-page batches commit atomically. Workspace permissions also protect retained PDFs and their previews.
 
 ## More canvas space
 

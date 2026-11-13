@@ -34,3 +34,6 @@ New shapes default to Forest (`#1B5E3B`) fills and Gold (`#D9A441`) borders; new
 HTML emails use Forest for their heading, action button, and fallback link, with white button text. They retain escaped content, clickable links, and a plain-text alternative. Remote logo images are not required to read credential emails.
 
 Validate branding in light and dark system appearance. The appearance browser test checks the loaded icon, favicon, button contrast pairings, and live theme switching in Chrome and Firefox. Review the README banner and refreshed demo GIF visually.
+
+
+Email branding embeds `internal/email/assets/icon.png` as a CID attachment beside the mindflow name and GitHub link. Keep that PNG synchronized with `web/public/icon.png` when changing the icon. Invitation mail has one headline, a **Join mindflow** button, a raw-link fallback, and the “Your place for thoughts.” footer.

@@ -3487,6 +3487,201 @@
         ],
         "description": "Owner/full access required. Existing inserted instances remain unchanged."
       }
+    },
+    "/workspaces/{id}/pdf-assets": {
+      "post": {
+        "summary": "Store a PDF and first-page PNG thumbnail (workspace editors only)",
+        "operationId": "upload_workspace_pdf",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF original stored; returns id, width and height."
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "preview": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file",
+                  "preview"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "description": "Original up to 50 MiB, preview up to 2 MiB and 2048 pixels per side. PDF bytes are opaque server-side; originals are served as attachments and require normal asset permissions."
+      }
+    },
+    "/workspaces/{id}/pdf-pages": {
+      "post": {
+        "summary": "Create one canvas page per rasterized PDF page atomically",
+        "operationId": "import_workspace_pdf_pages",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ordered ids of the new pages."
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "pages"
+                ],
+                "properties": {
+                  "pages": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "name",
+                        "assetId",
+                        "width",
+                        "height"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "assetId": {
+                          "type": "string"
+                        },
+                        "width": {
+                          "type": "number",
+                          "minimum": 0.1
+                        },
+                        "height": {
+                          "type": "number",
+                          "minimum": 0.1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3574,7 +3769,7 @@
           "height",
           "rotation"
         ],
-        "description": "Type-specific fields are additionally validated by the server: shape and colors/border for shapes; assetId for images; text/fontSize/color/align for text; points/color/penWidth for strokes. Coordinates use the element center; rotations are radians.",
+        "description": "Type-specific fields are additionally validated by the server: shape and colors/border for shapes; assetId for images; text/fontSize/color/align for text; points/color/penWidth for strokes. Coordinates use the element center; rotations are radians. Text may use listStyle and checked line indices. PDF elements reference a protected original PDF asset with a PNG thumbnail; highlights are strokes with highlight=true.",
         "properties": {
           "id": {
             "type": "string"
@@ -3632,7 +3827,8 @@
               "image",
               "shape",
               "text",
-              "stroke"
+              "stroke",
+              "pdf"
             ]
           },
           "bold": {
@@ -3652,6 +3848,28 @@
             "type": "boolean",
             "default": false,
             "description": "Group lock safeguard. Requires groupId; all group members have the same lock state."
+          },
+          "highlight": {
+            "type": "boolean",
+            "description": "Translucent multiply-blended marker stroke; supported only on strokes."
+          },
+          "listStyle": {
+            "enum": [
+              "bullet",
+              "number",
+              "check"
+            ]
+          },
+          "checked": {
+            "type": "array",
+            "maxItems": 1000,
+            "uniqueItems": true,
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 999
+            },
+            "description": "Zero-based checked line indices, only for checklist text."
           }
         },
         "additionalProperties": false

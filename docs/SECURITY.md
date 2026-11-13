@@ -11,3 +11,6 @@ Follow the [release verification workflow](developer-docs/development.md#verific
 Report suspected security issues privately to the repository owner, including the affected version and a reproducible example without production credentials or private files.
 
 See [installation](user-docs/installation.md) for HTTPS/container configuration and [operations](user-docs/operations.md) for backup, restore, and upgrade procedures.
+
+
+PDF originals are opaque protected workspace assets served as attachments. PDF.js renders them locally with bounded file/page/image sizes; the in-app reader has no interactive PDF forms, script actions, or external links. Converted pages are ordinary image assets. PDF parsing remains a browser-side attack surface, so keep PDF.js current with the other dependencies. Passwords accept 8–128 characters; the optional suggester uses six independently selected EFF words and random punctuation from Web Crypto, entirely locally.

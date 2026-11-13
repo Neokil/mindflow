@@ -56,12 +56,13 @@ For TrueNAS Apps, use [the installation guide](docs/user-docs/installation.md) a
 ## Features
 
 - **Room for ideas:** infinite pan and cursor-centered zoom, tabbed pages, a dot grid, and optional snapping.
-- **Create freely:** drag to size images, shapes, and text; draw with a mouse, finger, or Pencil. Crop, rotate, group, duplicate, and arrange elements.
+- **Create freely:** drag to size images, shapes, and text; draw with a mouse, finger, or Pencil. Add lists and checklists, highlight content, crop, rotate, group, duplicate, and arrange elements.
 - **Reuse layouts:** save selections as workspace templates and lock groups to keep finished content in place.
 - **Share deliberately:** invite-only accounts and private workspaces, with read-only, comment, or full access for selected users.
 - **Discuss in context:** positioned comments, replies, avatars, and resolution controls.
 - **Stay in control:** one writer per page, approval-based control requests, owner force control, and recovery of displaced unsaved work.
 - **Keep your place:** workspace/page links, autosave, temporary disconnected editing, and a banner when a new build is available.
+- **Read and annotate PDFs:** import pages as images on one canvas or separate pages, or keep a PDF with an in-app reader.
 - **Bring existing work:** import Butterfly `.bfly` documents as private workspaces with editable pages and embedded images.
 - **Make it yours:** light/dark appearance and a quiet interface for desktop Chrome/Firefox and iPad Safari.
 

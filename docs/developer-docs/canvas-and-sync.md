@@ -69,3 +69,10 @@ No persistent browser offline store is used. Page sessions retain camera, undo/r
 `#/workspaces/{workspaceId}/pages/{pageId}` identifies the selected page. A workspace-only route selects its first page. Routes survive sign-in, enforce workspace/page membership, and preserve unsaved-work checks across browser history.
 
 The server identifies its executable once at startup and embeds the identifier in HTML. Clients compare it with the public, no-store `/api/v1/version` response every minute and on foreground events. A mismatch offers explicit reload through the normal unsaved-work guard. Direct Vite development has no production marker and does not show deployment notices.
+
+
+## PDF import and viewing
+
+`features/pdf` loads PDF.js and its worker only when needed. CMaps, font data, ICC resources, and the worker are served locally; the build copies support files with `scripts/copy-pdf-assets.mjs`. The renderer uses canvas only, without an interactive annotation layer, XFA, dynamic font loading, or WebAssembly. Existing annotation appearances are rasterized. Each page is rendered sequentially at a bounded resolution, with load/render timeouts and cancellation cleanup.
+
+`workspace/pdf` owns upload and batch-page endpoints. Its database access lives in the parent `workspace/storage` package and generated sqlc queries. Uploads retain bounded opaque PDF bytes and a bounded PNG thumbnail in one transaction after checking current write access. Signature/trailer checks are not a full server-side PDF parse. Originals are returned with attachment disposition; the in-app viewer fetches their bytes through the protected asset endpoint. Image variants cannot be generated for PDF originals by the image worker. Batch page creation validates names, geometry, MIME types, and workspace asset access before committing all pages. Image uploads made during a cancelled or failed conversion use ordinary unused-asset cleanup.

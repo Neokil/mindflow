@@ -93,3 +93,8 @@ New text defaults to horizontal center/vertical middle. Legacy missing alignment
 - Save receipts include a request digest and resulting revision, expiring after 24 hours. Lease epochs prevent an old client from becoming a valid writer again after transfer or expiry.
 
 The authoritative definitions are the [account](../../internal/account/storage/migrations), [workspace](../../internal/workspace/storage/migrations), [email](../../internal/email/storage/migrations), and [installation](../../internal/installation/storage/migrations) migrations, plus the [frontend model](../../web/src/model.ts). HTTP payloads are in [OpenAPI](../../api/openapi.yaml).
+
+
+List text adds optional `listStyle` (`bullet`, `number`, `check`) and `checked` line indices; a text element still stores newline-separated `text`. Highlights are ordinary strokes with optional `highlight: true`, rendered at 35% opacity with multiply blending. These fields are additive to schema version 1.
+
+PDF elements use `type: "pdf"` and an `assetId`. The parent workspace's existing `assets` table stores the original with MIME `application/pdf`; `asset_variants` stores a first-page PNG under bucket 1024. Width/height describe the thumbnail. Page/template asset links retain the original and preview through copies and lifecycle operations, using the existing workspace asset permissions. No separate PDF database or cross-domain schema is introduced. Image-mode imports use normal PNG assets and image elements.
