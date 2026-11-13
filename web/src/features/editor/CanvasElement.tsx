@@ -1,3 +1,4 @@
+import CanvasList from "./CanvasList";
 import { memo, useEffect, useState } from "react";
 import { Ellipse, Image as KImage, Line, Rect, Text } from "react-konva";
 import { api } from "../../api";
@@ -128,13 +129,17 @@ const ElementContent = memo(function ElementContent({
   e,
   zoom,
   refresh,
+  onToggleCheck,
 }: {
   e: CanvasElement;
   zoom: number;
   refresh: number;
+  onToggleCheck?: (index: number) => void;
 }) {
   if (e.type === "image")
     return <ImageContent element={e} zoom={zoom} refresh={refresh} />;
+  if (e.type === "text" && e.listStyle)
+    return <CanvasList element={e} onToggle={onToggleCheck} />;
   if (e.type === "text")
     return (
       <Text

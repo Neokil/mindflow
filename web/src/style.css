@@ -1816,7 +1816,14 @@ body {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-.canvas-text-done {
+.canvas-text-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
   position: absolute;
   bottom: 75px;
   left: 50%;

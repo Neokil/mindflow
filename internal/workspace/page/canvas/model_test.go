@@ -21,7 +21,7 @@ func TestImageCropAndVerticalAlignmentValidation(t *testing.T) {
 			t.Errorf("accepted invalid crop: %+v", crop)
 		}
 	}
-	document.Elements = []canvas.Element{{ID: "text", Type: "text", Width: 100, Height: 100, FontSize: 24, Color: testBlack, Align: "left"}}
+	document.Elements = []canvas.Element{{ID: testTextKind, Type: testTextKind, Width: 100, Height: 100, FontSize: 24, Color: testBlack, Align: "left"}}
 	for _, alignment := range []string{"", "top", "middle", "bottom"} {
 		document.Elements[0].VerticalAlign = alignment
 		err = canvas.ValidateDocument(document)
@@ -107,3 +107,23 @@ func TestElementDefaultColorsAndLegacySettings(t *testing.T) {
 		})
 	}
 }
+
+func TestLists(t *testing.T) {
+	t.Parallel()
+	document := canvas.NewDocument()
+	document.Elements = []canvas.Element{{ID: "tasks", Type: testTextKind, Width: 200, Height: 100, Text: "First\nSecond", FontSize: 24, Align: "left", Color: testBlack, ListStyle: "check", Checked: []int{1}}}
+	err := canvas.ValidateDocument(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	document.Elements[0].Checked = []int{2}
+	if canvas.ValidateDocument(document) == nil {
+		t.Fatal("accepted nonexistent check item")
+	}
+	document.Elements[0].Checked = []int{1, 1}
+	if canvas.ValidateDocument(document) == nil {
+		t.Fatal("accepted duplicate checked item")
+	}
+}
+
+const testTextKind = "text"

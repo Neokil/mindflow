@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"regexp"
+	"strings"
 )
 
 // ImageCrop identifies a rectangle in normalized original-image coordinates.
@@ -30,6 +31,8 @@ type Element struct {
 	Border        string     `json:"border,omitempty"`
 	BorderWidth   float64    `json:"borderWidth,omitempty"`
 	Text          string     `json:"text,omitempty"`
+	ListStyle     string     `json:"listStyle,omitempty"`
+	Checked       []int      `json:"checked,omitempty"`
 	FontSize      float64    `json:"fontSize,omitempty"`
 	Bold          bool       `json:"bold,omitempty"`
 	Italic        bool       `json:"italic,omitempty"`
@@ -132,6 +135,11 @@ func ValidateDocument(document Document) error {
 }
 
 func validateElement(entry Element) error {
+	listErr := validateList(entry)
+	if listErr != nil {
+		return listErr
+	}
+
 	geometryErr := validateGeometry(entry)
 	if geometryErr != nil {
 		return geometryErr
@@ -155,7 +163,7 @@ func validateElement(entry Element) error {
 		if !ValidColor(entry.Fill) || !ValidColor(entry.Border) || entry.BorderWidth < 0 || entry.BorderWidth > 100 {
 			return invalid("Invalid shape style.")
 		}
-	case "text":
+	case elementText:
 		if len(entry.Text) > 100000 || entry.FontSize < 1 || entry.FontSize > 2000 || !ValidColor(entry.Color) || (entry.Align != "left" && entry.Align != "center" && entry.Align != "right") {
 			return invalid("Invalid text style or size.")
 		}
@@ -167,6 +175,23 @@ func validateElement(entry Element) error {
 		return validateStroke(entry)
 	default:
 		return invalid("Unsupported element type.")
+	}
+
+	return nil
+}
+
+func validateList(entry Element) error {
+	if entry.ListStyle != "" {
+		if entry.Type != elementText || (entry.ListStyle != "bullet" && entry.ListStyle != "number" && entry.ListStyle != "check") || strings.Count(entry.Text, "\n") >= 1000 {
+			return invalid("Invalid list style or too many list items (maximum 1,000).")
+		}
+	}
+	seenChecked := map[int]bool{}
+	for _, index := range entry.Checked {
+		if entry.Type != elementText || entry.ListStyle != "check" || index < 0 || index > strings.Count(entry.Text, "\n") || seenChecked[index] {
+			return invalid("Invalid checked list item.")
+		}
+		seenChecked[index] = true
 	}
 
 	return nil

@@ -210,6 +210,37 @@ export default function SelectionInspector({
               {first.type === "text" && (
                 <>
                   <label>
+                    List style
+                    <select
+                      aria-label="List style"
+                      value={first.listStyle || ""}
+                      disabled={
+                        !editable ||
+                        (first.text || "").split("\n").length > 1000
+                      }
+                      onChange={(event) =>
+                        onPatch({
+                          listStyle:
+                            (event.target
+                              .value as CanvasElement["listStyle"]) ||
+                            undefined,
+                          checked:
+                            event.target.value === "check"
+                              ? first.checked
+                              : undefined,
+                          ...(event.target.value
+                            ? { align: "left", verticalAlign: "top" }
+                            : {}),
+                        })
+                      }
+                    >
+                      <option value="">Plain text</option>
+                      <option value="bullet">Bulleted list</option>
+                      <option value="number">Numbered list</option>
+                      <option value="check">Checklist</option>
+                    </select>
+                  </label>
+                  <label>
                     Font size
                     <input
                       aria-label="Font size"

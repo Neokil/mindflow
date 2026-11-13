@@ -40,6 +40,7 @@ import { PageSession, localImages } from "../../session";
 import ImageCropDialog from "./ImageCropDialog";
 import CommentsLayer from "./CommentsLayer";
 import CanvasSettings from "./CanvasSettings";
+import { retainCheckedLines } from "./textLists";
 import { creationBounds } from "./creation";
 import CanvasControls from "./CanvasControls";
 import CanvasScene from "./CanvasScene";
@@ -106,7 +107,7 @@ export default function Canvas({
     | undefined
   >(undefined);
 
-  const textOriginal = useRef("");
+  const textOriginal = useRef<CanvasElement | undefined>(undefined);
   useEffect(() => {
     session.camera = camera;
   }, [camera, session]);
@@ -216,18 +217,22 @@ export default function Canvas({
     session.redoStack = [];
     setEditing(e.id);
     setTextValue(e.text || "");
-    textOriginal.current = e.text || "";
+    textOriginal.current = clone(e);
     setSelection([e.id]);
     setTool("select");
   }
   function finishText(cancel = false) {
     if (!editing) return;
-    const value = cancel ? textOriginal.current : textValue;
+    const original = textOriginal.current;
     session.edit(
       {
         ...session.doc,
         elements: session.doc.elements.map((e) =>
-          e.id === editing ? { ...e, text: value } : e,
+          e.id === editing
+            ? cancel && original
+              ? original
+              : { ...e, text: textValue }
+            : e,
         ),
       },
       false,
@@ -690,12 +695,49 @@ export default function Canvas({
                 {
                   ...session.doc,
                   elements: session.doc.elements.map((el) =>
-                    el.id === editing ? { ...el, text: value } : el,
+                    el.id === editing
+                      ? {
+                          ...el,
+                          text: value,
+                          checked:
+                            el.listStyle === "check"
+                              ? retainCheckedLines(
+                                  el.text || "",
+                                  value,
+                                  el.checked,
+                                )
+                              : undefined,
+                        }
+                      : el,
                   ),
                 },
                 false,
               );
             }}
+            onListStyle={(listStyle) =>
+              session.edit(
+                {
+                  ...session.doc,
+                  elements: session.doc.elements.map((el) =>
+                    el.id === editing
+                      ? {
+                          ...el,
+                          listStyle,
+                          checked:
+                            listStyle === "check" ? el.checked : undefined,
+                          ...(listStyle
+                            ? {
+                                align: "left" as const,
+                                verticalAlign: "top" as const,
+                              }
+                            : {}),
+                        }
+                      : el,
+                  ),
+                },
+                false,
+              )
+            }
             onFinish={finishText}
           />
         )}

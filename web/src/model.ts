@@ -14,6 +14,8 @@ export type CanvasElement = {
   border?: string;
   borderWidth?: number;
   text?: string;
+  listStyle?: "bullet" | "number" | "check";
+  checked?: number[];
   fontSize?: number;
   bold?: boolean;
   italic?: boolean;
@@ -162,6 +164,22 @@ export function validClipboardElements(
     if (
       e.verticalAlign !== undefined &&
       !["top", "middle", "bottom"].includes(e.verticalAlign)
+    )
+      return false;
+    if (
+      e.listStyle !== undefined &&
+      (e.type !== "text" ||
+        !["bullet", "number", "check"].includes(e.listStyle))
+    )
+      return false;
+    if (
+      e.checked !== undefined &&
+      (!Array.isArray(e.checked) ||
+        e.checked.length > 1000 ||
+        e.checked.some(
+          (index: unknown) =>
+            typeof index !== "number" || !Number.isInteger(index) || index < 0,
+        ))
     )
       return false;
     if (e.crop !== undefined && (e.type !== "image" || !validImageCrop(e.crop)))

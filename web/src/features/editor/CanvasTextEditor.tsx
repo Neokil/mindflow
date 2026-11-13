@@ -1,3 +1,4 @@
+import { AlignLeft, List, ListOrdered, ListTodo } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CanvasElement } from "../../model";
 import { wholeFontSize } from "../../model";
@@ -9,6 +10,7 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   onFinish: (cancel?: boolean) => void;
+  onListStyle: (style: CanvasElement["listStyle"]) => void;
 };
 export default function CanvasTextEditor({
   element,
@@ -16,6 +18,7 @@ export default function CanvasTextEditor({
   value,
   onChange,
   onFinish,
+  onListStyle,
 }: Props) {
   const input = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
@@ -56,7 +59,13 @@ export default function CanvasTextEditor({
         className="canvas-text-editor"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        onBlur={() => onFinish()}
+        onBlur={(event) => {
+          if (!(
+            event.relatedTarget instanceof Element &&
+            event.relatedTarget.closest(".canvas-text-actions")
+          ))
+            onFinish();
+        }}
         onKeyDown={(event) => {
           event.stopPropagation();
           if (event.key === "Escape") {
@@ -84,15 +93,37 @@ export default function CanvasTextEditor({
           lineHeight: 1.3,
         }}
       />
-      <button
-        className="primary canvas-text-done"
-        aria-label="Done editing text"
-        style={{ bottom: doneBottom }}
-        onPointerDown={(event) => event.preventDefault()}
-        onClick={() => onFinish()}
-      >
-        Done
-      </button>
+      <div className="canvas-text-actions" style={{ bottom: doneBottom }}>
+        {(
+          [
+            { style: undefined, label: "Plain text", icon: AlignLeft },
+            { style: "bullet", label: "Bulleted list", icon: List },
+            { style: "number", label: "Numbered list", icon: ListOrdered },
+            { style: "check", label: "Checklist", icon: ListTodo },
+          ] as const
+        ).map(({ style, label, icon: Icon }) => (
+          <button
+            key={label}
+            className={`icon-button ${element.listStyle === style ? "active" : ""}`}
+            aria-label={label}
+            aria-pressed={element.listStyle === style}
+            title={label}
+            disabled={!!style && value.split("\n").length > 1000}
+            onPointerDown={(event) => event.preventDefault()}
+            onClick={() => onListStyle(style)}
+          >
+            <Icon size={18} />
+          </button>
+        ))}
+        <button
+          className="primary"
+          aria-label="Done editing text"
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => onFinish()}
+        >
+          Done
+        </button>
+      </div>
     </>
   );
 }

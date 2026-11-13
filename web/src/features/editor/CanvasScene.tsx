@@ -373,7 +373,34 @@ export default function CanvasScene({
                 );
               }}
             >
-              <CanvasElementView e={e} zoom={camera.zoom} refresh={refresh} />
+              <CanvasElementView
+                e={e}
+                zoom={camera.zoom}
+                refresh={refresh}
+                onToggleCheck={
+                  e.listStyle === "check" &&
+                  editable &&
+                  tool === "select" &&
+                  !e.locked &&
+                  !selectionLocked
+                    ? (index) =>
+                        onElementsChange(
+                          document.elements.map((element) =>
+                            element.id === e.id
+                              ? {
+                                  ...element,
+                                  checked: element.checked?.includes(index)
+                                    ? element.checked.filter(
+                                        (value) => value !== index,
+                                      )
+                                    : [...(element.checked || []), index],
+                                }
+                              : element,
+                          ),
+                        )
+                    : undefined
+                }
+              />
               {e.locked && selection.includes(e.id) && (
                 <Rect
                   listening={false}
