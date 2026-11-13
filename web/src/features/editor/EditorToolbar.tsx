@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Circle,
   Hand,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import type { Tool } from "./types";
 type Props = {
+  status?: ReactNode;
   tool: Tool;
   placing: boolean;
   editable: boolean;
@@ -41,6 +43,7 @@ const tools = [
   { id: "comment", icon: MessageCircle, label: "Add comment" },
 ] as const;
 export default function EditorToolbar({
+  status,
   tool,
   placing,
   editable,
@@ -56,69 +59,72 @@ export default function EditorToolbar({
 }: Props) {
   return (
     <div className="canvas-toolbar" aria-label="Drawing tools">
-      {tools.map(({ id, icon: Icon, label }) => (
+      <div className="canvas-tools">
+        {tools.map(({ id, icon: Icon, label }) => (
+          <button
+            key={id}
+            className={`tool ${tool === id && !placing ? "active" : ""}`}
+            title={label}
+            aria-label={label}
+            aria-pressed={tool === id}
+            disabled={
+              id === "comment"
+                ? !canComment
+                : !editable && id !== "select" && id !== "pan"
+            }
+            onClick={() => onTool(id)}
+          >
+            <Icon size={18} strokeWidth={1.7} />
+          </button>
+        ))}
         <button
-          key={id}
-          className={`tool ${tool === id && !placing ? "active" : ""}`}
-          title={label}
-          aria-label={label}
-          aria-pressed={tool === id}
-          disabled={
-            id === "comment"
-              ? !canComment
-              : !editable && id !== "select" && id !== "pan"
-          }
-          onClick={() => onTool(id)}
+          className="tool"
+          title="Workspace templates"
+          aria-label="Workspace templates"
+          onClick={onTemplates}
         >
-          <Icon size={18} strokeWidth={1.7} />
+          <Blocks size={18} />
         </button>
-      ))}
-      <button
-        className="tool"
-        title="Workspace templates"
-        aria-label="Workspace templates"
-        onClick={onTemplates}
-      >
-        <Blocks size={18} />
-      </button>
-      <span className="toolbar-divider" />
-      <button
-        className="tool"
-        title="Add images"
-        aria-label="Add images"
-        disabled={!editable}
-        onClick={onImages}
-      >
-        <ImagePlus size={18} />
-      </button>
-      <button
-        className="tool"
-        aria-label="Import PDF"
-        title="Import PDF"
-        disabled={!editable}
-        onClick={onPDF}
-      >
-        <FileUp size={18} />
-      </button>
-      <span className="toolbar-divider" />
-      <button
-        className="tool"
-        title="Undo"
-        aria-label="Undo"
-        disabled={!editable || !canUndo}
-        onClick={onUndo}
-      >
-        <Undo2 size={17} />
-      </button>
-      <button
-        className="tool"
-        title="Redo"
-        aria-label="Redo"
-        disabled={!editable || !canRedo}
-        onClick={onRedo}
-      >
-        <Redo2 size={17} />
-      </button>
+        <span className="toolbar-divider" />
+        <button
+          className="tool"
+          title="Add images"
+          aria-label="Add images"
+          disabled={!editable}
+          onClick={onImages}
+        >
+          <ImagePlus size={18} />
+        </button>
+        <button
+          className="tool"
+          aria-label="Import PDF"
+          title="Import PDF"
+          disabled={!editable}
+          onClick={onPDF}
+        >
+          <FileUp size={18} />
+        </button>
+        <span className="toolbar-divider" />
+        <button
+          className="tool"
+          title="Undo"
+          aria-label="Undo"
+          disabled={!editable || !canUndo}
+          onClick={onUndo}
+        >
+          <Undo2 size={17} />
+        </button>
+        <button
+          className="tool"
+          title="Redo"
+          aria-label="Redo"
+          disabled={!editable || !canRedo}
+          onClick={onRedo}
+        >
+          <Redo2 size={17} />
+        </button>
+      </div>
+      {status}
     </div>
   );
 }

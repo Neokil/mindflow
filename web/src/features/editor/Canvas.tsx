@@ -1,3 +1,4 @@
+import PageControlStatus from "./PageControlStatus";
 import type { CanvasFullscreen } from "../../useCanvasFullscreen";
 import PDFImportDialog from "../pdf/PDFImportDialog";
 import PDFViewer from "../pdf/PDFViewer";
@@ -143,6 +144,7 @@ export default function Canvas({
   }, [size, doc.elements]);
   useEffect(() => {
     if (!session.editable) {
+      setTool("select");
       setPending([]);
       setTemplatePlacement([]);
       setCreation(undefined);
@@ -755,6 +757,7 @@ export default function Canvas({
         )}
       </div>
       <EditorToolbar
+        status={<PageControlStatus session={session} />}
         tool={tool}
         placing={pending.length > 0 || templatePlacement.length > 0}
         editable={session.editable}

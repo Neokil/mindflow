@@ -282,3 +282,64 @@ for (const mode of ["allowed", "denied", "unsupported", "delayed"] as const) {
       );
   });
 }
+
+test("read-only status and control actions stay attached to the toolbox", async ({
+  page,
+}, info) => {
+  await login(page);
+  await create(page, `Toolbox control ${info.project.name} ${Date.now()}`);
+  const viewer = await page.context().newPage();
+  viewer.on("dialog", (dialog) => dialog.accept());
+  await viewer.goto(page.url());
+  const toolbox = viewer.getByLabel("Drawing tools", { exact: true });
+  const status = toolbox.getByRole("status", {
+    name: "Page access",
+    exact: true,
+  });
+  await expect(status).toContainText("Page is read-only");
+  await expect(
+    status.getByRole("button", { name: "Take control", exact: true }),
+  ).toBeEnabled();
+  const tools = (await toolbox.locator(".canvas-tools").boundingBox())!;
+  const footer = (await status.boundingBox())!;
+  expect(footer.y).toBeGreaterThanOrEqual(tools.y + tools.height);
+  await press(
+    viewer,
+    viewer.getByRole("button", {
+      name: "Hide app header and pages",
+      exact: true,
+    }),
+  );
+  await expect(status).toBeVisible();
+  const fullscreen = viewer.getByRole("button", {
+    name: "Enter fullscreen",
+    exact: true,
+  });
+  if (await fullscreen.isEnabled()) {
+    await press(viewer, fullscreen);
+    const exit = viewer.getByRole("button", {
+      name: "Exit fullscreen",
+      exact: true,
+    });
+    await expect(exit).toBeVisible();
+    await expect(status).toBeVisible();
+    await press(viewer, exit);
+  }
+  await viewer.screenshot({
+    path: `../.cache/e2e/readonly-toolbox-${info.project.name}.png`,
+  });
+  await press(
+    viewer,
+    status.getByRole("button", { name: "Force control", exact: true }),
+  );
+  await expect(status).toHaveCount(0);
+  await expect(
+    viewer.getByRole("button", { name: "Pen (P)", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    page
+      .getByLabel("Drawing tools", { exact: true })
+      .getByRole("status", { name: "Page access", exact: true }),
+  ).toBeVisible();
+  await viewer.close();
+});

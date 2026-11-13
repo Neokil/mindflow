@@ -118,7 +118,7 @@ Use **Add comment** and click a canvas point. Hover or focus the avatar/initials
 
 ## Editor control and recovery
 
-Each page has one writer. A second session sees saved content read-only and can choose **Take control**. The current writer can accept or deny; after ten seconds the request is automatically accepted. The requester can cancel. The workspace owner can choose **Force control** to transfer immediately. Administrators who are not owners have no special control privilege.
+Each page has one writer. A second session sees saved content read-only. The read-only status and **Take control** button appear directly beneath the drawing tools, so they remain visible when the header is collapsed or the canvas is fullscreen. The current writer can accept or deny; after ten seconds the request is automatically accepted. The requester can cancel. The workspace owner can choose **Force control** to transfer immediately. Administrators who are not owners have no special control privilege.
 
 Autosave sends completed edits to the server. Check the save status before leaving. During a connection loss, loaded content can still be edited in memory. If another session takes control, your unsaved changes are kept separately and can be saved as a recovered page. Keep that tab open until recovery is saved. Browser crashes or forced closure can lose drafts; there is no persistent local offline store.
 
