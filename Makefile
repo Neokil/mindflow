@@ -95,3 +95,17 @@ $(CURDIR)/.cache/demo-venv/.ready: scripts/demo-requirements.txt
 	python3 -m venv .cache/demo-venv
 	.cache/demo-venv/bin/python -m pip install -r scripts/demo-requirements.txt
 	touch "$@"
+
+# Manual social announcement: actual UI capture, then a silent captioned MP4.
+.PHONY: reel
+reel: frontend-build $(CURDIR)/.cache/reel-venv/.ready
+	mkdir -p .cache/reel
+	go build -o .cache/reel/mindflow ./cmd/mindflow
+	cd web && npx playwright install chromium
+	node web/scripts/record-reel.mjs
+	.cache/reel-venv/bin/python scripts/render-reel.py
+
+$(CURDIR)/.cache/reel-venv/.ready: scripts/reel-requirements.txt
+	python3 -m venv .cache/reel-venv
+	.cache/reel-venv/bin/python -m pip install -r scripts/reel-requirements.txt
+	touch "$@"

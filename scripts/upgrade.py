@@ -135,6 +135,9 @@ def plan():
     changes[ROOT / 'Makefile'] = makefile
     demo_metadata, _ = fetch('https://pypi.org/pypi/Pillow/json')
     changes[ROOT / 'scripts/demo-requirements.txt'] = 'Pillow==' + demo_metadata['info']['version'] + '\n'
+    reel_metadata, _ = fetch('https://pypi.org/pypi/imageio-ffmpeg/json')
+    changes[ROOT / 'scripts/reel-requirements.txt'] = ('Pillow==' + demo_metadata['info']['version'] + '\n'
+                                                    + 'imageio-ffmpeg==' + reel_metadata['info']['version'] + '\n')
 
     return changes
 
