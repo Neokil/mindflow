@@ -50,9 +50,9 @@ export default function NewPassword({
         </button>
       </div>
       <p id={help} className="muted password-help">
-        Random, unrelated words make a long password easier to remember and
-        harder to guess. Keep it unique to mindflow and save it in your password
-        manager.
+        Random word choices add unpredictability while keeping the password
+        easier to remember. Keep it unique to mindflow and save it in your
+        password manager.
       </p>
     </div>
   );

@@ -12,7 +12,10 @@ test("all account password-setting screens offer local word suggestions and acce
       .click();
     const password = page.getByLabel("Password", { exact: true });
     await expect(password).toHaveAttribute("type", "text");
-    expect((await password.inputValue()).split(/[.!#\-+_?=]/)).toHaveLength(6);
+    const suggestion = await password.inputValue();
+    expect(suggestion.length).toBeGreaterThanOrEqual(10);
+    expect(suggestion.length).toBeLessThanOrEqual(15);
+    expect(suggestion).toMatch(/^[A-Z][a-z]+(?:[.!#\-+_?=][A-Z][a-z]+){1,2}$/);
     await expect(password).toHaveAttribute("minlength", "8");
     await password.fill("12345678");
     await page.route(`**/api/v1/auth/${mode}`, async (route) => {
@@ -33,6 +36,11 @@ test("all account password-setting screens offer local word suggestions and acce
   await page
     .getByRole("button", { name: "Suggest good password", exact: true })
     .click();
+  const setupSuggestion = await page
+    .getByLabel("Password", { exact: true })
+    .inputValue();
+  expect(setupSuggestion.length).toBeGreaterThanOrEqual(10);
+  expect(setupSuggestion.length).toBeLessThanOrEqual(15);
   await expect(page.getByLabel("Password", { exact: true })).toHaveAttribute(
     "minlength",
     "8",

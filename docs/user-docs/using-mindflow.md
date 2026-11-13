@@ -4,7 +4,7 @@ Sign in to see your own and shared workspaces. Create a workspace, open it, and 
 
 ## Passwords
 
-Account passwords must contain 8–128 characters. Setup, invitation acceptance, and password reset offer **Suggest good password**: six randomly selected English words with random punctuation, generated locally in your browser. The suggested value is shown so you can save it; **Hide password** masks it again. Long, unrelated words are easier to remember than random character strings while providing many possible combinations. Use a unique password for mindflow.
+Account passwords must contain 8–128 characters. Setup, invitation acceptance, and password reset offer **Suggest good password**: two or three randomly selected English words with special characters between them, totaling 10–15 characters, generated locally in your browser. The suggested value is shown so you can save it; **Hide password** masks it again. Random word choices add unpredictability while remaining easier to remember than random character strings. Use a unique password for mindflow.
 
 ## Import from Butterfly
 
