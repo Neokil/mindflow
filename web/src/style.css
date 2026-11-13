@@ -1159,6 +1159,35 @@ select {
   display: flex;
   gap: 8px;
 }
+.fullscreen-control {
+  position: relative;
+  display: inline-flex;
+  border-radius: 11px;
+}
+.fullscreen-control:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.fullscreen-control .fullscreen-toggle:disabled {
+  pointer-events: none;
+}
+.fullscreen-hint {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 240px;
+  max-width: calc(100vw - 80px);
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  line-height: 1.5;
+  pointer-events: none;
+  z-index: 20;
+}
 .inspector-toggle,
 .fullscreen-toggle {
   background: var(--panel);

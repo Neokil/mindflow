@@ -1,3 +1,4 @@
+import FullscreenButton from "./FullscreenButton";
 import { StrokeHold } from "./strokeHold";
 import PageControlStatus from "./PageControlStatus";
 import type { CanvasFullscreen } from "../../useCanvasFullscreen";
@@ -16,8 +17,6 @@ import {
   LockKeyhole,
   LockKeyholeOpen,
   SlidersHorizontal,
-  Maximize,
-  Minimize,
   Trash2,
   X,
 } from "lucide-react";
@@ -913,24 +912,7 @@ export default function Canvas({
         </div>
       )}
       <div className="canvas-top-actions">
-        <button
-          className="fullscreen-toggle icon-button"
-          aria-label={
-            fullscreen.active ? "Exit fullscreen" : "Enter fullscreen"
-          }
-          title={
-            !fullscreen.available
-              ? "Fullscreen is unavailable in this browser"
-              : fullscreen.active
-                ? "Exit fullscreen"
-                : "Enter fullscreen"
-          }
-          aria-pressed={fullscreen.active}
-          disabled={!fullscreen.available && !fullscreen.active}
-          onClick={() => void fullscreen.toggle()}
-        >
-          {fullscreen.active ? <Minimize size={19} /> : <Maximize size={19} />}
-        </button>
+        <FullscreenButton fullscreen={fullscreen} />
         <button
           className={`inspector-toggle icon-button ${canvasSettingsOpen ? "active" : ""}`}
           title="Canvas settings"

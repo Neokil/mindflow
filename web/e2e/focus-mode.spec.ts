@@ -198,7 +198,7 @@ test("fullscreen toggle is independent of header collapse and follows browser ex
 });
 
 for (const mode of ["allowed", "denied", "unsupported", "delayed"] as const) {
-  test(`fullscreen handles ${mode} requests`, async ({ page }) => {
+  test(`fullscreen handles ${mode} requests`, async ({ page, isMobile }) => {
     await login(page);
     await page.evaluate((mode) => {
       let current: Element | null = null;
@@ -233,10 +233,20 @@ for (const mode of ["allowed", "denied", "unsupported", "delayed"] as const) {
     });
     if (mode === "unsupported") {
       await expect(enter).toBeDisabled();
-      await expect(enter).toHaveAttribute(
-        "title",
-        "Fullscreen is unavailable in this browser",
+      const explanation = page.getByLabel("Fullscreen availability", {
+        exact: true,
+      });
+      if (isMobile) await explanation.tap();
+      else await explanation.hover();
+      const note = page.getByRole("tooltip");
+      await expect(note).toBeVisible();
+      await expect(note).toHaveText(
+        "On iPad, fullscreen mode is only supported in Chrome and Safari.",
       );
+      await page.keyboard.press("Escape");
+      await expect(note).toHaveCount(0);
+      await explanation.focus();
+      await expect(note).toBeVisible();
       await press(
         page,
         page.getByRole("button", {
@@ -245,6 +255,7 @@ for (const mode of ["allowed", "denied", "unsupported", "delayed"] as const) {
         }),
       );
       await expect(page.locator(".app-header")).toBeHidden();
+      await expect(note).toHaveCount(0);
       await expect(page.locator("html")).not.toHaveAttribute(
         "data-fullscreen-requests",
       );
