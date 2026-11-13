@@ -58,8 +58,8 @@ A page's `document` is versioned JSON. `pages.revision` tracks saved document ch
       "width": 160,
       "height": 120,
       "rotation": 0,
-      "fill": "#e8e4fa",
-      "border": "#6c63d9",
+      "fill": "#edf5df",
+      "border": "#1b5e3b",
       "borderWidth": 2
     }
   ],

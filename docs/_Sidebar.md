@@ -19,6 +19,7 @@
 - [Canvas and synchronization](developer-docs/canvas-and-sync.md)
 - [Development workflow](developer-docs/development.md)
 - [Butterfly import](developer-docs/butterfly-import.md)
+- [Branding and colors](developer-docs/branding.md)
 - [Dependency updates](developer-docs/dependencies.md)
 - [Demo recording](developer-docs/demo.md)
 - [Wiki publishing](developer-docs/wiki.md)

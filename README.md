@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="web/public/logo.png" alt="mindflow logo" width="100" />
+  <img src="web/public/banner.png" alt="mindflow banner" width="960" />
 </p>
 
 <h1 align="center">mindflow</h1>

@@ -129,7 +129,7 @@ try {
     password: "another private demo passphrase",
   });
   await page.addStyleTag({
-    content: `#demo-caption{position:fixed;left:24px;bottom:65px;z-index:10000;padding:12px 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:var(--shadow);color:var(--text);font:500 15px Arial;pointer-events:none}#demo-pointer{position:fixed;width:12px;height:12px;border:2px solid white;background:#6c63d9;border-radius:50%;z-index:10001;pointer-events:none;transform:translate(-50%,-50%);box-shadow:0 1px 5px #0004}`,
+    content: `#demo-caption{position:fixed;left:24px;bottom:65px;z-index:10000;padding:12px 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:var(--shadow);color:var(--text);font:500 15px Arial;pointer-events:none}#demo-pointer{position:fixed;width:12px;height:12px;border:2px solid white;background:var(--sprout);border-radius:50%;z-index:10001;pointer-events:none;transform:translate(-50%,-50%);box-shadow:0 1px 5px #0004}`,
   });
   await page.evaluate(() => {
     const caption = document.createElement("div");
@@ -260,9 +260,18 @@ try {
     .getByLabel("Edit canvas text")
     .pressSequentially("Make space\nfor the next big idea.", { delay: 65 });
   await page.getByLabel("Edit canvas text").press("Control+Enter");
+  // Forest keeps the heading readable on the pale card in the dark-mode demo.
+  await page
+    .getByRole("button", { name: "Selection properties", exact: true })
+    .click();
+  await page.getByLabel("Element color", { exact: true }).fill("#1b5e3b");
+  await page
+    .getByRole("button", { name: "Close settings", exact: true })
+    .click();
   await page.getByRole("button", { name: "Star", exact: true }).click();
   await drag(940, 220, 90, 90);
   await page.getByRole("button", { name: "Pen (P)", exact: true }).click();
+  await page.getByLabel("Pen color", { exact: true }).fill("#a4d65e");
   await page.mouse.move(bounds.x + 630, bounds.y + 420);
   await page.mouse.down();
   for (let index = 0; index < 30; index++)
