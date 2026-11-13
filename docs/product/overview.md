@@ -1,6 +1,6 @@
 # Product definition
 
-mindflow provides a quiet, flexible space for collecting images, arranging thoughts, sketching, and discussing ideas. It is a self-hosted desktop web application for an individual and a small group of invited users, with an interface inspired by Apple applications.
+mindflow provides a quiet, flexible space for collecting images, arranging thoughts, sketching, and discussing ideas. It is a self-hosted web application for individuals and small groups of invited users, with desktop and tablet support and an interface inspired by Apple applications.
 
 ## What it does
 
@@ -16,7 +16,7 @@ Accounts are invite-only. Administrators manage users and invitations without ga
 
 ## Product boundaries
 
-- Desktop Chrome and Firefox are the supported browser targets.
+- Browser targets are desktop Chrome/Firefox and iPad Safari, with finger and Pencil input. The tablet canvas supports one-finger tools and two-finger pan/zoom. Small-screen phone layouts are outside the current scope.
 - One application instance serves a SQLite database on the operator's server; TrueNAS is a deployment option.
 - Accounts, documents, original images, variants, and settings are stored on the server.
 - Loaded pages can be edited temporarily while disconnected, but unsaved drafts live only in browser-session memory. This is not a persistent offline application.

@@ -22,7 +22,7 @@ Pages open fitted to their content; your camera position is retained when switch
 | Action | Control |
 | --- | --- |
 | Zoom around the cursor | Scroll. |
-| Pan | Cmd/Ctrl + drag, or hold the middle mouse button and drag. |
+| Pan | Pan tool (H), Cmd/Ctrl + drag, or hold the middle mouse button and drag. |
 | Select enclosed elements | Drag a freehand lasso in Select mode. An element must be fully contained. |
 | Add to selection | Shift + click or lasso. |
 | Create an element | Choose a tool, drag to preview its size, and release. Shift constrains it to 1:1; a click uses its default size. |
@@ -30,10 +30,20 @@ Pages open fitted to their content; your camera position is retained when switch
 | Copy / paste / duplicate | Cmd/Ctrl + C / V / D. |
 | Group / ungroup | Cmd/Ctrl + G / Shift + G. |
 | Delete | Delete/Backspace. Pen strokes are selectable elements; there is no eraser. |
-| Finish editing text | Cmd/Ctrl + Enter. |
+| Finish editing text | Done, or Cmd/Ctrl + Enter. |
 | Cancel | Escape. |
 
 The keyboard button in the editor lists shortcuts. Hovering over movable elements shows a grab cursor; dragging shows a grabbing cursor.
+
+## Tablets and Pencil
+
+On an iPad, use Safari. Choose a tool, then drag with one finger or Pencil to create a shape, text box, image, or pen stroke. In Select mode, drag a freehand lasso or drag an object to move it. Selection handles resize/rotate objects; use **Selection properties** in the bottom bar to change appearance, edit text, crop, group, duplicate, or delete without a right-click. Double-tap text to edit it, then choose **Done** to dismiss the editor.
+
+Use **two fingers** to pan and pinch to zoom around their midpoint, with any tool selected. Starting a second touch discards the unfinished single-finger drawing, creation, or transform; lift both fingers before starting another tool gesture. The **Pan** tool also lets one finger pan, including in read-only pages. The drawing surface captures gestures so they do not scroll the page or trigger pull-to-refresh; menus and forms retain normal touch scrolling.
+
+The pen's **Pencil only** option makes one finger pan while Pencil draws. Other touches are ignored while Pencil is in contact with the canvas. Pen color and thickness are adjustable; strokes currently use a constant thickness, without pressure or tilt variation. Interrupted gestures (such as switching apps, rotating the device, or browser cancellation) are discarded rather than saved as partial elements. Completed work follows normal autosave.
+
+Upload images through **Add images**, then drag on the canvas to place and size them. To cancel pending image/template placement without a keyboard, choose another tool. Tap comment pins to open threads and reply. Drawing controls and transformation handles are enlarged on touch devices, and the tool strip can scroll horizontally when needed.
 
 ## Elements and settings
 

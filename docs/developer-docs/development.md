@@ -38,10 +38,14 @@ Commit migrations, SQL, sqlc bindings, and the generated migration catalog toget
 | `make lint` | Go linters/formatting, migration/sqlc freshness, ESLint/hooks, Prettier, workflow validation, and Python syntax. |
 | `make test` | Frontend build, Go race tests with real temporary SQLite databases, frontend unit tests, and script tests. |
 | `make audit` | Go module integrity, reachable known Go vulnerabilities, and npm advisories. |
-| `make test-e2e` | Chrome/Firefox workflows and an actual insecure-HTTP regression. |
+| `make test-e2e` | Desktop Chrome/Firefox, insecure HTTP, and iPad WebKit/tablet Chromium interaction workflows. |
 | `make verify-container` | Scratch runtime, migrations, HTTPS cookies/SSE, TLS mail, persistence, restore, and non-root/read-only operation. |
 
-Install browsers once with `cd web && npx playwright install chromium firefox`. Browser fixtures bind to `127.0.0.1:8087` and use disposable accounts/data and a non-delivering SMTP target. Container checks require Docker, Python 3, and OpenSSL. No production token lookup endpoint exists; invitation tests read only their disposable email queue. Failure artifacts remain under ignored cache/test-result directories.
+Install browsers once with `cd web && npx playwright install chromium firefox webkit`. Browser fixtures bind to `127.0.0.1:8087` and use disposable accounts/data and a non-delivering SMTP target. Container checks require Docker, Python 3, and OpenSSL. No production token lookup endpoint exists; invitation tests read only their disposable email queue. Failure artifacts remain under ignored cache/test-result directories.
+
+Each browser project starts a fresh disposable backend to avoid sharing authentication rate limits across projects. Run a subset with `make test-e2e E2E_PROJECTS=ipad-webkit` (or a space-separated list). CI runs the projects as independent matrix jobs.
+
+Tablet tests cover drag creation, pen strokes, concurrent fingers, two-finger navigation, cancellation, moving/resizing, text entry, image placement, properties, and comments. Chromium uses trusted CDP touch/pen input. Playwright WebKit has no multi-touch/Pencil injection API: those tests dispatch Pointer Events plus legacy touch events for Konva, with real browser taps on controls. These tests validate application behavior and WebKit rendering, but do not replace testing Safari and an actual Apple Pencil on an iPad. Check browser chrome/pull-to-refresh, software keyboard behavior, orientation changes, and palm contact on hardware before a tablet release.
 
 `make tools` installs pinned tools under `.cache/tools`. Go lint enables all linters except the explicit exclusions in [.golangci.yml](../../.golangci.yml). Narrow suppressions need a specific reason; generated bindings should be regenerated rather than hand-edited. Architecture tests enforce domain storage and SQL ownership boundaries.
 

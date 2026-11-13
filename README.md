@@ -56,16 +56,16 @@ For TrueNAS Apps, use [the installation guide](docs/user-docs/installation.md) a
 ## Features
 
 - **Room for ideas:** infinite pan and cursor-centered zoom, tabbed pages, a dot grid, and optional snapping.
-- **Create freely:** drag to size images, shapes, and text; draw with the mouse. Crop, rotate, group, duplicate, and arrange elements.
+- **Create freely:** drag to size images, shapes, and text; draw with a mouse, finger, or Pencil. Crop, rotate, group, duplicate, and arrange elements.
 - **Reuse layouts:** save selections as workspace templates and lock groups to keep finished content in place.
 - **Share deliberately:** invite-only accounts and private workspaces, with read-only, comment, or full access for selected users.
 - **Discuss in context:** positioned comments, replies, avatars, and resolution controls.
 - **Stay in control:** one writer per page, approval-based control requests, owner force control, and recovery of displaced unsaved work.
 - **Keep your place:** workspace/page links, autosave, temporary disconnected editing, and a banner when a new build is available.
 - **Bring existing work:** import Butterfly `.bfly` documents as private workspaces with editable pages and embedded images.
-- **Make it yours:** light/dark appearance and a quiet interface designed for desktop Chrome and Firefox.
+- **Make it yours:** light/dark appearance and a quiet interface for desktop Chrome/Firefox and iPad Safari.
 
-Scroll to zoom. Cmd/Ctrl + drag or hold the middle mouse button to pan. Hold Shift while creating an element for equal width and height. The editor's keyboard button lists more shortcuts.
+Scroll to zoom. Cmd/Ctrl + drag or hold the middle mouse button to pan. Hold Shift while creating an element for equal width and height. On tablets, drag with one finger or Pencil and use two fingers to pan/pinch to zoom. The editor's keyboard button lists more controls.
 
 Choose **Import workspace** on the workspace list to import a Butterfly version-13 export. See the [user guide](docs/user-docs/using-mindflow.md#import-from-butterfly) for supported content and conversion limits. Canvas export is planned for later.
 
@@ -89,7 +89,7 @@ make test-e2e
 make verify-container
 ```
 
-Install browser binaries once with `cd web && npx playwright install chromium firefox`. Container checks require Docker, Python 3, and OpenSSL. CI runs quality, security, browser, and container checks on changes and weekly.
+Install browser binaries once with `cd web && npx playwright install chromium firefox webkit`. Container checks require Docker, Python 3, and OpenSSL. CI runs quality, security, browser, and container checks on changes and weekly.
 
 Run `make generate` after editing SQL or migration packages and commit the generated files. See [project structure](docs/developer-docs/architecture.md), [data structures](docs/developer-docs/data-model.md), [canvas and saving](docs/developer-docs/canvas-and-sync.md), and the [API contract](api/openapi.yaml). `make upgrade` refreshes dependencies and pinned build references; see [upgrade instructions](docs/developer-docs/dependencies.md).
 

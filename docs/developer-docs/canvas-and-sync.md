@@ -12,6 +12,16 @@ Element bounds are centered local coordinates with rotation. Lasso containment u
 
 Text input uses matching Konva/textarea font metrics and wrapping. Image crop rectangles are normalized against the original; display-resolution requests account for crop fraction, zoom, and display density. Smaller variants are generated only when useful below the 0.8 scale threshold, never by replacing/upscaling the original. Jobs are bounded and deduplicated, and existing decoded content can remain visible while a better variant is generated.
 
+## Touch and Pencil input
+
+`useCanvasInput` routes Pointer Events for mouse, touch, and pen into the same creation, lasso, and stroke handlers. DOM pointer capture keeps a gesture active when its pointer leaves the stage. Coalesced Pencil samples are collected where the browser exposes them. Konva retains its native mouse/touch dragging and Transformer behavior; the input hook explicitly stops and restores those operations before switching to navigation or handling cancellation.
+
+The first touch uses the current tool. Two touches cancel that unfinished tool gesture and establish a camera snapshot; `touchNavigation` applies their relative distance and midpoint movement, clamped to the normal zoom range. Remaining touches are suspended until all navigation fingers lift. Pencil takes priority over existing finger gestures, and additional finger contacts are ignored while it is down. Optional Pencil-only drawing maps a lone finger to pan. This is contact-based palm filtering, not hardware palm classification; strokes have constant width.
+
+Pointer cancellation, lost capture, window blur, hidden tabs, and window resizing discard unfinished gestures. Comment and template placement commit on release so navigation can cancel them too. Native drag/transform cancellation restores document coordinates and suppresses a transform commit. Camera gestures never mutate saved elements.
+
+CSS `touch-action: none` and selection/callout suppression apply to `.konvajs-content`, leaving surrounding forms and scrollable controls usable. Overscroll chaining is disabled on the document to prevent pull-to-refresh. Coarse pointers get larger controls/handles. Text input focuses synchronously and has an explicit Done action that follows the visual viewport above overlaid software keyboards.
+
 ## Saving
 
 Completed edits are debounced by 750ms, with a maximum five-second interval during continuous activity, excluding unfinished gestures and network/upload delays. Each page has one save in flight; later edits are coalesced. Upload local image bytes separately before sending references in the page snapshot.
