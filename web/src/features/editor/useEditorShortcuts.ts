@@ -9,7 +9,7 @@ type Props = {
   session: PageSession;
   selected: CanvasElement[];
   camera: Camera;
-  color: string;
+  textColor: string;
   filesAdded: (files: File[]) => Promise<void>;
   pointer: () => Point;
   editElements: (elements: CanvasElement[]) => void;
@@ -26,7 +26,7 @@ export default function useEditorShortcuts({
   session,
   selected,
   camera,
-  color,
+  textColor,
   filesAdded,
   pointer,
   editElements,
@@ -88,7 +88,7 @@ export default function useEditorShortcuts({
           rotation: 0,
           text: raw.slice(0, 100000),
           fontSize: 24,
-          color,
+          color: textColor,
           align: "center",
           verticalAlign: "middle",
         };

@@ -1,3 +1,5 @@
+import ColorInput from "../../ColorInput";
+import { canvasElementDefaults } from "../../model";
 import { X } from "lucide-react";
 import type { CanvasDocument } from "../../model";
 export default function CanvasSettings({
@@ -11,6 +13,7 @@ export default function CanvasSettings({
   onSettings: (settings: CanvasDocument["settings"]) => void;
   onClose: () => void;
 }) {
+  const defaults = canvasElementDefaults(settings);
   return (
     <aside className="inspector" aria-label="Canvas settings panel">
       <div className="inspector-head">
@@ -57,21 +60,36 @@ export default function CanvasSettings({
       {settings.backgroundColor && (
         <label>
           Background color
-          <input
-            aria-label="Canvas background color"
-            type="color"
+          <ColorInput
+            label="Canvas background color"
             disabled={!editable}
-            value={
-              settings.backgroundColor.startsWith("#")
-                ? settings.backgroundColor.slice(0, 7)
-                : "#ffffff"
-            }
-            onChange={(event) =>
-              onSettings({ ...settings, backgroundColor: event.target.value })
+            value={settings.backgroundColor}
+            onChange={(backgroundColor) =>
+              onSettings({ ...settings, backgroundColor })
             }
           />
         </label>
       )}
+      <hr />
+      <span className="eyebrow">NEW ELEMENT DEFAULTS</span>
+      {(
+        [
+          ["defaultFill", "Default shape fill"],
+          ["defaultBorder", "Default shape border"],
+          ["defaultTextColor", "Default text color"],
+        ] as const
+      ).map(([key, label]) => (
+        <label key={key}>
+          {label}
+          <ColorInput
+            label={label}
+            value={defaults[key]}
+            disabled={!editable}
+            onChange={(color) => onSettings({ ...settings, [key]: color })}
+          />
+        </label>
+      ))}
+      <hr />
       <label>
         Grid spacing
         <input

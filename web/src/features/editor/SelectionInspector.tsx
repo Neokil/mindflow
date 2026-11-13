@@ -1,3 +1,4 @@
+import ColorInput from "../../ColorInput";
 import {
   ArrowDown,
   ArrowUp,
@@ -11,7 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { CanvasElement, Point } from "../../model";
+import type { CanvasElement, CanvasElementDefaults, Point } from "../../model";
 import { wholeFontSize } from "../../model";
 type Props = {
   anchor: Point;
@@ -21,10 +22,7 @@ type Props = {
   onLock: () => void;
   onSaveTemplate: () => void;
   canSaveTemplate: boolean;
-  color: string;
-  fill: string;
-  onColor: (color: string) => void;
-  onFill: (color: string) => void;
+  defaults: CanvasElementDefaults;
   onPatch: (values: Partial<CanvasElement>) => void;
   onDuplicate: () => void;
   onGroup: () => void;
@@ -43,10 +41,7 @@ export default function SelectionInspector({
   onLock,
   onSaveTemplate,
   canSaveTemplate,
-  color,
-  fill,
-  onColor,
-  onFill,
+  defaults,
   onPatch,
   onDuplicate,
   onGroup,
@@ -131,42 +126,30 @@ export default function SelectionInspector({
             <>
               <label>
                 Color
-                <input
-                  aria-label="Element color"
-                  type="color"
+                <ColorInput
+                  label="Element color"
                   disabled={!editable}
                   value={
-                    first?.type === "shape"
-                      ? first.border || color
-                      : first.color || color
+                    first.type === "shape"
+                      ? first.border || defaults.defaultBorder
+                      : first.color || defaults.defaultTextColor
                   }
-                  onChange={(e) => {
-                    onColor(e.target.value);
+                  onChange={(color) =>
                     onPatch(
-                      first.type === "shape"
-                        ? { border: e.target.value }
-                        : { color: e.target.value },
-                    );
-                  }}
+                      first.type === "shape" ? { border: color } : { color },
+                    )
+                  }
                 />
               </label>
               {first?.type === "shape" && (
                 <>
                   <label>
                     Fill
-                    <input
-                      aria-label="Shape fill"
-                      type="color"
+                    <ColorInput
+                      label="Shape fill"
                       disabled={!editable}
-                      value={
-                        first.fill === "transparent"
-                          ? "#ffffff"
-                          : first.fill || fill
-                      }
-                      onChange={(e) => {
-                        onFill(e.target.value);
-                        onPatch({ fill: e.target.value });
-                      }}
+                      value={first.fill || defaults.defaultFill}
+                      onChange={(fill) => onPatch({ fill })}
                     />
                   </label>
                   <button
@@ -175,7 +158,9 @@ export default function SelectionInspector({
                     onClick={() =>
                       onPatch({
                         fill:
-                          first.fill === "transparent" ? fill : "transparent",
+                          first.fill === "transparent"
+                            ? defaults.defaultFill
+                            : "transparent",
                       })
                     }
                   >

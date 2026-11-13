@@ -1,3 +1,4 @@
+import ColorInput from "../../ColorInput";
 import useCanvasAccent from "./useCanvasAccent";
 import TemplateLibrary from "./TemplateLibrary";
 import { instantiateTemplate } from "./templates";
@@ -21,7 +22,12 @@ import {
   zoomAt,
 } from "../../geometry";
 import type { CanvasElement, Point } from "../../model";
-import { clone, duplicateElements, uid } from "../../model";
+import {
+  canvasElementDefaults,
+  clone,
+  duplicateElements,
+  uid,
+} from "../../model";
 import { PageSession, localImages } from "../../session";
 import ImageCropDialog from "./ImageCropDialog";
 import CommentsLayer from "./CommentsLayer";
@@ -57,8 +63,7 @@ export default function Canvas({
     [canvasSettingsOpen, setCanvasSettingsOpen] = useState(false),
     [objectSettingsAnchor, setObjectSettingsAnchor] = useState<Point>(),
     [help, setHelp] = useState(false);
-  const [color, setColor] = useState(accent),
-    [fill, setFill] = useState("#edf5df"),
+  const [penColor, setPenColor] = useState(accent),
     [penWidth, setPenWidth] = useState(3),
     [pending, setPending] = useState<CanvasElement[]>([]),
     [cursor, setCursor] = useState<Point>({ x: 0, y: 0 }),
@@ -93,6 +98,7 @@ export default function Canvas({
     session.camera = camera;
   }, [camera, session]);
   const doc = session.doc;
+  const defaults = canvasElementDefaults(doc.settings);
   const selected = doc.elements.filter((e) => selection.includes(e.id));
   const selectionLocked = selected.some((element) => element.locked);
   useLayoutEffect(() => {
@@ -229,7 +235,7 @@ export default function Canvas({
             rotation: 0,
             text: "",
             fontSize: 28,
-            color,
+            color: defaults.defaultTextColor,
             align: "center",
             verticalAlign: "middle",
           }
@@ -242,8 +248,8 @@ export default function Canvas({
             height: 120,
             rotation: 0,
             shape: tool as "rectangle",
-            fill,
-            border: color,
+            fill: defaults.defaultFill,
+            border: defaults.defaultBorder,
             borderWidth: 2,
           });
     gesture.current = { kind: "create", start: p, camera, points: [], element };
@@ -304,7 +310,7 @@ export default function Canvas({
     session,
     selected,
     camera,
-    color,
+    textColor: defaults.defaultTextColor,
     filesAdded,
     pointer,
     editElements,
@@ -367,7 +373,7 @@ export default function Canvas({
         };
         preview.current?.setAttrs({
           points: [world.x, world.y, world.x + 0.01, world.y + 0.01],
-          stroke: color,
+          stroke: penColor,
           strokeWidth: penWidth,
           fill: undefined,
           closed: false,
@@ -479,7 +485,7 @@ export default function Canvas({
           (p.x - minX) / width,
           (p.y - minY) / height,
         ]),
-        color,
+        color: penColor,
         penWidth,
       };
       editElements([...session.doc.elements, stroke]);
@@ -662,11 +668,10 @@ export default function Canvas({
         <div className="pen-options">
           <label>
             Color
-            <input
-              aria-label="Pen color"
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
+            <ColorInput
+              label="Pen color"
+              value={penColor}
+              onChange={setPenColor}
             />
           </label>
           <label>
@@ -708,10 +713,7 @@ export default function Canvas({
           onLock={toggleLock}
           onSaveTemplate={() => setTemplatesOpen("save")}
           canSaveTemplate={session.canWrite}
-          color={color}
-          fill={fill}
-          onColor={setColor}
-          onFill={setFill}
+          defaults={defaults}
           onPatch={patch}
           onDuplicate={duplicate}
           onGroup={group}

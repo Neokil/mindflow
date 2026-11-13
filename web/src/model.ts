@@ -31,10 +31,34 @@ export type CanvasDocument = {
   settings: {
     background: "dots" | "plain";
     backgroundColor?: string;
+    defaultFill?: string;
+    defaultBorder?: string;
+    defaultTextColor?: string;
     gridSize: number;
     snap: boolean;
   };
 };
+export type CanvasElementDefaults = {
+  defaultFill: string;
+  defaultBorder: string;
+  defaultTextColor: string;
+};
+export const DEFAULT_ELEMENT_COLORS: CanvasElementDefaults = {
+  defaultFill: "#a4d65e",
+  defaultBorder: "#d9a441",
+  defaultTextColor: "#d9a441",
+};
+export function canvasElementDefaults(
+  settings: CanvasDocument["settings"],
+): CanvasElementDefaults {
+  return {
+    defaultFill: settings.defaultFill || DEFAULT_ELEMENT_COLORS.defaultFill,
+    defaultBorder:
+      settings.defaultBorder || DEFAULT_ELEMENT_COLORS.defaultBorder,
+    defaultTextColor:
+      settings.defaultTextColor || DEFAULT_ELEMENT_COLORS.defaultTextColor,
+  };
+}
 export type WorkspacePermission = "owner" | "read" | "comment" | "full";
 export type Workspace = {
   role?: WorkspacePermission;
@@ -69,7 +93,12 @@ export const clone = <T>(v: T): T => structuredClone(v);
 export const emptyDocument = (): CanvasDocument => ({
   schemaVersion: 1,
   elements: [],
-  settings: { background: "dots", gridSize: 20, snap: false },
+  settings: {
+    background: "dots",
+    gridSize: 20,
+    snap: false,
+    ...DEFAULT_ELEMENT_COLORS,
+  },
 });
 export const MAX_ELEMENTS = 10000;
 export function duplicateElements(elements: CanvasElement[], offset = 20) {
