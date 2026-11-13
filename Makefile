@@ -1,6 +1,8 @@
 SQLC_VERSION := v1.31.1
 GOLANGCI_VERSION := v2.15.0
 GOVULNCHECK_VERSION := v1.9.0
+ACTIONLINT_VERSION := v1.7.12
+ACTIONLINT := $(CURDIR)/.cache/tools/actionlint/$(ACTIONLINT_VERSION)/actionlint
 SQLC := $(CURDIR)/.cache/tools/sqlc/$(SQLC_VERSION)/sqlc
 GOVULNCHECK := $(CURDIR)/.cache/tools/govulncheck/$(GOVULNCHECK_VERSION)/govulncheck
 GOLANGCI := $(CURDIR)/.cache/tools/golangci-lint/$(GOLANGCI_VERSION)/golangci-lint
@@ -19,7 +21,8 @@ frontend-build:
 build: frontend-build
 	go build -trimpath -o mindflow ./cmd/mindflow
 
-lint: lint-go lint-web
+lint: lint-go lint-web $(ACTIONLINT)
+	$(ACTIONLINT)
 	python3 -m py_compile scripts/*.py tests/container/server.py
 
 lint-go: $(GOLANGCI) check-generated
@@ -43,7 +46,7 @@ verify-container:
 	python3 scripts/verify-container.py --image mindflow:verification
 
 
-tools: $(SQLC) $(GOLANGCI)
+tools: $(SQLC) $(GOLANGCI) $(ACTIONLINT)
 
 $(SQLC):
 	mkdir -p "$(@D)"
@@ -72,3 +75,7 @@ audit: $(GOVULNCHECK)
 
 upgrade:
 	python3 scripts/upgrade.py $(UPGRADE_FLAGS)
+
+$(ACTIONLINT):
+	mkdir -p "$(@D)"
+	GOBIN="$(@D)" go install github.com/rhysd/actionlint/cmd/actionlint@$(ACTIONLINT_VERSION)

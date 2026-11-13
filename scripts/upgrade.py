@@ -124,7 +124,7 @@ def plan():
         upgrade_npm(package.get(section, {}))
     changes[package_path] = json.dumps(package, indent=2) + '\n'
     makefile = (ROOT / 'Makefile').read_text()
-    for variable, repository in {'SQLC_VERSION': 'sqlc-dev/sqlc', 'GOLANGCI_VERSION': 'golangci/golangci-lint', 'GOVULNCHECK_VERSION': 'golang/vuln'}.items():
+    for variable, repository in {'SQLC_VERSION': 'sqlc-dev/sqlc', 'GOLANGCI_VERSION': 'golangci/golangci-lint', 'GOVULNCHECK_VERSION': 'golang/vuln', 'ACTIONLINT_VERSION': 'rhysd/actionlint'}.items():
         # Go vulnerability tooling uses Go module releases rather than GitHub release assets.
         if variable == 'GOVULNCHECK_VERSION':
             latest, _ = fetch('https://proxy.golang.org/golang.org/x/vuln/@latest')
