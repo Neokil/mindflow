@@ -2,6 +2,8 @@ import { LogOut, Settings, SunMoon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ServerEvent, User } from "./api";
 import { api, APIError, setCSRF } from "./api";
+import Profile from "./features/accounts/Profile";
+import Avatar from "./features/accounts/Avatar";
 import Admin from "./features/accounts/Admin";
 import Auth from "./features/accounts/Auth";
 import Dashboard from "./features/workspaces/Dashboard";
@@ -27,6 +29,7 @@ export default function App() {
   const [initialized, setInitialized] = useState<boolean>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [profile, setProfile] = useState(false);
   const [admin, setAdmin] = useState(false);
   useEffect(() => {
     (async () => {
@@ -131,7 +134,18 @@ export default function App() {
       <header className="app-header">
         <Brand small />
         <div className="header-actions">
-          <span className="account-email">{user.email}</span>
+          <button
+            className="account-profile"
+            aria-label="Your profile"
+            onClick={() => setProfile(true)}
+          >
+            <Avatar
+              id={user.id}
+              email={user.email}
+              version={user.avatarVersion}
+            />
+            <span className="account-email">{user.email}</span>
+          </button>
           <button
             className="icon-button"
             title={`Appearance: ${user.appearance}`}
@@ -194,6 +208,13 @@ export default function App() {
           <Dashboard open={setWorkspace} serverEvent={serverEvent} />
         )}
       </>
+      {profile && (
+        <Profile
+          user={user}
+          changed={setUser}
+          close={() => setProfile(false)}
+        />
+      )}
       {admin && <Admin close={() => setAdmin(false)} self={user} />}
       {reauth && (
         <Auth

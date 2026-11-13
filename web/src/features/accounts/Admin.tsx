@@ -1,3 +1,4 @@
+import Avatar from "./Avatar";
 import {
   Mail,
   Plus,
@@ -122,7 +123,7 @@ export default function Admin({
           <div className="user-list">
             {users.map(({ user: u, mailError }) => (
               <div className="user-row" key={u.id}>
-                <div className="avatar">{u.email[0].toUpperCase()}</div>
+                <Avatar id={u.id} email={u.email} version={u.avatarVersion} />
                 <div className="user-info">
                   <strong>
                     {u.email}

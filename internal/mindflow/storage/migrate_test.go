@@ -1,9 +1,12 @@
 package storage_test
 
 import (
+	"fmt"
 	"io/fs"
 	"mindflow/internal/mindflow/storage"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -62,7 +65,7 @@ func extended(t *testing.T, name, sql string) []storage.MigrationSetForTest {
 			}
 			files[entry.Name()] = &fstest.MapFile{Data: data}
 		}
-		files["00003_test.sql"] = &fstest.MapFile{Data: []byte(sql)}
+		files[fmt.Sprintf("%05d_test.sql", latestMigration(t, domain.Files)+1)] = &fstest.MapFile{Data: []byte(sql)}
 		catalog[index].Files = files
 
 		return catalog
@@ -75,7 +78,11 @@ func extended(t *testing.T, name, sql string) []storage.MigrationSetForTest {
 func TestIndependentVersionsAndIdempotency(t *testing.T) {
 	t.Parallel()
 	database := fresh(t)
-	catalog := extended(t, "workspace", "-- +goose Up\nCREATE TABLE canvas_upgrade_probe(id INTEGER PRIMARY KEY);\n-- +goose Down\nDROP TABLE canvas_upgrade_probe;\n")
+	before := make(map[string]int64)
+	for _, domain := range storage.MigrationCatalogForTest() {
+		before[domain.Name] = version(t, database, domain.Name)
+	}
+	catalog := extended(t, workspaceDomain, "-- +goose Up\nCREATE TABLE canvas_upgrade_probe(id INTEGER PRIMARY KEY);\n-- +goose Down\nDROP TABLE canvas_upgrade_probe;\n")
 	err := database.MigrateForTest(t.Context(), catalog)
 	if err != nil {
 		t.Fatal(err)
@@ -85,9 +92,9 @@ func TestIndependentVersionsAndIdempotency(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, domain := range storage.MigrationCatalogForTest() {
-		expected := int64(1)
-		if domain.Name == "workspace" {
-			expected = 3
+		expected := before[domain.Name]
+		if domain.Name == workspaceDomain {
+			expected++
 		}
 		actual := version(t, database, domain.Name)
 		if actual != expected {
@@ -99,15 +106,15 @@ func TestIndependentVersionsAndIdempotency(t *testing.T) {
 func TestFailedMigrationRollsBackAndCanRetry(t *testing.T) {
 	t.Parallel()
 	database := fresh(t)
-	bad := extended(t, "workspace", "-- +goose Up\nCREATE TABLE failed_upgrade_probe(id INTEGER);\nINSERT INTO nonexistent_table VALUES(1);\n-- +goose Down\nDROP TABLE failed_upgrade_probe;\n")
+	bad := extended(t, workspaceDomain, "-- +goose Up\nCREATE TABLE failed_upgrade_probe(id INTEGER);\nINSERT INTO nonexistent_table VALUES(1);\n-- +goose Down\nDROP TABLE failed_upgrade_probe;\n")
 	if database.MigrateForTest(t.Context(), bad) == nil {
 		t.Fatal("invalid migration succeeded")
 	}
-	if version(t, database, "workspace") != 2 {
+	if version(t, database, workspaceDomain) != latestMigration(t, workspaceFiles(t)) {
 		t.Fatal("failed migration advanced history")
 	}
 	assertTable(t, database, "failed_upgrade_probe", false)
-	good := extended(t, "workspace", "-- +goose Up\nCREATE TABLE failed_upgrade_probe(id INTEGER);\n-- +goose Down\nDROP TABLE failed_upgrade_probe;\n")
+	good := extended(t, workspaceDomain, "-- +goose Up\nCREATE TABLE failed_upgrade_probe(id INTEGER);\n-- +goose Down\nDROP TABLE failed_upgrade_probe;\n")
 	err := database.MigrateForTest(t.Context(), good)
 	if err != nil {
 		t.Fatal(err)
@@ -184,7 +191,7 @@ func TestSharingUpgradePreservesPrivateWorkspaceData(t *testing.T) {
 	defer func() { _ = database.Close() }()
 	catalog := storage.MigrationCatalogForTest()
 	for index, domain := range catalog {
-		if domain.Name != "workspace" {
+		if domain.Name != workspaceDomain {
 			continue
 		}
 		initial, readErr := fs.ReadFile(domain.Files, "00001_initial.sql")
@@ -218,3 +225,36 @@ func TestSharingUpgradePreservesPrivateWorkspaceData(t *testing.T) {
 		t.Fatal("sharing upgrade changed content or made a private workspace shared")
 	}
 }
+
+func workspaceFiles(t *testing.T) fs.FS {
+	t.Helper()
+	for _, domain := range storage.MigrationCatalogForTest() {
+		if domain.Name == workspaceDomain {
+			return domain.Files
+		}
+	}
+	t.Fatal("missing workspace migration set")
+
+	return nil
+}
+
+func latestMigration(t *testing.T, files fs.FS) int64 {
+	t.Helper()
+	entries, err := fs.ReadDir(files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var latest int64
+	for _, entry := range entries {
+		prefix, _, _ := strings.Cut(entry.Name(), "_")
+		value, parseErr := strconv.ParseInt(prefix, 10, 64)
+		if parseErr != nil {
+			t.Fatal(parseErr)
+		}
+		latest = max(latest, value)
+	}
+
+	return latest
+}
+
+const workspaceDomain = "workspace"

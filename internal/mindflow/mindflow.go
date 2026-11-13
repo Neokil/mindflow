@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"mindflow/internal/account"
 	"mindflow/internal/account/authentication"
+	"mindflow/internal/account/avatar"
 	"mindflow/internal/account/invitation"
 	"mindflow/internal/account/passwordreset"
 	"mindflow/internal/account/session"
@@ -90,7 +91,7 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 		}
 	}
 	service.sharing = sharing.NewService(data.Workspaces, accounts, publish)
-	service.comments = comment.NewService(data.Workspaces, publish)
+	service.comments = comment.NewService(data.Workspaces, accounts, publish)
 	service.images = imageasset.NewService(data.Workspaces, publish)
 	service.editors, err = editor.NewService(ctx, data.Workspaces, publish)
 	if err != nil {
@@ -99,6 +100,7 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	service.canvases = canvas.NewService(data.Workspaces, service.images, service.editors, data.Workspaces, publish)
 	service.pages = page.NewService(data.Workspaces, service.canvases, service.images, publish)
 	service.workspace = workspace.NewService(data.Workspaces, service.pages, service.images, publish)
+	avatar.NewService(data.Accounts).RegisterHTTP(service)
 	service.accounts.RegisterHTTP(service)
 	service.authentication.RegisterHTTP(service)
 	service.installation.RegisterHTTP(service)

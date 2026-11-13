@@ -2,10 +2,10 @@
 INSERT INTO users(id,email,password_hash,role,status,created_at) VALUES(?,?,?,'admin','active',?);
 
 -- name: AccountUserByEmail :one
-SELECT id,email,role,status,appearance,password_hash FROM users WHERE email=?;
+SELECT id,email,role,status,appearance,avatar_version,password_hash FROM users WHERE email=?;
 
 -- name: AccountListUsers :many
-SELECT u.id,u.email,u.role,u.status,u.appearance FROM users u ORDER BY created_at;
+SELECT u.id,u.email,u.role,u.status,u.appearance,u.avatar_version FROM users u ORDER BY created_at;
 
 -- name: AccountCountEmail :one
 SELECT count(*) FROM users WHERE email=?;
@@ -38,7 +38,7 @@ SELECT count(*) FROM users WHERE role='admin' AND status='active';
 UPDATE users SET appearance=? WHERE id=?;
 
 -- name: AccountFindUser :one
-SELECT id,email,role,status,appearance FROM users WHERE id=?;
+SELECT id,email,role,status,appearance,avatar_version FROM users WHERE id=?;
 
 -- name: SessionCreateSession :execresult
 INSERT INTO sessions(id,user_id,verifier_hash,csrf,expires_at) VALUES(?,?,?,?,?);
@@ -83,3 +83,12 @@ DELETE FROM account_tokens WHERE purpose='reset';
 SELECT count(*) FROM account_tokens t JOIN users u ON u.id=t.user_id WHERE t.token_hash=? AND t.purpose='reset' AND t.expires_at>? AND u.status='active';
 -- name: PasswordresetDeleteExpiredTokens :exec
 DELETE FROM account_tokens WHERE purpose='reset' AND expires_at<=unixepoch();
+
+-- name: AvatarContent :one
+SELECT content FROM avatars JOIN users ON users.id=avatars.user_id WHERE user_id=? AND users.status='active';
+-- name: AvatarSet :exec
+INSERT INTO avatars(user_id,content) VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET content=excluded.content;
+-- name: AvatarDelete :exec
+DELETE FROM avatars WHERE user_id=?;
+-- name: AvatarVersion :exec
+UPDATE users SET avatar_version=? WHERE id=?;

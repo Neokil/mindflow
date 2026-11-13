@@ -1,6 +1,6 @@
 import { LoaderCircle, X } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 export function Brand({ small = false }: { small?: boolean }) {
   return (
     <span className={`brand ${small ? "small" : ""}`}>
@@ -40,6 +40,7 @@ export function Modal({
   wide?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   useEffect(() => {
     const el = dialog.current!;
     el.showModal();
@@ -50,6 +51,7 @@ export function Modal({
   return (
     <dialog
       ref={dialog}
+      aria-labelledby={titleId}
       className={wide ? "modal wide" : "modal"}
       onCancel={(e) => {
         e.preventDefault();
@@ -60,7 +62,7 @@ export function Modal({
       }}
     >
       <div className="modal-head">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button
           className="icon-button"
           aria-label="Close dialog"

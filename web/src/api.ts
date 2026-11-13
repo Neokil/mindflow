@@ -42,6 +42,7 @@ export async function api<T = unknown>(
   return data as T;
 }
 export type User = {
+  avatarVersion?: string;
   id: string;
   email: string;
   role: "admin" | "user";

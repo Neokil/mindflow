@@ -19,6 +19,7 @@ type handler struct {
 // RegisterHTTP registers owner-managed sharing routes.
 func (a *Service) RegisterHTTP(routes HTTP) {
 	handler := &handler{service: a, routes: routes}
+	routes.Endpoint("GET /api/v1/workspaces/{id}/sharing-info", true, false, handler.info)
 	routes.Endpoint("GET /api/v1/workspaces/{id}/members", true, false, handler.list)
 	routes.Endpoint("PUT /api/v1/workspaces/{id}/members", true, false, handler.set)
 	routes.Endpoint("DELETE /api/v1/workspaces/{id}/members/{user}", true, false, handler.remove)
@@ -40,4 +41,8 @@ func (handler *handler) set(writer http.ResponseWriter, request *http.Request) (
 
 func (handler *handler) remove(_ http.ResponseWriter, request *http.Request) (any, error) {
 	return handler.service.Remove(request.Context(), handler.routes.CurrentSession(request), request.PathValue("id"), request.PathValue("user"))
+}
+
+func (handler *handler) info(_ http.ResponseWriter, request *http.Request) (any, error) {
+	return handler.service.Info(request.Context(), handler.routes.CurrentSession(request), request.PathValue("id"))
 }

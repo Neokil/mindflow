@@ -1,3 +1,4 @@
+import Avatar from "../accounts/Avatar";
 import { useCallback, useEffect, useState } from "react";
 import { Check, MessageCircle, Trash2, X } from "lucide-react";
 import { api } from "../../api";
@@ -8,6 +9,8 @@ import { ErrorMessage } from "../../ui";
 type Message = {
   id: string;
   authorEmail: string;
+  authorId: string;
+  avatarVersion?: string;
   body: string;
   createdAt: number;
 };
@@ -15,6 +18,8 @@ type Thread = {
   id: string;
   initials: string;
   authorEmail: string;
+  authorId: string;
+  avatarVersion?: string;
   x: number;
   y: number;
   resolved: boolean;
@@ -116,7 +121,15 @@ export default function CommentsLayer({
               onFocus={() => setOpen(thread.id)}
               onClick={() => setOpen(thread.id)}
             >
-              {thread.initials}
+              {thread.avatarVersion ? (
+                <Avatar
+                  id={thread.authorId}
+                  email={thread.authorEmail}
+                  version={thread.avatarVersion}
+                />
+              ) : (
+                thread.initials
+              )}
             </button>
             {open === thread.id && (
               <section
@@ -140,7 +153,14 @@ export default function CommentsLayer({
                 <div className="comment-messages">
                   {thread.messages.map((message) => (
                     <div className="comment-message" key={message.id}>
-                      <strong>{message.authorEmail}</strong>
+                      <strong className="profile-identity">
+                        <Avatar
+                          id={message.authorId}
+                          email={message.authorEmail}
+                          version={message.avatarVersion}
+                        />
+                        {message.authorEmail}
+                      </strong>
                       <p>{message.body}</p>
                     </div>
                   ))}

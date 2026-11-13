@@ -1,9 +1,15 @@
+import Avatar from "../accounts/Avatar";
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import type { Workspace } from "../../model";
 import { Modal, ErrorMessage } from "../../ui";
 
-type Member = { userId: string; email: string; role: string };
+type Member = {
+  userId: string;
+  email: string;
+  role: string;
+  avatarVersion?: string;
+};
 const roles = (
   <>
     <option value="read">Read-only</option>
@@ -21,6 +27,7 @@ export default function SharingDialog({
   changed: () => Promise<void>;
 }) {
   const owner = !workspace.role || workspace.role === "owner";
+  const [workspaceOwner, setWorkspaceOwner] = useState<Member>();
   const [members, setMembers] = useState<Member[]>([]),
     [email, setEmail] = useState(""),
     [role, setRole] = useState("read"),
@@ -28,6 +35,13 @@ export default function SharingDialog({
     [busy, setBusy] = useState(false);
   useEffect(() => {
     let canceled = false;
+    void api<Member>(`/workspaces/${workspace.id}/sharing-info`)
+      .then((value) => {
+        if (!canceled) setWorkspaceOwner(value);
+      })
+      .catch((err) => {
+        if (!canceled) setError(err.message);
+      });
     if (owner)
       void api<Member[]>(`/workspaces/${workspace.id}/members`)
         .then((value) => {
@@ -61,6 +75,20 @@ export default function SharingDialog({
     });
   return (
     <Modal title="Workspace sharing" close={close}>
+      {workspaceOwner && (
+        <div className="profile-identity">
+          <Avatar
+            id={workspaceOwner.userId}
+            email={workspaceOwner.email}
+            version={workspaceOwner.avatarVersion}
+          />
+          <span>
+            <strong>{workspaceOwner.email}</strong>
+            <br />
+            <small>Workspace owner</small>
+          </span>
+        </div>
+      )}
       {owner ? (
         <>
           <p className="muted">
@@ -105,7 +133,14 @@ export default function SharingDialog({
             ) : (
               members.map((member) => (
                 <div className="sharing-member" key={member.userId}>
-                  <span>{member.email}</span>
+                  <span className="profile-identity">
+                    <Avatar
+                      id={member.userId}
+                      email={member.email}
+                      version={member.avatarVersion}
+                    />
+                    {member.email}
+                  </span>
                   <select
                     aria-label={`Access for ${member.email}`}
                     value={member.role}

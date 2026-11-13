@@ -16,11 +16,12 @@ import (
 
 // User contains public account metadata without credentials.
 type User struct {
-	ID         string `json:"id"`
-	Email      string `json:"email"`
-	Role       string `json:"role"`
-	Status     string `json:"status"`
-	Appearance string `json:"appearance"`
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	Role          string `json:"role"`
+	Status        string `json:"status"`
+	Appearance    string `json:"appearance"`
+	AvatarVersion string `json:"avatarVersion"`
 }
 
 // NormalizeEmail validates and normalizes a plain email address.
@@ -159,7 +160,7 @@ func (a *Service) ListUsers(ctx context.Context, actor User) (_ []UserDelivery, 
 		if deliveryErr != nil {
 			return nil, deliveryErr
 		}
-		users = append(users, UserDelivery{User: User{ID: row.ID, Email: row.Email, Role: row.Role, Status: row.Status, Appearance: row.Appearance}, MailError: mailError})
+		users = append(users, UserDelivery{User: User{ID: row.ID, Email: row.Email, Role: row.Role, Status: row.Status, Appearance: row.Appearance, AvatarVersion: row.AvatarVersion}, MailError: mailError})
 	}
 
 	return users, nil

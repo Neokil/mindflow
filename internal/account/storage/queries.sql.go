@@ -105,15 +105,16 @@ func (q *Queries) AccountDeleteUser(ctx context.Context, id string) (sql.Result,
 }
 
 const accountFindUser = `-- name: AccountFindUser :one
-SELECT id,email,role,status,appearance FROM users WHERE id=?
+SELECT id,email,role,status,appearance,avatar_version FROM users WHERE id=?
 `
 
 type AccountFindUserRow struct {
-	ID         string
-	Email      string
-	Role       string
-	Status     string
-	Appearance string
+	ID            string
+	Email         string
+	Role          string
+	Status        string
+	Appearance    string
+	AvatarVersion string
 }
 
 func (q *Queries) AccountFindUser(ctx context.Context, id string) (AccountFindUserRow, error) {
@@ -125,20 +126,22 @@ func (q *Queries) AccountFindUser(ctx context.Context, id string) (AccountFindUs
 		&i.Role,
 		&i.Status,
 		&i.Appearance,
+		&i.AvatarVersion,
 	)
 	return i, err
 }
 
 const accountListUsers = `-- name: AccountListUsers :many
-SELECT u.id,u.email,u.role,u.status,u.appearance FROM users u ORDER BY created_at
+SELECT u.id,u.email,u.role,u.status,u.appearance,u.avatar_version FROM users u ORDER BY created_at
 `
 
 type AccountListUsersRow struct {
-	ID         string
-	Email      string
-	Role       string
-	Status     string
-	Appearance string
+	ID            string
+	Email         string
+	Role          string
+	Status        string
+	Appearance    string
+	AvatarVersion string
 }
 
 func (q *Queries) AccountListUsers(ctx context.Context) ([]AccountListUsersRow, error) {
@@ -156,6 +159,7 @@ func (q *Queries) AccountListUsers(ctx context.Context) ([]AccountListUsersRow, 
 			&i.Role,
 			&i.Status,
 			&i.Appearance,
+			&i.AvatarVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -198,16 +202,17 @@ func (q *Queries) AccountUpdateUser(ctx context.Context, arg AccountUpdateUserPa
 }
 
 const accountUserByEmail = `-- name: AccountUserByEmail :one
-SELECT id,email,role,status,appearance,password_hash FROM users WHERE email=?
+SELECT id,email,role,status,appearance,avatar_version,password_hash FROM users WHERE email=?
 `
 
 type AccountUserByEmailRow struct {
-	ID           string
-	Email        string
-	Role         string
-	Status       string
-	Appearance   string
-	PasswordHash string
+	ID            string
+	Email         string
+	Role          string
+	Status        string
+	Appearance    string
+	AvatarVersion string
+	PasswordHash  string
 }
 
 func (q *Queries) AccountUserByEmail(ctx context.Context, email string) (AccountUserByEmailRow, error) {
@@ -219,6 +224,7 @@ func (q *Queries) AccountUserByEmail(ctx context.Context, email string) (Account
 		&i.Role,
 		&i.Status,
 		&i.Appearance,
+		&i.AvatarVersion,
 		&i.PasswordHash,
 	)
 	return i, err
@@ -254,6 +260,54 @@ func (q *Queries) AccountUserRoleStatus(ctx context.Context, id string) (Account
 	var i AccountUserRoleStatusRow
 	err := row.Scan(&i.Role, &i.Status)
 	return i, err
+}
+
+const avatarContent = `-- name: AvatarContent :one
+SELECT content FROM avatars JOIN users ON users.id=avatars.user_id WHERE user_id=? AND users.status='active'
+`
+
+func (q *Queries) AvatarContent(ctx context.Context, userID string) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, avatarContent, userID)
+	var content []byte
+	err := row.Scan(&content)
+	return content, err
+}
+
+const avatarDelete = `-- name: AvatarDelete :exec
+DELETE FROM avatars WHERE user_id=?
+`
+
+func (q *Queries) AvatarDelete(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, avatarDelete, userID)
+	return err
+}
+
+const avatarSet = `-- name: AvatarSet :exec
+INSERT INTO avatars(user_id,content) VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET content=excluded.content
+`
+
+type AvatarSetParams struct {
+	UserID  string
+	Content []byte
+}
+
+func (q *Queries) AvatarSet(ctx context.Context, arg AvatarSetParams) error {
+	_, err := q.db.ExecContext(ctx, avatarSet, arg.UserID, arg.Content)
+	return err
+}
+
+const avatarVersion = `-- name: AvatarVersion :exec
+UPDATE users SET avatar_version=? WHERE id=?
+`
+
+type AvatarVersionParams struct {
+	AvatarVersion string
+	ID            string
+}
+
+func (q *Queries) AvatarVersion(ctx context.Context, arg AvatarVersionParams) error {
+	_, err := q.db.ExecContext(ctx, avatarVersion, arg.AvatarVersion, arg.ID)
+	return err
 }
 
 const invitationCountValidTokens = `-- name: InvitationCountValidTokens :one

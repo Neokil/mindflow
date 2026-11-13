@@ -28,9 +28,10 @@ func NewService(repository *storage.Repository, accounts Accounts, publish func(
 // Member describes one explicit workspace grant.
 type (
 	Member struct {
-		UserID string `json:"userId"`
-		Email  string `json:"email"`
-		Role   string `json:"role"`
+		UserID        string `json:"userId"`
+		AvatarVersion string `json:"avatarVersion"`
+		Email         string `json:"email"`
+		Role          string `json:"role"`
 	}
 	// Command grants or changes a member's role.
 	Command struct {
@@ -72,7 +73,11 @@ func (a *Service) List(ctx context.Context, actor session.Principal, resourceID 
 	}
 	out := make([]Member, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, Member{UserID: row.UserID, Email: row.Email, Role: row.Role})
+		user, readErr := a.accounts.FindWithin(ctx, transaction, row.UserID)
+		if readErr != nil {
+			return nil, readErr
+		}
+		out = append(out, Member{UserID: row.UserID, Email: row.Email, Role: row.Role, AvatarVersion: user.AvatarVersion})
 	}
 
 	return out, nil
@@ -166,4 +171,26 @@ func (a *Service) Remove(ctx context.Context, actor session.Principal, resourceI
 	a.publish(userID, "workspace", resourceID)
 
 	return Completed{OK: true}, nil
+}
+
+// Info returns owner identity to any currently authorized workspace member.
+func (a *Service) Info(ctx context.Context, actor session.Principal, resourceID string) (Member, error) {
+	transaction, err := a.repository.Begin(ctx)
+	if err != nil {
+		return Member{}, err
+	}
+	defer func() { _ = transaction.Rollback() }()
+	access, err := a.repository.Within(transaction).RequireWorkspace(ctx, resourceID, actor.ID, false)
+	if storage.IsNotFound(err) {
+		return Member{}, notFound()
+	}
+	if err != nil {
+		return Member{}, err
+	}
+	user, err := a.accounts.FindWithin(ctx, transaction, access.OwnerID)
+	if err != nil {
+		return Member{}, err
+	}
+
+	return Member{UserID: user.ID, Email: user.Email, AvatarVersion: user.AvatarVersion, Role: "owner"}, nil
 }
