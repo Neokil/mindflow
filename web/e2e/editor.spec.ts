@@ -466,12 +466,20 @@ test("large page remains interactive with 3000 elements and image placements", a
   const me = await (await page.request.get("/api/v1/auth/me")).json();
   const headers = { "X-CSRF-Token": me.csrf };
   const clientId = "performance-fixture";
-  const lease = await (
+  let lease = await (
     await page.request.post(`/api/v1/pages/${pages[0].id}/lease`, {
       headers,
       data: { clientId, action: "takeover" },
     })
   ).json();
+  if (lease.request) {
+    await page.getByRole("button", { name: /^Accept \(\d+\)$/ }).click();
+    lease = await (
+      await page.request.get(
+        `/api/v1/pages/${pages[0].id}/lease?clientId=${clientId}`,
+      )
+    ).json();
+  }
   const encoded = await page.evaluate(() => {
     const c = document.createElement("canvas");
     c.width = 600;

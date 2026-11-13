@@ -127,7 +127,11 @@ func (a *Repository) DeletePageAssetsWithin(ctx context.Context, transaction *Tr
 // DeleteOwnerWithin deletes this owner's complete workspace data in the caller transaction.
 func (a *Repository) DeleteOwnerWithin(ctx context.Context, transaction *Transaction, ownerID string) error {
 	queries := a.Within(transaction)
-	err := queries.SharingInvalidateUserLeases(ctx, ownerID)
+	err := queries.EditorDeleteUserRequests(ctx, EditorDeleteUserRequestsParams{RequesterID: ownerID, HolderUserID: ownerID})
+	if err != nil {
+		return err
+	}
+	err = queries.SharingInvalidateUserLeases(ctx, ownerID)
 	if err != nil {
 		return err
 	}

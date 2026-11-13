@@ -1,3 +1,4 @@
+import ControlRequestDialog from "../editor/ControlRequestDialog";
 import {
   ArrowLeft,
   Check,
@@ -407,6 +408,7 @@ export default function WorkspaceEditor({
           </button>
         </div>
       )}
+      {session?.control && <ControlRequestDialog session={session} />}
       {session?.loaded && !session.editable && (
         <div className="editor-banner">
           <LockKeyhole size={14} />
@@ -417,21 +419,18 @@ export default function WorkspaceEditor({
           </span>
           <button
             className="secondary compact"
-            disabled={!!session.recovery || !session.canWrite}
+            disabled={
+              !!session.recovery ||
+              !session.canWrite ||
+              session.control?.status === "pending"
+            }
             hidden={!session.canWrite}
             title={
               session.recovery
                 ? "Save or discard the local recovery copy before taking control."
                 : undefined
             }
-            onClick={() => {
-              if (
-                confirm(
-                  "Take control of this page? The other editor will become read-only.",
-                )
-              )
-                void session.takeover();
-            }}
+            onClick={() => void session.takeover()}
           >
             Take control
           </button>

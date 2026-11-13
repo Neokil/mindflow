@@ -4,7 +4,6 @@ import (
 	"context"
 	"mindflow/internal/account/session"
 	"mindflow/internal/workspace/storage"
-	"time"
 )
 
 // Lease applies editor-control policy in an ownership-checked transaction.
@@ -13,8 +12,15 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 	if len(command.ClientID) < 8 || len(command.ClientID) > maxIdentifierLength {
 		return LeaseResult{}, invalid("Invalid editor identity.")
 	}
-	if command.Action != "acquire" && command.Action != leaseTakeover && command.Action != leaseRenew && command.Action != "release" {
+	if !validAction(command.Action) {
 		return LeaseResult{}, invalid("Invalid editor action.")
+	}
+	if command.Action == controlAccept || command.Action == controlDeny || command.Action == controlCancel {
+		return a.Decide(ctx, actor, resourceID, command)
+	}
+	err = a.resolveRequest(ctx, actor, resourceID, command.ClientID, "", "")
+	if err != nil {
+		return LeaseResult{}, err
 	}
 	caller := actor
 	transaction, err := a.repository.Begin(ctx)
@@ -52,7 +58,20 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 	if err != nil {
 		return LeaseResult{}, err
 	}
-	state, changed, err := (LeaseState{SessionID: session, ClientID: client, Epoch: epoch, ExpiresAt: expires}).Advance(caller.SessionID, command, time.Now().Unix())
+	if command.Action == leaseTakeover && expires > a.now().Unix() && (session != caller.SessionID || client != command.ClientID) {
+		err = a.requestControl(ctx, transaction, actor, resourceID, command.ClientID)
+		if err != nil {
+			return LeaseResult{}, err
+		}
+		err = wrap("commit editor lease", transaction.Commit())
+		if err != nil {
+			return LeaseResult{}, err
+		}
+		a.publish(actor.ID, "lease", resourceID)
+
+		return a.LeaseStatus(ctx, actor, resourceID, command.ClientID)
+	}
+	state, changed, err := (LeaseState{SessionID: session, ClientID: client, Epoch: epoch, ExpiresAt: expires}).Advance(caller.SessionID, command, a.now().Unix())
 	if err != nil {
 		return LeaseResult{}, err
 	}
@@ -64,7 +83,7 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 			return LeaseResult{}, err
 		}
 	}
-	err = transaction.Commit()
+	err = wrap("commit editor lease", transaction.Commit())
 	if err != nil {
 		return LeaseResult{}, wrap("canvas_repository.go", err)
 	}
@@ -72,12 +91,17 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 		a.publish(caller.ID, "lease", page.ID)
 	}
 
-	return LeaseResult{Permission: access.Role, Editable: session == caller.SessionID && client == command.ClientID && expires > time.Now().Unix(), Epoch: epoch, ExpiresAt: expires, Revision: page.Revision}, nil
+	return LeaseResult{Permission: access.Role, Editable: session == caller.SessionID && client == command.ClientID && expires > a.now().Unix(), Epoch: epoch, ExpiresAt: expires, Revision: page.Revision}, nil
 }
 
 // LeaseStatus reports editor control and revision for an owned page.
 func (a *Service) LeaseStatus(ctx context.Context, actor session.Principal, resourceID string, clientID string) (_ LeaseResult, err error) {
 	defer func() { err = repositoryError(err) }()
+
+	err = a.resolveRequest(ctx, actor, resourceID, clientID, "", "")
+	if err != nil {
+		return LeaseResult{}, err
+	}
 
 	access, err := a.repository.RequirePage(ctx, resourceID, actor.ID, false)
 	if err != nil {
@@ -102,5 +126,19 @@ func (a *Service) LeaseStatus(ctx context.Context, actor session.Principal, reso
 		return LeaseResult{}, err
 	}
 
-	return LeaseResult{Permission: access.Role, Editable: storage.CanEdit(access.Role) && session == actor.SessionID && client == clientID && expires > time.Now().Unix(), Epoch: epoch, ExpiresAt: expires, Revision: rev}, nil
+	request, err := a.requestInfo(ctx, actor, resourceID, clientID)
+	if err != nil {
+		return LeaseResult{}, err
+	}
+
+	return LeaseResult{Request: request, Permission: access.Role, Editable: storage.CanEdit(access.Role) && session == actor.SessionID && client == clientID && expires > a.now().Unix(), Epoch: epoch, ExpiresAt: expires, Revision: rev}, nil
+}
+
+func validAction(action string) bool {
+	switch action {
+	case "acquire", leaseTakeover, leaseRenew, "release", controlAccept, controlDeny, controlCancel:
+		return true
+	default:
+		return false
+	}
 }

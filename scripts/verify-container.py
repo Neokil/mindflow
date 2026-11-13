@@ -121,6 +121,7 @@ try:
         assert mail_to('owner@example.invalid', 'test email')['tls']
         call('/admin/users', 'POST', {'email': 'friend@example.invalid', 'role': 'admin'})
         invite = mail_to('friend@example.invalid', 'invited')
+        assert '<a href=' in invite['html'] and '#accept-invite/' in invite['html']
         token = re.search(r'#accept-invite/([a-f0-9]+)', invite['body'])[1]
         call('/auth/accept-invite', 'POST', {'token': token, 'password': 'friend test password'})
         friend = urllib.request.build_opener(urllib.request.HTTPSHandler(context=tls), urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
@@ -154,7 +155,9 @@ try:
         wait_for(lambda: call('/assets/' + asset['id'] + '/meta')['variants'])
         readonly = call(f'/pages/{page}/lease', 'POST', {'clientId': 'second-editor', 'action': 'acquire'})
         assert not readonly['editable']
-        call(f'/pages/{page}/lease', 'POST', {'clientId': 'second-editor', 'action': 'takeover'})
+        pending = call(f'/pages/{page}/lease', 'POST', {'clientId': 'second-editor', 'action': 'takeover'})
+        assert not pending['editable']
+        call(f'/pages/{page}/lease', 'POST', {'clientId': 'container-editor', 'action': 'accept', 'requestId': pending['request']['id']})
         call(f'/pages/{page}/document', 'PUT', {**mutation, 'baseRevision': 1, 'mutationId': 'stale-editor-save'}, expected=409)
         settings['smtp'].update({'port': 1025, 'mode': 'starttls'})
         call('/admin/settings', 'PUT', settings)

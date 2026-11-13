@@ -92,3 +92,6 @@ INSERT INTO avatars(user_id,content) VALUES(?,?) ON CONFLICT(user_id) DO UPDATE 
 DELETE FROM avatars WHERE user_id=?;
 -- name: AvatarVersion :exec
 UPDATE users SET avatar_version=? WHERE id=?;
+
+-- name: SessionActiveWithin :one
+SELECT count(*) FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.user_id=? AND s.expires_at>unixepoch() AND u.status='active';

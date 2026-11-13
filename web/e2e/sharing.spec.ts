@@ -101,6 +101,20 @@ test("shares roles, discusses points and fences writers across users", async ({
       .getByRole("button", { name: `Open ${name}`, exact: true })
       .click();
     await expect(guest.getByTestId("element-count")).toHaveText("1 element");
+    await guest
+      .getByRole("button", { name: "Workspace sharing", exact: true })
+      .click();
+    await expect(
+      guest.getByText("Workspace owner", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      guest
+        .getByRole("dialog")
+        .getByText("owner@test.invalid", { exact: true }),
+    ).toBeVisible();
+    await guest
+      .getByRole("button", { name: "Close dialog", exact: true })
+      .click();
     await expect(
       guest.getByRole("button", { name: "Rectangle", exact: true }),
     ).toBeDisabled();
@@ -174,6 +188,24 @@ test("shares roles, discusses points and fences writers across users", async ({
     await guest
       .getByRole("button", { name: "Take control", exact: true })
       .click();
+    await expect(
+      page.getByRole("dialog", {
+        name: `${email} is requesting session control`,
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Deny", exact: true }).click();
+    await expect(
+      guest.getByRole("dialog", {
+        name: "Control request denied",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await guest.getByRole("button", { name: "OK", exact: true }).click();
+    await guest
+      .getByRole("button", { name: "Take control", exact: true })
+      .click();
+    await page.getByRole("button", { name: /^Accept \(\d+\)$/ }).click();
     await expect(
       guest.getByRole("button", { name: "Circle", exact: true }),
     ).toBeEnabled();

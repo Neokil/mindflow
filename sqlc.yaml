@@ -44,6 +44,10 @@ sql:
             go_type: string
           - column: save_receipts.expires_at
             go_type: int64
+          - column: editor_requests.deadline
+            go_type: int64
+          - column: editor_requests.holder_epoch
+            go_type: int64
           - column: page_leases.expires_at
             go_type: int64
           - column: page_leases.epoch

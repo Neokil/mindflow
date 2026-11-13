@@ -1,7 +1,18 @@
 import { api, APIError } from "./api";
 import type { CanvasDocument, WorkspacePermission } from "./model";
 import { clone, emptyDocument, uid } from "./model";
+export type ControlRequest = {
+  requesterId: string;
+  avatarVersion?: string;
+  id: string;
+  requesterEmail: string;
+  deadline: number;
+  status: string;
+  incoming: boolean;
+  serverNow: number;
+};
 export type Lease = {
+  request?: ControlRequest;
   permission?: WorkspacePermission;
   editable: boolean;
   epoch: number;
@@ -35,6 +46,9 @@ type SaveRequest = {
 };
 export class PageSession {
   readonly clientId = uid();
+  control?: ControlRequest;
+  controlDeadline = 0;
+  private dismissedControl = "";
   camera?: { x: number; y: number; zoom: number };
   doc = emptyDocument();
   revision = 0;
@@ -106,10 +120,11 @@ export class PageSession {
       this.permission = lease.permission || "owner";
       this.epoch = lease.epoch;
       this.editable = lease.editable;
+      this.receiveControl(lease);
       this.renewal = Date.now();
       this.loaded = true;
       this.status = "Saved";
-      this.poll = setInterval(() => void this.sync(), 5000);
+      this.poll = setInterval(() => void this.sync(), 1000);
     } catch (e) {
       this.status = "Load failed";
       this.error = (e as Error).message;
@@ -351,7 +366,18 @@ export class PageSession {
       let lease = await this.request<Lease>(
         `/pages/${this.id}/lease?clientId=${this.clientId}`,
       );
+      this.receiveControl(lease);
       this.permission = lease.permission || "owner";
+      if (!this.editable && lease.editable) {
+        const data = await this.request<PageData>(`/pages/${this.id}/document`);
+        this.doc = data.document;
+        this.revision = data.revision;
+        this.epoch = lease.epoch;
+        this.editable = true;
+        this.renewal = Date.now();
+        this.status = "Saved";
+        this.error = "";
+      }
       if (this.editable) {
         if (!lease.editable) {
           if (
@@ -423,6 +449,39 @@ export class PageSession {
       this.notify();
     }
   }
+  private receiveControl(lease: Lease) {
+    this.control =
+      lease.request?.id === this.dismissedControl ? undefined : lease.request;
+    if (this.control)
+      this.controlDeadline =
+        Date.now() + this.control.deadline - this.control.serverNow;
+  }
+  async decideControl(action: "accept" | "deny" | "cancel") {
+    if (!this.control) return;
+    try {
+      const lease = await this.request<Lease>(
+        `/pages/${this.id}/lease`,
+        "POST",
+        {
+          clientId: this.clientId,
+          epoch: this.epoch,
+          action,
+          requestId: this.control.id,
+        },
+      );
+      this.receiveControl(lease);
+      await this.sync();
+    } catch (error) {
+      this.error = (error as Error).message;
+      this.authFailure(error);
+    }
+    this.notify();
+  }
+  dismissControl() {
+    this.dismissedControl = this.control?.id || "";
+    this.control = undefined;
+    this.notify();
+  }
   async takeover() {
     if (this.busy || this.recovery || !this.canWrite) return;
     try {
@@ -438,6 +497,7 @@ export class PageSession {
       this.epoch = lease.epoch;
       this.permission = lease.permission || "owner";
       this.editable = lease.editable;
+      this.receiveControl(lease);
       this.renewal = Date.now();
       this.generation = 0;
       this.acknowledged = 0;

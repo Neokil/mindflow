@@ -34,7 +34,7 @@ export function Modal({
   close,
   wide = false,
 }: {
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   close: () => void;
   wide?: boolean;
@@ -88,7 +88,7 @@ export function Empty({
   children,
 }: {
   icon: ReactNode;
-  title: string;
+  title: ReactNode;
   children: ReactNode;
 }) {
   return (

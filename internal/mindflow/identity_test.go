@@ -12,10 +12,13 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 type testClient struct {
+	clock  *atomic.Int64
 	a      *mindflow.App
 	db     *sql.DB
 	cookie *http.Cookie
@@ -31,7 +34,8 @@ func fixture(t *testing.T) *testClient {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = dbValue.Close() })
-	application, err := mindflow.New(t.Context(), dbValue, mindflow.Config{Dev: true, Bootstrap: "operator-secret"})
+	clock := &atomic.Int64{}
+	application, err := mindflow.New(t.Context(), dbValue, mindflow.Config{Dev: true, Bootstrap: "operator-secret", Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Millisecond) }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +46,7 @@ func fixture(t *testing.T) *testClient {
 	}
 	t.Cleanup(func() { _ = probe.Close() })
 
-	return &testClient{a: application, db: probe, t: t}
+	return &testClient{a: application, db: probe, t: t, clock: clock}
 }
 
 func (c *testClient) request(method, path string, body any) *httptest.ResponseRecorder {
@@ -182,7 +186,7 @@ func TestInvitationResetAndDeactivation(t *testing.T) {
 	if client.request("POST", "/api/v1/auth/accept-invite", map[string]string{tokenField: token, passwordField: friendPassword}).Code != 400 {
 		t.Fatal("token reused")
 	}
-	friend := &testClient{a: client.a, db: client.db, t: t}
+	friend := &testClient{a: client.a, db: client.db, t: t, clock: client.clock}
 	friend.login("friend@example.com", friendPassword)
 	if friend.request("GET", "/api/v1/admin/users", nil).Code != 403 {
 		t.Fatal("regular user reached administration")

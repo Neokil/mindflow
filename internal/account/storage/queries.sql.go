@@ -466,6 +466,22 @@ func (q *Queries) PasswordresetRevokeTokens(ctx context.Context) error {
 	return err
 }
 
+const sessionActiveWithin = `-- name: SessionActiveWithin :one
+SELECT count(*) FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.user_id=? AND s.expires_at>unixepoch() AND u.status='active'
+`
+
+type SessionActiveWithinParams struct {
+	ID     string
+	UserID string
+}
+
+func (q *Queries) SessionActiveWithin(ctx context.Context, arg SessionActiveWithinParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, sessionActiveWithin, arg.ID, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const sessionCreateSession = `-- name: SessionCreateSession :execresult
 INSERT INTO sessions(id,user_id,verifier_hash,csrf,expires_at) VALUES(?,?,?,?,?)
 `

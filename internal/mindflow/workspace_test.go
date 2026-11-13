@@ -40,6 +40,15 @@ func (c *testClient) acquire(page, client, action string) editor.LeaseResult {
 		c.t.Fatal(checkErr33)
 	}
 
+	if lease.Request != nil && lease.Request.Status == "pending" {
+		c.clock.Add(11000)
+		response := c.ok("GET", "/api/v1/pages/"+page+"/lease?clientId="+client, nil)
+		err := json.Unmarshal(response.Body.Bytes(), &lease)
+		if err != nil {
+			c.t.Fatal(err)
+		}
+	}
+
 	return lease
 }
 
@@ -172,7 +181,7 @@ func TestPrivateAssetsDuplicationAndUserCascade(t *testing.T) {
 	client.ok("POST", "/api/v1/admin/users", map[string]string{emailField: "admin2@example.com", roleField: "admin"})
 	token := client.token("admin2@example.com", "invite")
 	client.ok("POST", "/api/v1/auth/accept-invite", map[string]string{tokenField: token, passwordField: "second admin password"})
-	other := &testClient{a: client.a, db: client.db, t: t}
+	other := &testClient{a: client.a, db: client.db, t: t, clock: client.clock}
 	other.login("admin2@example.com", "second admin password")
 	for _, path := range []string{"/api/v1/assets/" + asset.ID, "/api/v1/assets/" + asset.ID + "?bucket=128", "/api/v1/assets/" + asset.ID + "/meta", "/api/v1/workspaces/" + copied.ID + "/pages"} {
 		if other.request("GET", path, nil).Code != 404 {

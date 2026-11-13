@@ -23,3 +23,18 @@ type CommentThread struct {
 	Resolved    int
 	CreatedAt   int64
 }
+
+type EditorRequest struct {
+	PageID                 string
+	ID                     string
+	RequesterID            string
+	RequesterEmail         string
+	RequesterAvatarVersion string
+	RequesterSession       string
+	RequesterClient        string
+	HolderSession          string
+	HolderClient           string
+	HolderEpoch            int64
+	Deadline               int64
+	Status                 string
+}

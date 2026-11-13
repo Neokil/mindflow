@@ -17,7 +17,7 @@ func sharedUser(owner *testClient, email string) (*testClient, string) {
 	owner.t.Helper()
 	owner.ok("POST", "/api/v1/admin/users", map[string]string{emailField: email, roleField: userRole})
 	owner.ok("POST", "/api/v1/auth/accept-invite", map[string]string{tokenField: owner.token(email, "invite"), passwordField: friendPassword})
-	user := &testClient{a: owner.a, db: owner.db, t: owner.t}
+	user := &testClient{a: owner.a, db: owner.db, t: owner.t, clock: owner.clock}
 	user.login(email, friendPassword)
 	var userID string
 	err := owner.db.QueryRowContext(owner.t.Context(), "SELECT id FROM users WHERE email=?", email).Scan(&userID)

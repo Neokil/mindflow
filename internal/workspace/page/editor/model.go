@@ -8,11 +8,12 @@ type LeaseState struct {
 
 // LeaseResult reports editor eligibility and the current document revision.
 type LeaseResult struct {
-	Permission string `json:"permission"`
-	Editable   bool   `json:"editable"`
-	Epoch      int64  `json:"epoch"`
-	ExpiresAt  int64  `json:"expiresAt"`
-	Revision   int    `json:"revision"`
+	Request    *ControlRequest `json:"request,omitempty"`
+	Permission string          `json:"permission"`
+	Editable   bool            `json:"editable"`
+	Epoch      int64           `json:"epoch"`
+	ExpiresAt  int64           `json:"expiresAt"`
+	Revision   int             `json:"revision"`
 }
 
 // CanEdit checks whether a session still holds a live lease.
@@ -75,7 +76,7 @@ func (l LeaseState) Advance(sessionID string, command LeaseCommand, atValue int6
 // CheckSave rejects expired control, stale fencing epochs and changed revisions.
 func (l LeaseState) CheckSave(sessionID, clientID string, epoch int64, expectedRevision, revision int, at int64) error {
 	if !l.CanEdit(sessionID, clientID, at) || l.Epoch != epoch {
-		return failure("lease_lost", "This page is identifier.Now read-only. Save your local work as a separate page.")
+		return failure("lease_lost", "This page is now read-only. Save your local work as a separate page.")
 	}
 	if revision != expectedRevision {
 		return failure("revision_conflict", "The page changed in another session. Save your local work as a separate page.")
@@ -86,7 +87,8 @@ func (l LeaseState) CheckSave(sessionID, clientID string, epoch int64, expectedR
 
 // LeaseCommand requests editor acquisition, renewal, release or takeover.
 type LeaseCommand struct {
-	ClientID string `json:"clientId"`
-	Action   string `json:"action"`
-	Epoch    int64  `json:"epoch"`
+	RequestID string `json:"requestId,omitempty"`
+	ClientID  string `json:"clientId"`
+	Action    string `json:"action"`
+	Epoch     int64  `json:"epoch"`
 }

@@ -33,6 +33,7 @@ import (
 
 // Config supplies development mode and the one-time setup credential.
 type Config struct {
+	Now       func() time.Time
 	Dev       bool
 	Bootstrap string
 }
@@ -93,7 +94,7 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	service.sharing = sharing.NewService(data.Workspaces, accounts, publish)
 	service.comments = comment.NewService(data.Workspaces, accounts, publish)
 	service.images = imageasset.NewService(data.Workspaces, publish)
-	service.editors, err = editor.NewService(ctx, data.Workspaces, publish)
+	service.editors, err = editor.NewService(ctx, data.Workspaces, publish, service.sessions, config.Now)
 	if err != nil {
 		return nil, err
 	}

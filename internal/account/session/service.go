@@ -55,3 +55,10 @@ const (
 	cookieParts            = 2
 	sessionLifetimeSeconds = 30 * 86400
 )
+
+// ActiveWithin verifies an account and its session are still eligible during control transfer.
+func (a *Service) ActiveWithin(ctx context.Context, transaction *storage.Transaction, sessionID, userID string) (bool, error) {
+	count, err := a.repository.Within(transaction).SessionActiveWithin(ctx, storage.SessionActiveWithinParams{ID: sessionID, UserID: userID})
+
+	return count > 0, err
+}
