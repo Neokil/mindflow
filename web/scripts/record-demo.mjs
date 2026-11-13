@@ -63,7 +63,7 @@ try {
   const context = await browser.newContext({
     viewport: { width: 1200, height: 800 },
     deviceScaleFactor: 1,
-    colorScheme: "light",
+    colorScheme: "dark",
     recordVideo: {
       dir: join(output, "video"),
       size: { width: 1200, height: 800 },
@@ -97,6 +97,7 @@ try {
   await expect(
     page.getByRole("heading", { name: "Workspaces", exact: true }),
   ).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   const me = await (await page.request.get(`${origin}/api/v1/auth/me`)).json();
   const api = async (path, body) => {
     const response = await page.request.post(`${origin}/api/v1${path}`, {
@@ -128,7 +129,7 @@ try {
     password: "another private demo passphrase",
   });
   await page.addStyleTag({
-    content: `#demo-caption{position:fixed;left:24px;bottom:65px;z-index:10000;padding:12px 18px;border:1px solid #dedee8;border-radius:12px;background:#fffffff5;box-shadow:0 6px 24px #27243b12;color:#292735;font:500 15px Arial;pointer-events:none}#demo-pointer{position:fixed;width:12px;height:12px;border:2px solid white;background:#6c63d9;border-radius:50%;z-index:10001;pointer-events:none;transform:translate(-50%,-50%);box-shadow:0 1px 5px #0004}`,
+    content: `#demo-caption{position:fixed;left:24px;bottom:65px;z-index:10000;padding:12px 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:var(--shadow);color:var(--text);font:500 15px Arial;pointer-events:none}#demo-pointer{position:fixed;width:12px;height:12px;border:2px solid white;background:#6c63d9;border-radius:50%;z-index:10001;pointer-events:none;transform:translate(-50%,-50%);box-shadow:0 1px 5px #0004}`,
   });
   await page.evaluate(() => {
     const caption = document.createElement("div");
