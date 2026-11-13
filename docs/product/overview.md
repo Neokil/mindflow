@@ -14,6 +14,8 @@ Workspaces can be shared with existing users as read-only, comment, or full acce
 
 Accounts are invite-only. Administrators manage users and invitations without gaining access to private workspaces. The first administrator and email settings are configured during initial setup.
 
+Workspaces or selected pages can be exported as editable `.mindflow` files and imported into new or existing workspaces. PDF and PNG exports create one flattened output per canvas page.
+
 ## Product boundaries
 
 - Browser targets are desktop Chrome/Firefox and iPad Safari, with finger and Pencil input. The tablet canvas supports one-finger tools and two-finger pan/zoom. Small-screen phone layouts are outside the current scope.

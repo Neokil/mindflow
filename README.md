@@ -63,6 +63,7 @@ For TrueNAS Apps, use [the installation guide](docs/user-docs/installation.md) a
 - **Stay in control:** one writer per page, approval-based control requests, owner force control, and recovery of displaced unsaved work.
 - **Keep your place:** workspace/page links, autosave, temporary disconnected editing, and a banner when a new build is available.
 - **Read and annotate PDFs:** import pages as images on one canvas or separate pages, or keep a PDF with an in-app reader.
+- **Take your work with you:** export workspaces or selected pages as editable `.mindflow` files, PDFs, or PNG images; import native files as new workspaces or append their pages.
 - **Bring existing work:** import Butterfly `.bfly` documents as private workspaces with editable pages and embedded images.
 - **Make it yours:** light/dark appearance and a quiet interface for desktop Chrome/Firefox and iPad Safari.
 

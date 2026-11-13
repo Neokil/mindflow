@@ -22,7 +22,7 @@ mindflow is one Go process serving an embedded React/TypeScript frontend, a same
 
 ## Backend domains
 
-Behavior belongs to the domain that owns it. Account subdomains include `authentication`, `session`, `invitation`, `passwordreset`, and `avatar`. Workspace subdomains include `sharing`, `image`, `template`, `butterfly`, `page`, and the page's `canvas`, `editor`, and `comment` packages.
+Behavior belongs to the domain that owns it. Account subdomains include `authentication`, `session`, `invitation`, `passwordreset`, and `avatar`. Workspace subdomains include `sharing`, `image`, `template`, `transfer`, `butterfly`, `page`, and the page's `canvas`, `editor`, and `comment` packages.
 
 Only the topmost domain defines its database structure. Its `storage/` contains repository adapters, sqlc queries/generated bindings, and Goose migrations. Nested domains share that parent storage. The account, workspace, email, and installation schemas are independent: no cross-domain foreign keys or table access. References into another domain are opaque IDs.
 
@@ -39,3 +39,5 @@ React owns application navigation and UI state. Konva renders a viewport-sized c
 Workspace/page hash URLs are handled by `navigation.ts`; `UpdateBanner` checks the running build. Both preserve the existing unsaved-work protections. SSE carries invalidations, not authoritative document state; HTTP and polling remain the source of truth.
 
 Read [data structures](data-model.md), [canvas and synchronization](canvas-and-sync.md), and the [development workflow](development.md) before changing these boundaries.
+
+Native transfer lives in `workspace/transfer`; its storage stays in the parent domain. Frontend `features/transfer` owns portable-file UI and visual exports, sharing the editor element renderer. See [native import and export](native-transfer.md).

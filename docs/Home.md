@@ -20,6 +20,7 @@ mindflow is a self-hosted infinite canvas for images, shapes, text, drawing, and
 - [Data structures](developer-docs/data-model.md): database ownership, tables, and canvas JSON.
 - [Canvas and synchronization](developer-docs/canvas-and-sync.md): coordinates, saves, editor leases, media, and recovery.
 - [Development workflow](developer-docs/development.md): local setup, changes, tests, CI, and releases.
+- [Native import and export](developer-docs/native-transfer.md): portable files, permissions, rendering, and limits.
 - [Butterfly import](developer-docs/butterfly-import.md): format mapping, limits, and atomic workspace creation.
 - [Branding and colors](developer-docs/branding.md): artwork, palette roles, theme accents, and readability.
 - [Dependency updates](developer-docs/dependencies.md): `make upgrade` and review steps.

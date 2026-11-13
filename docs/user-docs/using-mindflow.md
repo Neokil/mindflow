@@ -6,6 +6,24 @@ Sign in to see your own and shared workspaces. Create a workspace, open it, and 
 
 Account passwords must contain 8–128 characters. Setup, invitation acceptance, and password reset offer **Suggest good password**: two or three randomly selected English words with special characters between them, totaling 10–15 characters, generated locally in your browser. The suggested value is shown so you can save it; **Hide password** masks it again. Random word choices add unpredictability while remaining easier to remember than random character strings. Use a unique password for mindflow.
 
+## Export workspaces and pages
+
+Choose **Export workspace** beside the save status, **Export** in a workspace card's menu, or **Export page** in a page tab's menu. Choose the whole workspace or tick individual pages, then choose a format:
+
+- **mindflow (.mindflow)** keeps elements editable and includes original media. Optionally include reusable templates. Use this format to move work between mindflow instances or share a copy with another person.
+- **PDF** creates one PDF page per selected canvas page, in tab order.
+- **PNG images** creates one image per canvas page. A single page downloads as PNG; multiple pages download together in a ZIP.
+
+Visual exports fit all elements with a small margin, including rotated objects and drawings. They use the selected resolution, with optional background and dot grid. An empty canvas exports as a blank page. Embedded PDFs appear as their first-page preview. PDF/PNG copies are flattened and cannot restore editable elements. Comments and user details are not included in any export. Sharing permissions are never copied. Native exports contain original images, including cropped-away portions.
+
+Current-tab changes must save before export; reconnect or recover unsaved work first. Keep the tab open while rendering. Exporting does not require editor control, and all workspace members can export saved content. Anyone receiving a downloaded file can read it independently of workspace permissions.
+
+## Import mindflow files
+
+On the workspace list, choose **Import workspace**, select a `.mindflow` file, name the workspace and choose **Import**. Both whole-workspace and selected-page files create a new private workspace. To add their pages to an existing workspace instead, open it and choose **Import pages** beside the save status. Appending requires owner or full access; existing pages are retained, and new pages are added at the end.
+
+Imported elements are independent editable copies. Groups, locks, settings, original media and included templates are preserved. Template name collisions are renamed and reported. A failed import leaves no partial changes. File limits are 64 MiB compressed, 128 MiB expanded, 100 pages, 100 templates and 1,000 media assets per transfer. If an export is too large, choose fewer pages. See the [native format reference](../developer-docs/native-transfer.md) for full limits.
+
 ## Import from Butterfly
 
 On the workspace list, choose **Import workspace**, select a `.bfly` export, enter a workspace name, and choose **Import**. Review the conversion notes, then choose **Open workspace**. The new workspace is private; existing workspaces and the source file are unchanged. A failed import leaves no partial workspace.
