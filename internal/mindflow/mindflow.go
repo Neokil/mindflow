@@ -33,6 +33,7 @@ import (
 
 // Config supplies development mode and the one-time setup credential.
 type Config struct {
+	Version   string
 	Now       func() time.Time
 	Dev       bool
 	Bootstrap string
@@ -127,27 +128,10 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 		writeJSON(writer, http.StatusOK, map[string]bool{"ok": true})
 	})
 	assets, _ := fs.Sub(web.Files, "dist")
-	service.Mux.HandleFunc("GET /", func(writer http.ResponseWriter, request *http.Request) {
-		if strings.HasPrefix(request.URL.Path, "/api/") {
-			http.NotFound(writer, request)
-
-			return
-		}
-		assetPath := strings.TrimPrefix(request.URL.Path, "/")
-		if assetPath == "" {
-			assetPath = "index.html"
-		}
-		_, statErr := fs.Stat(assets, assetPath)
-		if statErr != nil {
-			if strings.Contains(assetPath, ".") {
-				http.NotFound(writer, request)
-
-				return
-			}
-			request.URL.Path = "/index.html"
-		}
-		http.FileServer(http.FS(assets)).ServeHTTP(writer, request)
-	})
+	err = service.registerAssets(assets)
+	if err != nil {
+		return nil, err
+	}
 
 	return service, nil
 }

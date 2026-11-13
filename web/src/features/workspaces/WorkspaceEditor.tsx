@@ -25,12 +25,16 @@ import Canvas from "../editor/Canvas";
 import NameDialog from "./NameDialog";
 export default function WorkspaceEditor({
   workspace: initial,
+  activePageId,
+  onPageChange: setPageId,
   back,
   dirtyChanged,
   onAuthenticationRequired,
   serverEvent,
 }: {
   workspace: Workspace;
+  activePageId?: string;
+  onPageChange: (pageId?: string, replace?: boolean) => void;
   back: () => void;
   dirtyChanged: (dirty: boolean) => void;
   onAuthenticationRequired: () => void;
@@ -38,7 +42,6 @@ export default function WorkspaceEditor({
 }) {
   const [workspace, setWorkspace] = useState(initial),
     [pages, setPages] = useState<Page[]>([]),
-    [pageId, setPageId] = useState<string>(),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [dialog, setDialog] = useState<{
@@ -59,6 +62,9 @@ export default function WorkspaceEditor({
     unsubscribers = useRef(new Map<string, () => void>());
   const dragTab = useRef<string | undefined>(undefined);
   const workspaceId = workspace.id;
+  const pageId = activePageId;
+  const pageRef = useRef(pageId);
+  pageRef.current = pageId;
   const session = pageId ? sessions.current.get(pageId) : undefined;
   const load = useCallback(async () => {
     const list = await api<Page[]>(`/workspaces/${workspaceId}/pages`);
@@ -66,8 +72,8 @@ export default function WorkspaceEditor({
     const all = await api<Workspace[]>("/workspaces");
     const current = all.find((w) => w.id === workspaceId);
     if (current) setWorkspace(current);
-    setPageId((previous) => previous || list[0]?.id);
-  }, [workspaceId]);
+    if (!pageRef.current && list[0]) setPageId(list[0].id, true);
+  }, [workspaceId, setPageId]);
   useEffect(() => {
     const openSessions = sessions.current;
     const subscriptions = unsubscribers.current;
@@ -82,7 +88,12 @@ export default function WorkspaceEditor({
     };
   }, [load, dirtyChanged]);
   useEffect(() => {
-    if (!pageId || sessions.current.has(pageId)) return;
+    if (
+      !pageId ||
+      !pages.some((page) => page.id === pageId) ||
+      sessions.current.has(pageId)
+    )
+      return;
     const s = new PageSession(pageId, api, onAuthenticationRequired);
     sessions.current.set(pageId, s);
     unsubscribers.current.set(
@@ -94,7 +105,7 @@ export default function WorkspaceEditor({
     );
     void s.open();
     render((n) => n + 1);
-  }, [pageId, dirtyChanged, onAuthenticationRequired]);
+  }, [pageId, pages, dirtyChanged, onAuthenticationRequired]);
   useEffect(() => {
     for (const session of sessions.current.values()) void session.sync();
     if (serverEvent.type === "workspace" || serverEvent.type === "connected")
@@ -434,6 +445,7 @@ export default function WorkspaceEditor({
           >
             Take control
           </button>
+
         </div>
       )}
       {[...sessions.current.entries()]
@@ -475,7 +487,8 @@ export default function WorkspaceEditor({
         </div>
       ) : session?.loaded ? (
         <Canvas key={pageId} session={session} refresh={refresh} />
-      ) : session?.status === "Page unavailable" ? (
+      ) : session?.status === "Page unavailable" ||
+        (pageId && !pages.some((page) => page.id === pageId)) ? (
         <Empty icon={<LockKeyhole size={25} />} title="Page unavailable">
           <button className="secondary" onClick={leave}>
             Back to workspaces

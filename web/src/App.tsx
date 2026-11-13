@@ -1,4 +1,6 @@
-import { LogOut, Settings, SunMoon } from "lucide-react";
+import UpdateBanner from "./UpdateBanner";
+import { useWorkspaceRoute } from "./navigation";
+import { Github, LogOut, Settings, SunMoon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ServerEvent, User } from "./api";
 import { api, APIError, setCSRF } from "./api";
@@ -24,6 +26,8 @@ export default function App() {
   }, []);
   const [workspace, setWorkspace] = useState<Workspace>();
   const dirty = useRef(false);
+  const { route, navigate } = useWorkspaceRoute(dirty);
+  const [opening, setOpening] = useState(false);
   const [reauth, setReauth] = useState(false);
   const [user, setUser] = useState<User>();
   const [initialized, setInitialized] = useState<boolean>();
@@ -57,6 +61,43 @@ export default function App() {
   }, []);
   const appearancePreference = user?.appearance || "system";
   const userID = user?.id;
+  const routeWorkspace = route.workspaceId;
+  useEffect(() => {
+    let cancelled = false;
+    setWorkspace(undefined);
+    if (!userID || !routeWorkspace) {
+      setOpening(false);
+      return;
+    }
+    setOpening(true);
+    setError("");
+    void api<Workspace[]>("/workspaces")
+      .then((list) => {
+        if (cancelled) return;
+        const target = list.find((item) => item.id === routeWorkspace);
+        if (target) setWorkspace(target);
+        else
+          setError(
+            "This workspace is unavailable or has not been shared with you.",
+          );
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setOpening(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userID, routeWorkspace]);
+  const choosePage = useCallback(
+    (pageId?: string, replace = false) => {
+      navigate({ workspaceId: routeWorkspace, pageId }, replace);
+    },
+    [navigate, routeWorkspace],
+  );
+
   useEffect(() => {
     const query = matchMedia("(prefers-color-scheme: dark)");
     const update = () => {
@@ -119,6 +160,7 @@ export default function App() {
   if (!user)
     return (
       <>
+        <UpdateBanner />
         <ErrorMessage message={error} />
         <Auth
           setup={initialized === false}
@@ -131,8 +173,21 @@ export default function App() {
     );
   return (
     <div className="app">
+      <UpdateBanner />
       <header className="app-header">
-        <Brand small />
+        <div className="app-brand">
+          <Brand small />
+          <a
+            className="icon-button"
+            href="https://github.com/Neokil/mindflow"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="mindflow on GitHub"
+            title="View on GitHub"
+          >
+            <Github size={18} />
+          </a>
+        </div>
         <div className="header-actions">
           <button
             className="account-profile"
@@ -195,17 +250,26 @@ export default function App() {
       </header>
       <ErrorMessage message={error} />
       <>
-        {workspace ? (
+        {opening ? (
+          <div className="editor-loading">
+            <Spinner />
+          </div>
+        ) : workspace && workspace.id === route.workspaceId ? (
           <WorkspaceEditor
             key={workspace.id}
             workspace={workspace}
-            back={() => setWorkspace(undefined)}
+            activePageId={route.pageId}
+            onPageChange={choosePage}
+            back={() => navigate({})}
             dirtyChanged={updateDirty}
             onAuthenticationRequired={requireAuthentication}
             serverEvent={serverEvent}
           />
         ) : (
-          <Dashboard open={setWorkspace} serverEvent={serverEvent} />
+          <Dashboard
+            open={(value) => navigate({ workspaceId: value.id })}
+            serverEvent={serverEvent}
+          />
         )}
       </>
       {profile && (

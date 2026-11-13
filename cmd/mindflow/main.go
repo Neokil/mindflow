@@ -119,7 +119,11 @@ func run(ctx context.Context) error {
 	if !initialized {
 		slog.Info("First-run setup credential (operator only): " + bootstrap)
 	}
-	service, err := mindflow.New(ctx, connection, mindflow.Config{Dev: os.Getenv("MINDFLOW_DEV") == "1", Bootstrap: bootstrap})
+	version, err := applicationVersion()
+	if err != nil {
+		return err
+	}
+	service, err := mindflow.New(ctx, connection, mindflow.Config{Version: version, Dev: os.Getenv("MINDFLOW_DEV") == "1", Bootstrap: bootstrap})
 	if err != nil {
 		return err
 	}
