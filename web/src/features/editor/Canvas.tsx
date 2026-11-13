@@ -1,3 +1,4 @@
+import useCanvasAccent from "./useCanvasAccent";
 import TemplateLibrary from "./TemplateLibrary";
 import { instantiateTemplate } from "./templates";
 import Konva from "konva";
@@ -42,6 +43,7 @@ export default function Canvas({
   session: PageSession;
   refresh?: number;
 }) {
+  const accent = useCanvasAccent();
   const host = useRef<HTMLDivElement>(null),
     stage = useRef<Konva.Stage>(null),
     preview = useRef<Konva.Line>(null),
@@ -55,8 +57,8 @@ export default function Canvas({
     [canvasSettingsOpen, setCanvasSettingsOpen] = useState(false),
     [objectSettingsAnchor, setObjectSettingsAnchor] = useState<Point>(),
     [help, setHelp] = useState(false);
-  const [color, setColor] = useState("#6c63d9"),
-    [fill, setFill] = useState("#e8e4fa"),
+  const [color, setColor] = useState(accent),
+    [fill, setFill] = useState("#edf5df"),
     [penWidth, setPenWidth] = useState(3),
     [pending, setPending] = useState<CanvasElement[]>([]),
     [cursor, setCursor] = useState<Point>({ x: 0, y: 0 }),
@@ -384,9 +386,9 @@ export default function Canvas({
       if (!e.evt.shiftKey) setSelection([]);
       preview.current?.setAttrs({
         points: [world.x, world.y],
-        stroke: "#8a80df",
+        stroke: accent,
         strokeWidth: 1 / camera.zoom,
-        fill: "#8a80df18",
+        fill: `${accent}18`,
         closed: true,
       });
     }
@@ -539,6 +541,7 @@ export default function Canvas({
         data-testid="canvas"
       >
         <CanvasScene
+          accent={accent}
           document={doc}
           camera={camera}
           size={size}

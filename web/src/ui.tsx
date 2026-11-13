@@ -6,7 +6,7 @@ export function Brand({ small = false }: { small?: boolean }) {
     <span className={`brand ${small ? "small" : ""}`}>
       <span className="brand-mark">
         <img
-          src="/logo.png"
+          src="/icon.png"
           width={small ? 32 : 44}
           height={small ? 32 : 44}
           alt=""

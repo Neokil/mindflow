@@ -3,17 +3,46 @@ import { login } from "./helpers";
 
 test("system appearance follows live changes and GitHub aligns with the brand", async ({
   page,
-}) => {
+}, info) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await login(page);
+  await expect(page.locator(".brand-mark img")).toHaveAttribute(
+    "src",
+    "/icon.png",
+  );
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
+    "href",
+    "/icon.png",
+  );
+  await expect
+    .poll(() =>
+      page
+        .locator(".brand-mark img")
+        .evaluate((image) => (image as HTMLImageElement).naturalWidth),
+    )
+    .toBeGreaterThan(0);
+  const primary = page.getByRole("button", {
+    name: "New workspace",
+    exact: true,
+  });
+  await expect(primary).toHaveCSS("background-color", "rgb(164, 214, 94)");
+  await expect(primary).toHaveCSS("color", "rgb(27, 94, 59)");
+  await page.screenshot({
+    path: `../.cache/e2e/branding-${info.project.name}-dark.png`,
+  });
   const appearance = page.getByRole("button", { name: "Change appearance" });
   await expect(appearance).toHaveAttribute("title", "Appearance: system");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "light");
+  await expect(primary).toHaveCSS("background-color", "rgb(27, 94, 59)");
+  await expect(primary).toHaveCSS("color", "rgb(255, 255, 255)");
+  await page.screenshot({
+    path: `../.cache/e2e/branding-${info.project.name}-light.png`,
+  });
   await page.emulateMedia({ colorScheme: "dark" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 

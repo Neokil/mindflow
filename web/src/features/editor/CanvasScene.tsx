@@ -8,6 +8,7 @@ import { wholeFontSize } from "../../model";
 import CanvasElementView from "./CanvasElement";
 import type { Camera, Tool } from "./types";
 type Props = {
+  accent: string;
   document: CanvasDocument;
   camera: Camera;
   size: { width: number; height: number };
@@ -35,6 +36,7 @@ type Props = {
 };
 const radiansToDegrees = (value: number) => (value * 180) / Math.PI;
 export default function CanvasScene({
+  accent,
   document,
   camera,
   size,
@@ -330,7 +332,7 @@ export default function CanvasScene({
                   y={-e.height / 2 - 4 / camera.zoom}
                   width={e.width + 8 / camera.zoom}
                   height={e.height + 8 / camera.zoom}
-                  stroke="#8b80dd"
+                  stroke={accent}
                   strokeWidth={1 / camera.zoom}
                   dash={[4 / camera.zoom, 4 / camera.zoom]}
                 />
@@ -347,7 +349,7 @@ export default function CanvasScene({
               y={-creation.height / 2}
               width={creation.width}
               height={creation.height}
-              stroke="#8b80dd"
+              stroke={accent}
               strokeWidth={1 / camera.zoom}
               dash={[4 / camera.zoom, 4 / camera.zoom]}
             />
@@ -404,8 +406,8 @@ export default function CanvasScene({
           padding={4}
           anchorSize={8}
           anchorCornerRadius={2}
-          borderStroke="#8b80dd"
-          anchorStroke="#8b80dd"
+          borderStroke={accent}
+          anchorStroke={accent}
           anchorFill="white"
           rotateAnchorOffset={25}
           onTransformStart={() => {
