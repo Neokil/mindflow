@@ -127,6 +127,10 @@ export default function useEditorShortcuts({
         setSelection(session.doc.elements.map((e) => e.id));
         return;
       }
+      if (!command && e.key.toLowerCase() === "h") {
+        setTool("pan");
+        return;
+      }
       if (!session.editable) return;
       if (command && e.key.toLowerCase() === "z") {
         e.preventDefault();

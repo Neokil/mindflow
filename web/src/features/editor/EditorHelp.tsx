@@ -3,10 +3,15 @@ import { Modal } from "../../ui";
 export default function EditorHelp({ close }: { close: () => void }) {
   return (
     <Modal title="A few helpful shortcuts" close={close}>
+      <p className="muted">
+        On tablets, drag with one finger or Pencil to use the selected tool. Use
+        two fingers to pan and pinch to zoom. Pencil only mode lets a finger pan
+        while Pencil draws.
+      </p>
       <div className="shortcut-list">
         {[
-          ["Pan", "Cmd / Ctrl + drag or middle button"],
-          ["Zoom around cursor", "Scroll"],
+          ["Pan", "Pan tool (H), Cmd/Ctrl + drag, or middle button"],
+          ["Zoom around cursor", "Scroll; two-finger pinch on tablets"],
           ["Create an element", "Drag; Shift for 1:1"],
           ["Select enclosed elements", "Drag a freehand lasso"],
           ["Add to selection", "Shift + click / lasso"],
@@ -14,7 +19,7 @@ export default function EditorHelp({ close }: { close: () => void }) {
           ["Copy / paste / duplicate", "Cmd / Ctrl + C / V / D"],
           ["Group / ungroup", "Cmd / Ctrl + G / Shift + G"],
           ["Remove selection", "Delete / Backspace"],
-          ["Finish text", "Cmd / Ctrl + Enter"],
+          ["Finish text", "Done or Cmd / Ctrl + Enter"],
           ["Cancel", "Escape"],
         ].map(([label, key]) => (
           <div key={label}>

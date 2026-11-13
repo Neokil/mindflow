@@ -1,5 +1,6 @@
 import {
   Circle,
+  Hand,
   Blocks,
   MessageCircle,
   ImagePlus,
@@ -26,6 +27,7 @@ type Props = {
   onRedo: () => void;
 };
 const tools = [
+  { id: "pan", icon: Hand, label: "Pan (H)" },
   { id: "select", icon: MousePointer2, label: "Select (V)" },
   { id: "rectangle", icon: Square, label: "Rectangle" },
   { id: "circle", icon: Circle, label: "Circle" },
@@ -57,7 +59,9 @@ export default function EditorToolbar({
           aria-label={label}
           aria-pressed={tool === id}
           disabled={
-            id === "comment" ? !canComment : !editable && id !== "select"
+            id === "comment"
+              ? !canComment
+              : !editable && id !== "select" && id !== "pan"
           }
           onClick={() => onTool(id)}
         >

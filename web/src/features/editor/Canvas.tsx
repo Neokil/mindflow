@@ -1,3 +1,5 @@
+import useCanvasInput from "./useCanvasInput";
+import type { CanvasInteraction } from "./useCanvasInput";
 import ColorInput from "../../ColorInput";
 import useCanvasAccent from "./useCanvasAccent";
 import TemplateLibrary from "./TemplateLibrary";
@@ -13,7 +15,13 @@ import {
   X,
 } from "lucide-react";
 import type { CSSProperties, SetStateAction } from "react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   fitCamera,
   lassoSelection,
@@ -50,6 +58,7 @@ export default function Canvas({
   refresh?: number;
 }) {
   const accent = useCanvasAccent();
+  const interaction = useRef<CanvasInteraction>(null);
   const host = useRef<HTMLDivElement>(null),
     stage = useRef<Konva.Stage>(null),
     preview = useRef<Konva.Line>(null),
@@ -64,6 +73,7 @@ export default function Canvas({
     [objectSettingsAnchor, setObjectSettingsAnchor] = useState<Point>(),
     [help, setHelp] = useState(false);
   const [penColor, setPenColor] = useState(accent),
+    [pencilOnly, setPencilOnly] = useState(false),
     [penWidth, setPenWidth] = useState(3),
     [pending, setPending] = useState<CanvasElement[]>([]),
     [cursor, setCursor] = useState<Point>({ x: 0, y: 0 }),
@@ -83,7 +93,7 @@ export default function Canvas({
   const [cropping, setCropping] = useState<CanvasElement>();
   const gesture = useRef<
     | {
-        kind: "pan" | "lasso" | "pen" | "create";
+        kind: "pan" | "lasso" | "pen" | "create" | "comment" | "template";
         element?: CanvasElement;
         start: Point;
         camera: Camera;
@@ -333,19 +343,24 @@ export default function Canvas({
     },
   });
 
-  function mouseDown(e: Konva.KonvaEventObject<MouseEvent>) {
+  function pointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
     if (e.evt.button !== 0 && e.evt.button !== 1) return;
     const p = pointer();
     const world = worldPoint(p, camera);
     const target = e.target;
-    if (e.evt.button === 1 || e.evt.metaKey || e.evt.ctrlKey) {
+    if (
+      tool === "pan" ||
+      (tool === "pen" && pencilOnly && e.evt.pointerType === "touch") ||
+      e.evt.button === 1 ||
+      e.evt.metaKey ||
+      e.evt.ctrlKey
+    ) {
       e.evt.preventDefault();
       gesture.current = { kind: "pan", start: p, camera, points: [] };
       return;
     }
     if (tool === "comment" && session.canComment) {
-      setCommentPoint(world);
-      setTool("select");
+      gesture.current = { kind: "comment", start: world, camera, points: [] };
       return;
     }
     if (editing) {
@@ -353,10 +368,8 @@ export default function Canvas({
       return;
     }
     if (templatePlacement.length && session.editable) {
-      const elements = instantiateTemplate(templatePlacement, world);
-      editElements([...session.doc.elements, ...elements]);
-      setSelection(elements.map((element) => element.id));
-      setTemplatePlacement([]);
+      setCursor(world);
+      gesture.current = { kind: "template", start: world, camera, points: [] };
       return;
     }
     if (pending.length && session.editable) {
@@ -399,7 +412,7 @@ export default function Canvas({
       });
     }
   }
-  function mouseMove(event: Konva.KonvaEventObject<MouseEvent>) {
+  function pointerMove(event: Konva.KonvaEventObject<PointerEvent>) {
     const p = pointer(),
       world = worldPoint(p, camera);
     if (pending.length || templatePlacement.length) setCursor(world);
@@ -423,6 +436,7 @@ export default function Canvas({
       });
       return;
     }
+    if (g.kind === "comment" || g.kind === "template") return;
     const last = g.points[g.points.length - 1];
     if (Math.hypot(world.x - last.x, world.y - last.y) * camera.zoom < 2)
       return;
@@ -431,11 +445,26 @@ export default function Canvas({
     preview.current?.points(g.points.flatMap((p) => [p.x, p.y]));
     preview.current?.getLayer()?.batchDraw();
   }
-  function mouseUp() {
+  function pointerUp() {
     const g = gesture.current;
     gesture.current = undefined;
     if (!g) return;
     preview.current?.points([]);
+    if (g.kind === "comment" && session.canComment) {
+      setCommentPoint(worldPoint(pointer(), camera));
+      setTool("select");
+      return;
+    }
+    if (g.kind === "template" && session.editable) {
+      const elements = instantiateTemplate(
+        templatePlacement,
+        worldPoint(pointer(), camera),
+      );
+      editElements([...session.doc.elements, ...elements]);
+      setSelection(elements.map((element) => element.id));
+      setTemplatePlacement([]);
+      return;
+    }
     if (g.kind === "pan") {
       const position = stage.current?.position();
       if (position) setCamera({ ...g.camera, ...position });
@@ -492,6 +521,24 @@ export default function Canvas({
       setSelection([]);
     }
   }
+  const cancelGesture = useCallback(() => {
+    gesture.current = undefined;
+    setCreation(undefined);
+    preview.current?.points([]);
+    stage.current?.position({ x: camera.x, y: camera.y });
+    if (host.current)
+      host.current.style.backgroundPosition = `${camera.x}px ${camera.y}px`;
+  }, [camera]);
+  const input = useCanvasInput({
+    stage,
+    scene: interaction,
+    camera,
+    onCamera: setCamera,
+    start: pointerDown,
+    move: pointerMove,
+    end: pointerUp,
+    cancel: cancelGesture,
+  });
   function selectElement(id: string, shift = false) {
     const ids = selectedWithGroup(session.doc.elements, id);
     if (shift)
@@ -523,17 +570,20 @@ export default function Canvas({
       <div
         className="canvas-host"
         ref={host}
+        {...input.capture}
         style={{
           ...backgroundStyle,
           backgroundColor: doc.settings.backgroundColor,
           cursor:
             pending.length || templatePlacement.length
               ? "copy"
-              : tool === "pen" || tool === "comment"
-                ? "crosshair"
-                : tool === "text"
-                  ? "text"
-                  : "default",
+              : tool === "pan"
+                ? "grab"
+                : tool === "pen" || tool === "comment"
+                  ? "crosshair"
+                  : tool === "text"
+                    ? "text"
+                    : "default",
         }}
         onDragOver={(e) => {
           e.preventDefault();
@@ -547,6 +597,10 @@ export default function Canvas({
         data-testid="canvas"
       >
         <CanvasScene
+          interactionRef={interaction}
+          coarse={input.coarse}
+          navigating={input.navigating}
+          allowPointer={input.allowed}
           accent={accent}
           document={doc}
           camera={camera}
@@ -563,9 +617,9 @@ export default function Canvas({
           stageRef={stage}
           previewRef={preview}
           isPanning={() => gesture.current?.kind === "pan"}
-          onPointerDown={mouseDown}
-          onPointerMove={mouseMove}
-          onPointerUp={mouseUp}
+          onPointerDown={input.down}
+          onPointerMove={input.move}
+          onPointerUp={input.up}
           onSelectElement={selectElement}
           onSelectionChange={setSelection}
           onObjectSettings={(id, position) => {
@@ -654,13 +708,15 @@ export default function Canvas({
             ? "Click to place template."
             : pending.length
               ? `Drag to size image${pending.length > 1 ? ` (${pending.length} remaining)` : ""}`
-              : tool === "pen"
-                ? "Draw freely. Select a stroke to move or delete it."
-                : tool === "text"
-                  ? "Drag to size a text box."
-                  : tool === "comment"
-                    ? "Click to leave a comment."
-                    : `Drag to size a ${tool}. Hold Shift for a square.`}
+              : tool === "pan"
+                ? "Drag to pan. Use two fingers to pan and pinch to zoom."
+                : tool === "pen"
+                  ? "Draw freely. Select a stroke to move or delete it."
+                  : tool === "text"
+                    ? "Drag to size a text box."
+                    : tool === "comment"
+                      ? "Click to leave a comment."
+                      : `Drag to size a ${tool}. Hold Shift for a square.`}
           <kbd>esc</kbd>
         </div>
       )}
@@ -673,6 +729,15 @@ export default function Canvas({
               value={penColor}
               onChange={setPenColor}
             />
+          </label>
+          <label className="check-label">
+            <input
+              type="checkbox"
+              aria-label="Pencil only"
+              checked={pencilOnly}
+              onChange={(event) => setPencilOnly(event.target.checked)}
+            />
+            Pencil only
           </label>
           <label>
             Width
@@ -756,7 +821,7 @@ export default function Canvas({
           }}
         />
       )}
-      {selected.length > 0 && (
+      {selected.length > 0 && !editing && (
         <div className="selection-bar">
           <span>{selected.length} selected</span>
           <button

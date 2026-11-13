@@ -1,6 +1,7 @@
+import type { CanvasInteraction } from "./useCanvasInput";
 import Konva from "konva";
 import type { RefObject } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import { Group, Layer, Line, Rect, Stage, Transformer } from "react-konva";
 import { selectedWithGroup, snap, worldPoint } from "../../geometry";
 import type { CanvasDocument, CanvasElement, Point } from "../../model";
@@ -8,6 +9,10 @@ import { wholeFontSize } from "../../model";
 import CanvasElementView from "./CanvasElement";
 import type { Camera, Tool } from "./types";
 type Props = {
+  interactionRef: RefObject<CanvasInteraction | null>;
+  coarse: boolean;
+  navigating: boolean;
+  allowPointer: (event: PointerEvent) => boolean;
   accent: string;
   document: CanvasDocument;
   camera: Camera;
@@ -25,9 +30,9 @@ type Props = {
   stageRef: RefObject<Konva.Stage | null>;
   previewRef: RefObject<Konva.Line | null>;
   isPanning: () => boolean;
-  onPointerDown: (event: Konva.KonvaEventObject<MouseEvent>) => void;
-  onPointerMove: (event: Konva.KonvaEventObject<MouseEvent>) => void;
-  onPointerUp: () => void;
+  onPointerDown: (event: Konva.KonvaEventObject<PointerEvent>) => void;
+  onPointerMove: (event: Konva.KonvaEventObject<PointerEvent>) => void;
+  onPointerUp: (event: Konva.KonvaEventObject<PointerEvent>) => void;
   onZoom: (delta: number, mode: number) => void;
   onSelectElement: (id: string, shift?: boolean) => void;
   onSelectionChange: (ids: string[]) => void;
@@ -36,6 +41,10 @@ type Props = {
 };
 const radiansToDegrees = (value: number) => (value * 180) / Math.PI;
 export default function CanvasScene({
+  interactionRef,
+  coarse,
+  navigating,
+  allowPointer,
   accent,
   document,
   camera,
@@ -68,6 +77,36 @@ export default function CanvasScene({
   const drag = useRef<
     { source: string; start: Point; positions: Map<string, Point> } | undefined
   >(undefined);
+  const cancelling = useRef(false);
+  useImperativeHandle(
+    interactionRef,
+    () => ({
+      cancel() {
+        cancelling.current = true;
+        drag.current = undefined;
+        transformer.current?.stopTransform();
+        const originals = new Map(
+          document.elements.map((element) => [element.id, element]),
+        );
+        for (const [id, node] of nodes.current) {
+          node.stopDrag();
+          const element = originals.get(id);
+          if (element)
+            node.setAttrs({
+              x: element.x,
+              y: element.y,
+              rotation: radiansToDegrees(element.rotation),
+              scaleX: 1,
+              scaleY: 1,
+            });
+        }
+        transformer.current?.forceUpdate();
+        stageRef.current?.batchDraw();
+        cancelling.current = false;
+      },
+    }),
+    [document, stageRef],
+  );
   const selected = document.elements.filter((element) =>
       selection.includes(element.id),
     ),
@@ -122,7 +161,7 @@ export default function CanvasScene({
     canMove,
     templatePlacement.length,
   ]);
-  function updateCursor(event: Konva.KonvaEventObject<MouseEvent>) {
+  function updateCursor(event: Konva.KonvaEventObject<PointerEvent>) {
     const container = stageRef.current?.container();
     if (
       !container ||
@@ -144,6 +183,7 @@ export default function CanvasScene({
             : "";
   }
   function commitTransform() {
+    if (cancelling.current) return;
     const anchor = transformAnchor.current;
     const corner =
       anchor.includes("left") || anchor.includes("right")
@@ -187,21 +227,20 @@ export default function CanvasScene({
       y={camera.y}
       scaleX={camera.zoom}
       scaleY={camera.zoom}
-      onMouseDown={(event) => {
+      onPointerDown={(event) => {
         onPointerDown(event);
         updateCursor(event);
       }}
-      onMouseOver={updateCursor}
-      onMouseMove={(event) => {
+      onPointerOver={updateCursor}
+      onPointerMove={(event) => {
         updateCursor(event);
         onPointerMove(event);
       }}
-      onMouseUp={(event) => {
-        onPointerUp();
+      onPointerUp={(event) => {
+        onPointerUp(event);
         updateCursor(event);
       }}
-      onMouseLeave={() => {
-        onPointerUp();
+      onPointerLeave={() => {
         const container = stageRef.current?.container();
         if (container) container.style.cursor = "";
       }}
@@ -238,6 +277,7 @@ export default function CanvasScene({
               visible={editing !== e.id}
               draggable={
                 editable &&
+                !navigating &&
                 !e.locked &&
                 !(selection.includes(e.id) && selectionLocked) &&
                 tool === "select" &&
@@ -246,8 +286,9 @@ export default function CanvasScene({
                 !editing &&
                 !creation
               }
-              onMouseDown={(event) => {
+              onPointerDown={(event) => {
                 if (
+                  !allowPointer(event.evt) ||
                   event.evt.button !== 0 ||
                   event.evt.metaKey ||
                   event.evt.ctrlKey ||
@@ -265,7 +306,8 @@ export default function CanvasScene({
                   y: event.evt.clientY,
                 });
               }}
-              onDblClick={() => {
+              onPointerDblClick={(event) => {
+                if (!allowPointer(event.evt)) return;
                 if (e.type === "text" && !e.locked) onTextEdit(e);
               }}
               onDragStart={(event) => {
@@ -395,6 +437,7 @@ export default function CanvasScene({
           ref={transformer}
           visible={
             editable &&
+            !navigating &&
             !templatePlacement.length &&
             !selectionLocked &&
             !editing &&
@@ -404,7 +447,7 @@ export default function CanvasScene({
           rotateEnabled
           flipEnabled={false}
           padding={4}
-          anchorSize={8}
+          anchorSize={coarse ? 16 : 8}
           anchorCornerRadius={2}
           borderStroke={accent}
           anchorStroke={accent}
