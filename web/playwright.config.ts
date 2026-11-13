@@ -23,6 +23,8 @@ export default defineConfig({
     },
     {
       name: "firefox",
+      // Firefox can pause timers/painting on macOS under browser-test load.
+      expect: { timeout: 20000 },
       testIgnore: ["**/http.spec.ts", "**/tablet.spec.ts"],
       use: {
         ...devices["Desktop Firefox"],

@@ -4,6 +4,7 @@ const email = "owner@test.invalid",
   password = "a private test passphrase";
 export async function login(page: Page) {
   await page.goto("/");
+  await page.bringToFront();
   if (await page.getByLabel("Setup credential").isVisible()) {
     await page
       .getByLabel("Setup credential")
