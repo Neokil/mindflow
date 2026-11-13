@@ -1,0 +1,57 @@
+name: Publish documentation to wiki
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: publish-wiki
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Synchronize docs and publish changes
+        env:
+          WIKI_TOKEN: ${{ github.token }}
+          GIT_TERMINAL_PROMPT: "0"
+        shell: bash
+        run: |
+          set -euo pipefail
+          askpass="$RUNNER_TEMP/wiki-askpass.sh"
+          cat > "$askpass" <<'ASKPASS'
+          #!/usr/bin/env bash
+          case "$1" in
+            *Username*) printf '%s\n' 'x-access-token' ;;
+            *Password*) printf '%s\n' "$WIKI_TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          ASKPASS
+          chmod 700 "$askpass"
+          export GIT_ASKPASS="$askpass"
+          wiki="$RUNNER_TEMP/mindflow-wiki"
+          if ! git clone --depth=1 "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.wiki.git" "$wiki"; then
+            echo '::error::Unable to clone the wiki. Enable the wiki and create its first page in GitHub before publishing; also check repository Actions write permissions.'
+            exit 1
+          fi
+          python3 scripts/prepare-wiki.py \
+            --source docs \
+            --destination "$wiki" \
+            --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+          git -C "$wiki" add --all
+          if git -C "$wiki" diff --cached --quiet; then
+            echo 'Wiki already matches docs/.'
+            exit 0
+          fi
+          git -C "$wiki" config user.name 'github-actions[bot]'
+          git -C "$wiki" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          revision="$(git rev-parse HEAD)"
+          git -C "$wiki" commit -m "Sync docs from $revision"
+          git -C "$wiki" push origin HEAD
