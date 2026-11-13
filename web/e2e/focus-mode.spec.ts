@@ -13,6 +13,7 @@ test("collapse navigation into an arrow without losing the active canvas", async
   const canvas = page.getByTestId("canvas");
   const original = await canvas.elementHandle();
   const expanded = (await canvas.boundingBox())!;
+  const expandedViewportHeight = await page.evaluate(() => innerHeight);
   await activate(page.getByRole("button", { name: "Rectangle", exact: true }));
   if (isMobile)
     await page.touchscreen.tap(
@@ -48,7 +49,7 @@ test("collapse navigation into an arrow without losing the active canvas", async
     exact: true,
   });
   await expect(restore).toHaveAttribute("aria-expanded", "false");
-  if (info.project.name === "tablet-chromium")
+  if (info.project.name !== "ipad-webkit")
     await expect
       .poll(() =>
         page.evaluate(
@@ -65,8 +66,13 @@ test("collapse navigation into an arrow without losing the active canvas", async
   ).toBeHidden();
   await expect.poll(async () => (await canvas.boundingBox())!.y).toBe(0);
   const collapsed = (await canvas.boundingBox())!;
-  expect(collapsed.height).toBeGreaterThan(expanded.height + 150);
-  expect(collapsed.height).toBe(await page.evaluate(() => innerHeight));
+  const viewportHeight = await page.evaluate(() => innerHeight);
+  // Native fullscreen can resize Firefox to the physical test screen.
+  const viewportChange = viewportHeight - expandedViewportHeight;
+  expect(collapsed.height).toBeGreaterThan(
+    expanded.height + viewportChange + 150,
+  );
+  expect(collapsed.height).toBe(viewportHeight);
   expect(
     await canvas.evaluate(
       (element, original) => element === original,
@@ -103,7 +109,7 @@ test("collapse navigation into an arrow without losing the active canvas", async
     path: `../.cache/e2e/focus-${info.project.name}.png`,
   });
   await activate(restore);
-  if (info.project.name === "tablet-chromium")
+  if (info.project.name !== "ipad-webkit")
     await expect
       .poll(() => page.evaluate(() => document.fullscreenElement === null))
       .toBe(true);
@@ -129,11 +135,9 @@ test("collapse navigation into an arrow without losing the active canvas", async
 });
 
 for (const mode of ["allowed", "denied", "unsupported", "delayed"] as const) {
-  test(`tablet fullscreen handles ${mode} requests`, async ({
-    page,
-    isMobile,
-  }) => {
-    test.skip(!isMobile, "Automatic fullscreen is for touch devices");
+  test(`fullscreen handles ${mode} requests`, async ({ page, isMobile }) => {
+    const activate = (target: Locator) =>
+      isMobile ? target.tap() : target.click();
     await login(page);
     await page.evaluate((mode) => {
       let current: Element | null = null;
@@ -164,9 +168,12 @@ for (const mode of ["allowed", "denied", "unsupported", "delayed"] as const) {
     await create(page, `Fullscreen ${mode} ${Date.now()}`);
     const canvas = page.getByTestId("canvas");
     const original = await canvas.elementHandle();
-    await page
-      .getByRole("button", { name: "Hide app header and pages", exact: true })
-      .tap();
+    await activate(
+      page.getByRole("button", {
+        name: "Hide app header and pages",
+        exact: true,
+      }),
+    );
     const restore = page.getByRole("button", {
       name: "Show app header and pages",
       exact: true,
@@ -186,7 +193,7 @@ for (const mode of ["allowed", "denied", "unsupported", "delayed"] as const) {
       expect(await page.evaluate(() => !!document.fullscreenElement)).toBe(
         false,
       );
-    await restore.tap();
+    await activate(restore);
     if (mode === "delayed")
       await page.evaluate(() =>
         document.dispatchEvent(new Event("complete-fullscreen")),

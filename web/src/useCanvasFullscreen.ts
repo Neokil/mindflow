@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 
-// Fullscreen must be requested directly from the user's tap, not an effect.
+// Fullscreen must be requested directly from the user's click or tap, not an effect.
 export function useCanvasFullscreen(editorOpen: boolean) {
   const wanted = useRef(false);
   const owned = useRef(false);
@@ -21,7 +21,6 @@ export function useCanvasFullscreen(editorOpen: boolean) {
   }, []);
   const enter = useCallback(async () => {
     if (
-      !matchMedia("(any-pointer: coarse)").matches ||
       !document.fullscreenEnabled ||
       !document.documentElement.requestFullscreen ||
       document.fullscreenElement ||
