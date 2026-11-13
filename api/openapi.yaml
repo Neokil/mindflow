@@ -3542,6 +3542,24 @@
           "backgroundColor": {
             "type": "string",
             "description": "Optional validated CSS color overriding the theme background; omission uses the theme."
+          },
+          "defaultFill": {
+            "type": "string",
+            "default": "#a4d65e",
+            "description": "Default fill for newly created shapes. Omission or an empty value uses the default. Existing elements and template styles are unchanged.",
+            "pattern": "^$|^transparent$|^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+          },
+          "defaultBorder": {
+            "type": "string",
+            "default": "#d9a441",
+            "description": "Default border for newly created shapes. Omission or an empty value uses the default. Existing elements and template styles are unchanged.",
+            "pattern": "^$|^transparent$|^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+          },
+          "defaultTextColor": {
+            "type": "string",
+            "default": "#d9a441",
+            "description": "Default color for newly created and pasted plain text. Omission or an empty value uses the default. Existing elements and template styles are unchanged.",
+            "pattern": "^$|^transparent$|^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
           }
         }
       },

@@ -78,3 +78,32 @@ const (
 	testBlack       = "#000000"
 	testTransparent = "transparent"
 )
+
+func TestElementDefaultColorsAndLegacySettings(t *testing.T) {
+	t.Parallel()
+	document := canvas.NewDocument()
+	if document.Settings.DefaultFill != "#a4d65e" || document.Settings.DefaultBorder != "#d9a441" || document.Settings.DefaultTextColor != "#d9a441" {
+		t.Fatal("unexpected element defaults")
+	}
+	for _, field := range []string{"fill", "border", "text color"} {
+		t.Run(field, func(t *testing.T) {
+			t.Parallel()
+			for _, color := range []string{"", testBlack, "#12345680", testTransparent, "invalid", "url(https://example.invalid/image.png)"} {
+				current := canvas.NewDocument()
+				switch field {
+				case "fill":
+					current.Settings.DefaultFill = color
+				case "border":
+					current.Settings.DefaultBorder = color
+				case "text color":
+					current.Settings.DefaultTextColor = color
+				}
+				err := canvas.ValidateDocument(current)
+				valid := color == "" || canvas.ValidColor(color)
+				if (err == nil) != valid {
+					t.Errorf("default %s accepted/rejected %q incorrectly: %v", field, color, err)
+				}
+			}
+		})
+	}
+}

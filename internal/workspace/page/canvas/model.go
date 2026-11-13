@@ -44,10 +44,13 @@ type Element struct {
 
 // Settings stores a page's background and grid preferences.
 type Settings struct {
-	BackgroundColor string  `json:"backgroundColor,omitempty"`
-	Background      string  `json:"background"`
-	GridSize        float64 `json:"gridSize"`
-	Snap            bool    `json:"snap"`
+	BackgroundColor  string  `json:"backgroundColor,omitempty"`
+	DefaultFill      string  `json:"defaultFill,omitempty"`
+	DefaultBorder    string  `json:"defaultBorder,omitempty"`
+	DefaultTextColor string  `json:"defaultTextColor,omitempty"`
+	Background       string  `json:"background"`
+	GridSize         float64 `json:"gridSize"`
+	Snap             bool    `json:"snap"`
 }
 
 // Document is versioned renderer-independent page content.
@@ -59,7 +62,7 @@ type Document struct {
 
 // NewDocument returns a blank canvas with default settings.
 func NewDocument() Document {
-	return Document{SchemaVersion: 1, Elements: []Element{}, Settings: Settings{Background: "dots", GridSize: defaultGridSpacing}}
+	return Document{SchemaVersion: 1, Elements: []Element{}, Settings: Settings{Background: "dots", GridSize: defaultGridSpacing, DefaultFill: defaultFillColor, DefaultBorder: defaultGoldColor, DefaultTextColor: defaultGoldColor}}
 }
 
 // ValidColor accepts supported CSS hex colors and transparency.
@@ -87,6 +90,10 @@ func ValidateDocument(document Document) error {
 	}
 	if !Finite(document.Settings.GridSize) || document.Settings.GridSize < 1 || document.Settings.GridSize > 1000 {
 		return invalid("Grid spacing must be between 1 and 1,000.")
+	}
+	defaultsErr := validateDefaultColors(document.Settings)
+	if defaultsErr != nil {
+		return defaultsErr
 	}
 	ids := map[string]bool{}
 	groups := map[string]bool{}
@@ -218,6 +225,16 @@ func validateImageCrop(entry Element) error {
 		c := entry.Crop
 		if entry.Type != elementImage || !Finite(c.X) || !Finite(c.Y) || !Finite(c.Width) || !Finite(c.Height) || c.X < 0 || c.Y < 0 || c.Width <= 0 || c.Height <= 0 || c.X+c.Width > 1+1e-9 || c.Y+c.Height > 1+1e-9 {
 			return invalid("Invalid image crop.")
+		}
+	}
+
+	return nil
+}
+
+func validateDefaultColors(settings Settings) error {
+	for _, color := range []string{settings.DefaultFill, settings.DefaultBorder, settings.DefaultTextColor} {
+		if color != "" && !ValidColor(color) {
+			return invalid("Invalid canvas element default color.")
 		}
 	}
 
