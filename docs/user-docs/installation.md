@@ -11,7 +11,7 @@ docker compose -f deploy/compose.yaml up --build -d
 docker compose -f deploy/compose.yaml logs mindflow
 ```
 
-The container runs as UID/GID `10001:10001` in `scratch`, with a read-only root filesystem, a writable data volume, and temporary `/tmp`. Its health check is built into the application. Use a version tag or digest for stable deployments; `neokil/mindflow:edge` follows the main branch. Availability of a tag depends on a successful image publishing run.
+The image defaults to UID/GID `10001:10001` in `scratch`, with a read-only root filesystem, a writable data volume, and temporary `/tmp`. The TrueNAS configuration overrides the user to `568:568` (`apps`). Its health check is built into the application. Use a version tag or digest for stable deployments; `neokil/mindflow:edge` follows the main branch. Availability of a tag depends on a successful image publishing run.
 
 ## HTTPS and network configuration
 
@@ -29,7 +29,7 @@ The public application URL comes from setup. Forwarded headers are not trusted f
 
 ## TrueNAS Apps
 
-1. Create a local dataset, such as `/mnt/Pool1/Apps/Mindflow`, and grant UID/GID `10001:10001` read/write and traversal permissions. Do not host the SQLite database on SMB/NFS.
+1. Create a local dataset, such as `/mnt/Pool1/Apps/Mindflow`, and grant UID/GID `568:568` read/write and traversal permissions. Do not host the SQLite database on SMB/NFS.
 2. Edit [the TrueNAS YAML](../../deploy/truenas.yaml), choosing an image tag, dataset path, and host port.
 3. In **Apps → Discover Apps → three-dot menu → Custom App → Install via YAML**, paste the edited configuration.
 4. Watch the `migrate` service: it must finish with exit code 0 before `mindflow` starts. A completed migration container is expected to remain stopped. Read the `mindflow` log for the first-run setup credential, route your HTTPS hostname, and complete setup.
@@ -37,7 +37,7 @@ The public application URL comes from setup. Forwarded headers are not trusted f
 
 The TrueNAS YAML uses a one-shot `migrate` service with `depends_on: condition: service_completed_successfully`. It runs the image's `migrate` command with the same data mount and UID/GID as the server. It has no network access, published port, or HTTP health check. The server also checks pending migrations on startup, so ordinary container restarts remain safe.
 
-`MINDFLOW_DATA` is a directory, not a database filename. With `/data`, the app creates `/data/mindflow.sqlite` automatically; do not create an empty database file manually. Both containers need write access to the dataset and its SQLite/WAL files. The supplied `create_host_path: false` deliberately requires the host directory to exist. A migration service cannot fix a missing mount, read-only dataset, or insufficient TrueNAS ACL permissions. Grant UID/GID `10001:10001` access through the dataset permissions/ACL editor, including traversal where needed, while retaining your existing ACL entries.
+`MINDFLOW_DATA` is a directory, not a database filename. With `/data`, the app creates `/data/mindflow.sqlite` automatically; do not create an empty database file manually. Both containers need write access to the dataset and its SQLite/WAL files. The supplied `create_host_path: false` deliberately requires the host directory to exist. A migration service cannot fix a missing mount, read-only dataset, or insufficient TrueNAS ACL permissions. Grant UID/GID `568:568` access through the dataset permissions/ACL editor, including traversal where needed, while retaining your existing ACL entries.
 
 Images are built for Linux amd64 and arm64. Use the appropriate architecture for your server.
 

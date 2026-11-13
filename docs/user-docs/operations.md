@@ -50,7 +50,7 @@ The `scratch` image has no shell. Invoke maintenance commands through its entryp
 | Login works only locally or cookies are missing | Public HTTPS URL, production mode, and reverse-proxy configuration. |
 | Email fails | Provider host/port, verified TLS mode, credentials, sender permission, and queued delivery status. |
 | Other tabs update slowly | SSE streaming and proxy buffering/caching. Polling is a fallback. |
-| Database cannot be opened or `migrate` fails before creating tables | Confirm the host dataset exists, both services mount it at `/data`, `MINDFLOW_DATA` is a directory, and UID/GID `10001:10001` can create/write the database and its sidecar files. Check free space and dataset read-only state. |
+| Database cannot be opened or `migrate` fails before creating tables | Confirm the host dataset exists, both services mount it at `/data`, `MINDFLOW_DATA` is a directory, and the configured UID/GID (`568:568` in the TrueNAS YAML; `10001:10001` by default) can create/write the database and its sidecar files. Check free space and dataset read-only state. |
 | Save failed or disconnected | Network, available disk space, permissions, current editor control, and server logs. Preserve the tab until work is saved or recovered. |
 
 SMTP failure does not take the canvas offline. Logs exclude passwords, cookies, token URLs, image bytes, and document bodies, apart from the intentionally logged first-run setup credential.
