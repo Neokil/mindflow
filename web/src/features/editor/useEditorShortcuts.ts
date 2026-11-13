@@ -148,6 +148,7 @@ export default function useEditorShortcuts({
         remove();
       } else if (!command && e.key.toLowerCase() === "v") setTool("select");
       else if (!command && e.key.toLowerCase() === "p") setTool("pen");
+      else if (!command && e.key.toLowerCase() === "m") setTool("highlighter");
       else if (!command && e.key.toLowerCase() === "t") setTool("text");
     };
     window.addEventListener("paste", onPaste);

@@ -6,6 +6,7 @@ import {
   ImagePlus,
   MousePointer2,
   Pencil,
+  Highlighter,
   Redo2,
   Square,
   Star,
@@ -34,6 +35,7 @@ const tools = [
   { id: "star", icon: Star, label: "Star" },
   { id: "text", icon: Type, label: "Text (T)" },
   { id: "pen", icon: Pencil, label: "Pen (P)" },
+  { id: "highlighter", icon: Highlighter, label: "Highlighter (M)" },
   { id: "comment", icon: MessageCircle, label: "Add comment" },
 ] as const;
 export default function EditorToolbar({

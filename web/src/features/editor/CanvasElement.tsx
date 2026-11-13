@@ -163,6 +163,8 @@ const ElementContent = memo(function ElementContent({
           (p, i) => (p - 0.5) * (i % 2 ? e.height : e.width),
         )}
         stroke={e.color || "#28282d"}
+        opacity={e.highlight ? 0.35 : 1}
+        globalCompositeOperation={e.highlight ? "multiply" : "source-over"}
         strokeWidth={e.penWidth || 3}
         lineCap="round"
         lineJoin="round"

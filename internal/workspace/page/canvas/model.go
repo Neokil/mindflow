@@ -40,6 +40,7 @@ type Element struct {
 	AssetID       string     `json:"assetId,omitempty"`
 	Points        []float64  `json:"points,omitempty"`
 	PenWidth      float64    `json:"penWidth,omitempty"`
+	Highlight     bool       `json:"highlight,omitempty"`
 }
 
 // Settings stores a page's background and grid preferences.
@@ -137,6 +138,9 @@ func validateElement(entry Element) error {
 	}
 	if entry.VerticalAlign != "" && entry.VerticalAlign != "top" && entry.VerticalAlign != "middle" && entry.VerticalAlign != "bottom" {
 		return invalid("Invalid vertical alignment.")
+	}
+	if entry.Highlight && entry.Type != "stroke" {
+		return invalid("Only strokes can be highlights.")
 	}
 	cropErr := validateImageCrop(entry)
 	if cropErr != nil {

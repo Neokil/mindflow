@@ -72,6 +72,8 @@ export default function Canvas({
     [canvasSettingsOpen, setCanvasSettingsOpen] = useState(false),
     [objectSettingsAnchor, setObjectSettingsAnchor] = useState<Point>(),
     [help, setHelp] = useState(false);
+  const [markerColor, setMarkerColor] = useState("#a4d65e");
+  const [markerWidth, setMarkerWidth] = useState(24);
   const [penColor, setPenColor] = useState(accent),
     [pencilOnly, setPencilOnly] = useState(false),
     [penWidth, setPenWidth] = useState(3),
@@ -95,6 +97,7 @@ export default function Canvas({
     | {
         kind: "pan" | "lasso" | "pen" | "create" | "comment" | "template";
         element?: CanvasElement;
+        highlight?: boolean;
         start: Point;
         camera: Camera;
         points: Point[];
@@ -350,7 +353,9 @@ export default function Canvas({
     const target = e.target;
     if (
       tool === "pan" ||
-      (tool === "pen" && pencilOnly && e.evt.pointerType === "touch") ||
+      ((tool === "pen" || tool === "highlighter") &&
+        pencilOnly &&
+        e.evt.pointerType === "touch") ||
       e.evt.button === 1 ||
       e.evt.metaKey ||
       e.evt.ctrlKey
@@ -377,17 +382,21 @@ export default function Canvas({
       return;
     }
     if (tool !== "select" && session.editable) {
-      if (tool === "pen") {
+      if (tool === "pen" || tool === "highlighter") {
         gesture.current = {
           kind: "pen",
+          highlight: tool === "highlighter",
           start: world,
           camera,
           points: [world],
         };
         preview.current?.setAttrs({
           points: [world.x, world.y, world.x + 0.01, world.y + 0.01],
-          stroke: penColor,
-          strokeWidth: penWidth,
+          stroke: tool === "highlighter" ? markerColor : penColor,
+          strokeWidth: tool === "highlighter" ? markerWidth : penWidth,
+          opacity: tool === "highlighter" ? 0.35 : 1,
+          globalCompositeOperation:
+            tool === "highlighter" ? "multiply" : "source-over",
           fill: undefined,
           closed: false,
         });
@@ -406,6 +415,8 @@ export default function Canvas({
       preview.current?.setAttrs({
         points: [world.x, world.y],
         stroke: accent,
+        opacity: 1,
+        globalCompositeOperation: "source-over",
         strokeWidth: 1 / camera.zoom,
         fill: `${accent}18`,
         closed: true,
@@ -531,8 +542,9 @@ export default function Canvas({
           (p.x - minX) / width,
           (p.y - minY) / height,
         ]),
-        color: penColor,
-        penWidth,
+        color: g.highlight ? markerColor : penColor,
+        penWidth: g.highlight ? markerWidth : penWidth,
+        highlight: g.highlight || undefined,
       };
       editElements([...session.doc.elements, stroke]);
       setSelection([]);
@@ -596,7 +608,7 @@ export default function Canvas({
               ? "copy"
               : tool === "pan"
                 ? "grab"
-                : tool === "pen" || tool === "comment"
+                : tool === "pen" || tool === "highlighter" || tool === "comment"
                   ? "crosshair"
                   : tool === "text"
                     ? "text"
@@ -726,7 +738,7 @@ export default function Canvas({
               ? `Drag to size image${pending.length > 1 ? ` (${pending.length} remaining)` : ""}`
               : tool === "pan"
                 ? "Drag to pan. Use two fingers to pan and pinch to zoom."
-                : tool === "pen"
+                : tool === "pen" || tool === "highlighter"
                   ? "Draw freely. Select a stroke to move or delete it."
                   : tool === "text"
                     ? "Drag to size a text box."
@@ -736,14 +748,14 @@ export default function Canvas({
           <kbd>esc</kbd>
         </div>
       )}
-      {tool === "pen" && session.editable && (
+      {(tool === "pen" || tool === "highlighter") && session.editable && (
         <div className="pen-options">
           <label>
             Color
             <ColorInput
               label="Pen color"
-              value={penColor}
-              onChange={setPenColor}
+              value={tool === "highlighter" ? markerColor : penColor}
+              onChange={tool === "highlighter" ? setMarkerColor : setPenColor}
             />
           </label>
           <label className="check-label">
@@ -762,10 +774,14 @@ export default function Canvas({
               type="range"
               min="1"
               max="40"
-              value={penWidth}
-              onChange={(e) => setPenWidth(+e.target.value)}
+              value={tool === "highlighter" ? markerWidth : penWidth}
+              onChange={(e) =>
+                (tool === "highlighter" ? setMarkerWidth : setPenWidth)(
+                  +e.target.value,
+                )
+              }
             />
-            <span>{penWidth}px</span>
+            <span>{tool === "highlighter" ? markerWidth : penWidth}px</span>
           </label>
         </div>
       )}

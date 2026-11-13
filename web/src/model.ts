@@ -24,6 +24,7 @@ export type CanvasElement = {
   assetId?: string;
   points?: number[];
   penWidth?: number;
+  highlight?: boolean;
 };
 export type CanvasDocument = {
   schemaVersion: 1;
@@ -147,7 +148,7 @@ export function validClipboardElements(
         (typeof e[key] !== "number" || !Number.isFinite(e[key]))
       )
         return false;
-    for (const key of ["bold", "italic", "locked"])
+    for (const key of ["bold", "italic", "locked", "highlight"])
       if (e[key] !== undefined && typeof e[key] !== "boolean") return false;
     if (
       e.type === "stroke" &&
