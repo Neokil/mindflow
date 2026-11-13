@@ -1,5 +1,6 @@
 import {
   Circle,
+  Blocks,
   MessageCircle,
   ImagePlus,
   MousePointer2,
@@ -20,6 +21,7 @@ type Props = {
   canRedo: boolean;
   onTool: (tool: Tool) => void;
   onImages: () => void;
+  onTemplates: () => void;
   onUndo: () => void;
   onRedo: () => void;
 };
@@ -41,6 +43,7 @@ export default function EditorToolbar({
   canRedo,
   onTool,
   onImages,
+  onTemplates,
   onUndo,
   onRedo,
 }: Props) {
@@ -61,6 +64,14 @@ export default function EditorToolbar({
           <Icon size={18} strokeWidth={1.7} />
         </button>
       ))}
+      <button
+        className="tool"
+        title="Workspace templates"
+        aria-label="Workspace templates"
+        onClick={onTemplates}
+      >
+        <Blocks size={18} />
+      </button>
       <span className="toolbar-divider" />
       <button
         className="tool"

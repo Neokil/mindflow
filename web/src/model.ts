@@ -8,6 +8,7 @@ export type CanvasElement = {
   height: number;
   rotation: number;
   groupId?: string;
+  locked?: boolean;
   shape?: "rectangle" | "circle" | "star";
   fill?: string;
   border?: string;
@@ -117,7 +118,7 @@ export function validClipboardElements(
         (typeof e[key] !== "number" || !Number.isFinite(e[key]))
       )
         return false;
-    for (const key of ["bold", "italic"])
+    for (const key of ["bold", "italic", "locked"])
       if (e[key] !== undefined && typeof e[key] !== "boolean") return false;
     if (
       e.type === "stroke" &&

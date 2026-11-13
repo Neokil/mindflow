@@ -2,6 +2,8 @@ import {
   ArrowDown,
   ArrowUp,
   Copy,
+  LockKeyhole,
+  LockKeyholeOpen,
   Group as GroupIcon,
   Trash2,
   Ungroup,
@@ -15,6 +17,10 @@ type Props = {
   anchor: Point;
   selected: CanvasElement[];
   editable: boolean;
+  canUnlock: boolean;
+  onLock: () => void;
+  onSaveTemplate: () => void;
+  canSaveTemplate: boolean;
   color: string;
   fill: string;
   onColor: (color: string) => void;
@@ -33,6 +39,10 @@ export default function SelectionInspector({
   anchor,
   selected,
   editable,
+  canUnlock,
+  onLock,
+  onSaveTemplate,
+  canSaveTemplate,
   color,
   fill,
   onColor,
@@ -58,6 +68,7 @@ export default function SelectionInspector({
     return () => document.removeEventListener("keydown", escape);
   }, [onClose]);
   const first = selected[0];
+  const locked = selected.some((element) => element.locked);
   const panel = useRef<HTMLElement>(null);
   const [position, setPosition] = useState(anchor);
   useLayoutEffect(() => {
@@ -98,6 +109,23 @@ export default function SelectionInspector({
       </div>
       {selected.length ? (
         <>
+          {selected.some((element) => element.groupId) && (
+            <button
+              className="secondary full"
+              disabled={!editable && !canUnlock}
+              onClick={onLock}
+            >
+              {locked ? (
+                <LockKeyholeOpen size={15} />
+              ) : (
+                <LockKeyhole size={15} />
+              )}
+              {locked ? "Unlock groups" : "Lock groups"}
+            </button>
+          )}
+          {locked && (
+            <p className="muted">Unlock the group to edit its elements.</p>
+          )}
           <span className="eyebrow">APPEARANCE</span>
           {first?.type !== "image" && (
             <>
@@ -287,6 +315,13 @@ export default function SelectionInspector({
             </button>
           )}
           <hr />
+          <button
+            className="secondary full"
+            disabled={!canSaveTemplate || selected.length > 500}
+            onClick={onSaveTemplate}
+          >
+            Save as template
+          </button>
           <div className="selection-actions">
             <button
               className="secondary"

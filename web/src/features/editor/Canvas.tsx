@@ -1,5 +1,15 @@
+import TemplateLibrary from "./TemplateLibrary";
+import { instantiateTemplate } from "./templates";
 import Konva from "konva";
-import { Copy, SlidersHorizontal, Trash2, X } from "lucide-react";
+import {
+  Copy,
+  BookmarkPlus,
+  LockKeyhole,
+  LockKeyholeOpen,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from "lucide-react";
 import type { CSSProperties, SetStateAction } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
@@ -57,6 +67,10 @@ export default function Canvas({
   }
   const [editing, setEditing] = useState<string>(),
     [textValue, setTextValue] = useState("");
+  const [templatesOpen, setTemplatesOpen] = useState<"save" | "browse">();
+  const [templatePlacement, setTemplatePlacement] = useState<CanvasElement[]>(
+    [],
+  );
   const [commentPoint, setCommentPoint] = useState<Point>();
   const [creation, setCreation] = useState<CanvasElement>();
   const [cropping, setCropping] = useState<CanvasElement>();
@@ -78,6 +92,7 @@ export default function Canvas({
   }, [camera, session]);
   const doc = session.doc;
   const selected = doc.elements.filter((e) => selection.includes(e.id));
+  const selectionLocked = selected.some((element) => element.locked);
   useLayoutEffect(() => {
     const observer = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
@@ -96,6 +111,7 @@ export default function Canvas({
   useEffect(() => {
     if (!session.editable) {
       setPending([]);
+      setTemplatePlacement([]);
       setCreation(undefined);
       setEditing(undefined);
       setCropping(undefined);
@@ -107,6 +123,7 @@ export default function Canvas({
   const editElements = (elements: CanvasElement[]) =>
     session.edit({ ...session.doc, elements });
   function patch(values: Partial<CanvasElement>) {
+    if (selectionLocked) return;
     editElements(
       session.doc.elements.map((e) =>
         selection.includes(e.id) ? { ...e, ...values } : e,
@@ -114,6 +131,7 @@ export default function Canvas({
     );
   }
   function remove() {
+    if (selectionLocked) return;
     editElements(session.doc.elements.filter((e) => !selection.includes(e.id)));
     setSelection([]);
   }
@@ -127,10 +145,24 @@ export default function Canvas({
     const id = uid();
     patch({ groupId: id });
   }
+  function toggleLock() {
+    if (editing) finishText();
+    const groups = new Set(
+      selected.map((element) => element.groupId).filter(Boolean),
+    );
+    editElements(
+      session.doc.elements.map((element) =>
+        groups.has(element.groupId)
+          ? { ...element, locked: !selectionLocked }
+          : element,
+      ),
+    );
+  }
   function ungroup() {
     patch({ groupId: undefined });
   }
   function reorder(direction: number) {
+    if (selectionLocked) return;
     const elements = [...session.doc.elements];
     if (direction > 0) {
       for (let i = elements.length - 2; i >= 0; i--)
@@ -158,7 +190,7 @@ export default function Canvas({
     );
   }
   function startText(e: CanvasElement) {
-    if (!session.editable) return;
+    if (!session.editable || e.locked) return;
     session.undoStack.push(clone(session.doc));
     session.redoStack = [];
     setEditing(e.id);
@@ -217,6 +249,7 @@ export default function Canvas({
   }
   async function filesAdded(files: File[]) {
     if (!session.editable) return;
+    setTemplatePlacement([]);
     try {
       const elements: CanvasElement[] = [];
       for (const file of files) {
@@ -282,6 +315,8 @@ export default function Canvas({
     remove,
     cancel: () => {
       setPending([]);
+      setTemplatePlacement([]);
+      setTemplatesOpen(undefined);
       setSelection([]);
       gesture.current = undefined;
       setCreation(undefined);
@@ -307,6 +342,13 @@ export default function Canvas({
     }
     if (editing) {
       finishText();
+      return;
+    }
+    if (templatePlacement.length && session.editable) {
+      const elements = instantiateTemplate(templatePlacement, world);
+      editElements([...session.doc.elements, ...elements]);
+      setSelection(elements.map((element) => element.id));
+      setTemplatePlacement([]);
       return;
     }
     if (pending.length && session.editable) {
@@ -352,7 +394,7 @@ export default function Canvas({
   function mouseMove(event: Konva.KonvaEventObject<MouseEvent>) {
     const p = pointer(),
       world = worldPoint(p, camera);
-    if (pending.length) setCursor(world);
+    if (pending.length || templatePlacement.length) setCursor(world);
     const g = gesture.current;
     if (!g) return;
     if (g.kind === "pan") {
@@ -476,13 +518,14 @@ export default function Canvas({
         style={{
           ...backgroundStyle,
           backgroundColor: doc.settings.backgroundColor,
-          cursor: pending.length
-            ? "copy"
-            : tool === "pen" || tool === "comment"
-              ? "crosshair"
-              : tool === "text"
-                ? "text"
-                : "default",
+          cursor:
+            pending.length || templatePlacement.length
+              ? "copy"
+              : tool === "pen" || tool === "comment"
+                ? "crosshair"
+                : tool === "text"
+                  ? "text"
+                  : "default",
         }}
         onDragOver={(e) => {
           e.preventDefault();
@@ -504,6 +547,7 @@ export default function Canvas({
           tool={tool}
           editing={editing}
           placement={creation ? undefined : pending[0]}
+          templatePlacement={templatePlacement}
           creation={creation}
           cursor={cursor}
           refresh={refresh}
@@ -567,7 +611,7 @@ export default function Canvas({
       </div>
       <EditorToolbar
         tool={tool}
-        placing={pending.length > 0}
+        placing={pending.length > 0 || templatePlacement.length > 0}
         editable={session.editable}
         canComment={session.canComment}
         canUndo={session.undoStack.length > 0}
@@ -575,7 +619,9 @@ export default function Canvas({
         onTool={(tool) => {
           setTool(tool);
           setPending([]);
+          setTemplatePlacement([]);
         }}
+        onTemplates={() => setTemplatesOpen("browse")}
         onImages={() => fileInput.current?.click()}
         onUndo={() => session.undo()}
         onRedo={() => session.redo()}
@@ -591,17 +637,21 @@ export default function Canvas({
           e.target.value = "";
         }}
       />
-      {(pending.length > 0 || tool !== "select") && (
+      {(pending.length > 0 ||
+        templatePlacement.length > 0 ||
+        tool !== "select") && (
         <div className="tool-hint">
-          {pending.length
-            ? `Drag to size image${pending.length > 1 ? ` (${pending.length} remaining)` : ""}`
-            : tool === "pen"
-              ? "Draw freely. Select a stroke to move or delete it."
-              : tool === "text"
-                ? "Drag to size a text box."
-                : tool === "comment"
-                  ? "Click to leave a comment."
-                  : `Drag to size a ${tool}. Hold Shift for a square.`}
+          {templatePlacement.length
+            ? "Click to place template."
+            : pending.length
+              ? `Drag to size image${pending.length > 1 ? ` (${pending.length} remaining)` : ""}`
+              : tool === "pen"
+                ? "Draw freely. Select a stroke to move or delete it."
+                : tool === "text"
+                  ? "Drag to size a text box."
+                  : tool === "comment"
+                    ? "Click to leave a comment."
+                    : `Drag to size a ${tool}. Hold Shift for a square.`}
           <kbd>esc</kbd>
         </div>
       )}
@@ -650,7 +700,11 @@ export default function Canvas({
         <SelectionInspector
           anchor={objectSettingsAnchor}
           selected={selected}
-          editable={session.editable}
+          editable={session.editable && !selectionLocked}
+          canUnlock={session.editable && selectionLocked}
+          onLock={toggleLock}
+          onSaveTemplate={() => setTemplatesOpen("save")}
+          canSaveTemplate={session.canWrite}
           color={color}
           fill={fill}
           onColor={setColor}
@@ -664,6 +718,21 @@ export default function Canvas({
           onEditText={startText}
           onCrop={setCropping}
           onClose={() => setObjectSettingsAnchor(undefined)}
+        />
+      )}
+      {templatesOpen && (
+        <TemplateLibrary
+          session={session}
+          selection={selected}
+          creating={templatesOpen === "save"}
+          close={() => setTemplatesOpen(undefined)}
+          insert={(elements) => {
+            setPending([]);
+            setSelection([]);
+            setTool("select");
+            setTemplatePlacement(elements);
+            setCursor(worldPoint(pointer(), camera));
+          }}
         />
       )}
       {cropping && session.editable && (
@@ -704,9 +773,33 @@ export default function Canvas({
             <Copy size={16} />
           </button>
           <button
+            className="icon-button"
+            aria-label="Save as template"
+            title="Save as template"
+            disabled={!session.canWrite || selected.length > 500}
+            onClick={() => setTemplatesOpen("save")}
+          >
+            <BookmarkPlus size={16} />
+          </button>
+          {selected.some((element) => element.groupId) && (
+            <button
+              className="icon-button"
+              aria-label={selectionLocked ? "Unlock groups" : "Lock groups"}
+              title={selectionLocked ? "Unlock groups" : "Lock groups"}
+              disabled={!session.editable}
+              onClick={toggleLock}
+            >
+              {selectionLocked ? (
+                <LockKeyholeOpen size={16} />
+              ) : (
+                <LockKeyhole size={16} />
+              )}
+            </button>
+          )}
+          <button
             className="icon-button danger"
             aria-label="Delete selection"
-            disabled={!session.editable}
+            disabled={!session.editable || selectionLocked}
             onClick={remove}
           >
             <Trash2 size={16} />

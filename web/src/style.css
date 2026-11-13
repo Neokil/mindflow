@@ -1733,3 +1733,28 @@ button.private-badge {
   font-size: 12px;
   line-height: 1.7;
 }
+
+.template-list {
+  list-style: none;
+  padding: 0;
+  max-height: 45vh;
+  overflow: auto;
+}
+.template-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.template-list li > div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+.template-list .muted {
+  font-size: 11px;
+}

@@ -1,6 +1,6 @@
 import Konva from "konva";
 import type { RefObject } from "react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Group, Layer, Line, Rect, Stage, Transformer } from "react-konva";
 import { selectedWithGroup, snap, worldPoint } from "../../geometry";
 import type { CanvasDocument, CanvasElement, Point } from "../../model";
@@ -17,6 +17,7 @@ type Props = {
   editing?: string;
   placement?: CanvasElement;
   creation?: CanvasElement;
+  templatePlacement: CanvasElement[];
   onObjectSettings: (id: string, position: Point) => void;
   cursor: Point;
   refresh: number;
@@ -43,6 +44,7 @@ export default function CanvasScene({
   editing,
   placement,
   creation,
+  templatePlacement,
   onObjectSettings,
   cursor,
   refresh,
@@ -68,6 +70,7 @@ export default function CanvasScene({
       selection.includes(element.id),
     ),
     first = selected[0];
+  const selectionLocked = selected.some((element) => element.locked);
   useEffect(() => {
     const tr = transformer.current;
     if (!tr) return;
@@ -78,6 +81,17 @@ export default function CanvasScene({
     );
     tr.getLayer()?.batchDraw();
   }, [selection, document, camera.zoom, editing, editable]);
+  const canMove = useCallback(
+    (node: Konva.Node | null | undefined) => {
+      const element = node?.findAncestor(".canvas-element", true);
+      return Boolean(
+        element &&
+        !element.hasName("locked-element") &&
+        !(selection.includes(element.id()) && selectionLocked),
+      );
+    },
+    [selection, selectionLocked],
+  );
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -90,13 +104,22 @@ export default function CanvasScene({
         editable &&
         tool === "select" &&
         !placement &&
+        !templatePlacement.length &&
         !editing &&
-        hit?.findAncestor(".canvas-element", true)
+        canMove(hit)
       )
         stage.container().style.cursor = "grab";
     });
     return () => cancelAnimationFrame(frame);
-  }, [editable, tool, placement, editing, stageRef]);
+  }, [
+    editable,
+    tool,
+    placement,
+    editing,
+    stageRef,
+    canMove,
+    templatePlacement.length,
+  ]);
   function updateCursor(event: Konva.KonvaEventObject<MouseEvent>) {
     const container = stageRef.current?.container();
     if (
@@ -112,8 +135,9 @@ export default function CanvasScene({
           : editable &&
               tool === "select" &&
               !placement &&
+              !templatePlacement.length &&
               !editing &&
-              event.target.findAncestor(".canvas-element", true)
+              canMove(event.target)
             ? "grab"
             : "";
   }
@@ -124,7 +148,7 @@ export default function CanvasScene({
         ? anchor.includes("top") || anchor.includes("bottom")
         : false;
     const elements = document.elements.map((e) => {
-      if (!selection.includes(e.id)) return e;
+      if (!selection.includes(e.id) || e.locked) return e;
       const node = nodes.current.get(e.id);
       if (!node) return e;
       const sx = Math.abs(node.scaleX()),
@@ -201,7 +225,7 @@ export default function CanvasScene({
             <Group
               key={e.id}
               id={e.id}
-              name="canvas-element"
+              name={`canvas-element${e.locked ? " locked-element" : ""}`}
               ref={(node) => {
                 if (node) nodes.current.set(e.id, node);
                 else nodes.current.delete(e.id);
@@ -212,8 +236,11 @@ export default function CanvasScene({
               visible={editing !== e.id}
               draggable={
                 editable &&
+                !e.locked &&
+                !(selection.includes(e.id) && selectionLocked) &&
                 tool === "select" &&
                 !placement &&
+                !templatePlacement.length &&
                 !editing &&
                 !creation
               }
@@ -223,7 +250,8 @@ export default function CanvasScene({
                   event.evt.metaKey ||
                   event.evt.ctrlKey ||
                   tool !== "select" ||
-                  !!placement
+                  !!placement ||
+                  templatePlacement.length > 0
                 )
                   return;
                 onSelectElement(e.id, event.evt.shiftKey);
@@ -236,12 +264,16 @@ export default function CanvasScene({
                 });
               }}
               onDblClick={() => {
-                if (e.type === "text") onTextEdit(e);
+                if (e.type === "text" && !e.locked) onTextEdit(e);
               }}
               onDragStart={(event) => {
                 const container = stageRef.current?.container();
                 if (container) container.style.cursor = "grabbing";
-                if (isPanning()) {
+                if (
+                  isPanning() ||
+                  (selection.includes(e.id) && selectionLocked) ||
+                  e.locked
+                ) {
                   event.target.stopDrag();
                   return;
                 }
@@ -291,6 +323,18 @@ export default function CanvasScene({
               }}
             >
               <CanvasElementView e={e} zoom={camera.zoom} refresh={refresh} />
+              {e.locked && selection.includes(e.id) && (
+                <Rect
+                  listening={false}
+                  x={-e.width / 2 - 4 / camera.zoom}
+                  y={-e.height / 2 - 4 / camera.zoom}
+                  width={e.width + 8 / camera.zoom}
+                  height={e.height + 8 / camera.zoom}
+                  stroke="#8b80dd"
+                  strokeWidth={1 / camera.zoom}
+                  dash={[4 / camera.zoom, 4 / camera.zoom]}
+                />
+              )}
             </Group>
           );
         })}
@@ -329,9 +373,32 @@ export default function CanvasScene({
             />
           </Group>
         )}
+        {templatePlacement.map((element) => (
+          <Group
+            key={element.id}
+            x={cursor.x + element.x}
+            y={cursor.y + element.y}
+            rotation={radiansToDegrees(element.rotation)}
+            opacity={0.65}
+            listening={false}
+          >
+            <CanvasElementView
+              e={element}
+              zoom={camera.zoom}
+              refresh={refresh}
+            />
+          </Group>
+        ))}
         <Transformer
           ref={transformer}
-          visible={editable && !editing && !placement && !creation}
+          visible={
+            editable &&
+            !templatePlacement.length &&
+            !selectionLocked &&
+            !editing &&
+            !placement &&
+            !creation
+          }
           rotateEnabled
           flipEnabled={false}
           padding={4}
