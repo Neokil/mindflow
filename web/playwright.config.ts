@@ -15,7 +15,7 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      testIgnore: "**/http.spec.ts",
+      testIgnore: ["**/http.spec.ts", "**/tablet.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 1000 },
@@ -23,12 +23,22 @@ export default defineConfig({
     },
     {
       name: "firefox",
-      testIgnore: "**/http.spec.ts",
+      testIgnore: ["**/http.spec.ts", "**/tablet.spec.ts"],
       use: {
         ...devices["Desktop Firefox"],
         deviceScaleFactor: 2,
         viewport: { width: 1440, height: 1000 },
       },
+    },
+    {
+      name: "ipad-webkit",
+      testMatch: "**/tablet.spec.ts",
+      use: { ...devices["iPad Pro 11"], browserName: "webkit" },
+    },
+    {
+      name: "tablet-chromium",
+      testMatch: "**/tablet.spec.ts",
+      use: { ...devices["iPad Pro 11"], browserName: "chromium" },
     },
     {
       name: "chromium-http",

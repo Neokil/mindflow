@@ -1,3 +1,5 @@
+E2E_PROJECTS ?= chromium firefox chromium-http ipad-webkit tablet-chromium
+
 SQLC_VERSION := v1.31.1
 GOLANGCI_VERSION := v2.15.0
 GOVULNCHECK_VERSION := v1.9.0
@@ -39,7 +41,7 @@ test: frontend-build
 test-e2e: frontend-build
 	mkdir -p .cache/e2e
 	go build -o .cache/e2e/mindflow ./cmd/mindflow
-	cd web && npm run test:e2e
+	cd web && for project in $(E2E_PROJECTS); do npm run test:e2e -- --project="$$project" || exit $$?; done
 
 verify-container:
 	docker build -t mindflow:verification .

@@ -34,9 +34,23 @@ jobs:
       - run: make test
       - run: make audit
   browsers:
-    name: Chrome and Firefox acceptance
+    name: Browser acceptance (${{ matrix.project }})
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: chromium
+            browser: chromium
+          - project: firefox
+            browser: firefox
+          - project: chromium-http
+            browser: chromium
+          - project: ipad-webkit
+            browser: webkit
+          - project: tablet-chromium
+            browser: chromium
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -51,13 +65,17 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
         working-directory: web
-      - run: npx playwright install --with-deps chromium firefox
+      - run: npx playwright install --with-deps "${BROWSER}"
         working-directory: web
+        env:
+          BROWSER: ${{ matrix.browser }}
       - run: make test-e2e
+        env:
+          E2E_PROJECTS: ${{ matrix.project }}
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: failure()
         with:
-          name: browser-failures
+          name: browser-failures-${{ matrix.project }}
           path: web/test-results/
           retention-days: 7
           if-no-files-found: ignore
