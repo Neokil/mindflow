@@ -3,6 +3,7 @@ package workspace
 import (
 	"mindflow/internal/workspace/page"
 	"mindflow/internal/workspace/storage"
+	"mindflow/internal/workspace/template"
 
 	imageasset "mindflow/internal/workspace/image"
 )
@@ -16,10 +17,11 @@ type Service struct {
 	repository *storage.Repository
 	pages      *page.Service
 	images     *imageasset.Service
+	templates  *template.Service
 	publish    func(string, string, string)
 }
 
 // NewService constructs the domain service with explicit collaborators.
-func NewService(repository *storage.Repository, pages *page.Service, images *imageasset.Service, publish func(string, string, string)) *Service {
-	return &Service{repository: repository, pages: pages, images: images, publish: publish}
+func NewService(repository *storage.Repository, pages *page.Service, images *imageasset.Service, templates *template.Service, publish func(string, string, string)) *Service {
+	return &Service{repository: repository, pages: pages, images: images, templates: templates, publish: publish}
 }

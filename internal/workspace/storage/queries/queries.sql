@@ -140,16 +140,20 @@ SELECT v.data,v.mime,v.width,v.height FROM asset_variants v JOIN assets a ON a.i
 SELECT original,mime,width,height FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=sqlc.arg(owner_id));
 
 -- name: ImageDeleteWorkspaceAssets :execresult
-DELETE FROM assets WHERE owner_id=? AND id IN(SELECT pa.asset_id FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE p.workspace_id=?) AND NOT EXISTS(SELECT 1 FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=assets.id AND p.workspace_id<>?);
+DELETE FROM assets WHERE owner_id=sqlc.arg(owner_id) AND (
+ assets.workspace_id=sqlc.arg(workspace_id) OR id IN(SELECT pa.asset_id FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE p.workspace_id=sqlc.arg(workspace_id))
+ OR id IN(SELECT ta.asset_id FROM template_assets ta JOIN workspace_templates t ON t.id=ta.template_id WHERE t.workspace_id=sqlc.arg(workspace_id))
+) AND NOT EXISTS(SELECT 1 FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=assets.id AND p.workspace_id<>sqlc.arg(workspace_id))
+ AND NOT EXISTS(SELECT 1 FROM template_assets ta JOIN workspace_templates t ON t.id=ta.template_id WHERE ta.asset_id=assets.id AND t.workspace_id<>sqlc.arg(workspace_id));
 
 -- name: ImageDeletePageAssets :execresult
-DELETE FROM assets WHERE owner_id=? AND id IN(SELECT asset_id FROM page_assets WHERE page_assets.page_id=?) AND NOT EXISTS(SELECT 1 FROM page_assets pa WHERE pa.asset_id=assets.id AND pa.page_id<>?);
+DELETE FROM assets WHERE owner_id=? AND id IN(SELECT asset_id FROM page_assets WHERE page_assets.page_id=?) AND NOT EXISTS(SELECT 1 FROM page_assets pa WHERE pa.asset_id=assets.id AND pa.page_id<>?) AND NOT EXISTS(SELECT 1 FROM template_assets ta WHERE ta.asset_id=assets.id);
 
 -- name: ImageDeleteOrphanVariants :exec
 DELETE FROM image_jobs WHERE asset_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM assets WHERE assets.id=image_jobs.asset_id);
 
 -- name: ImageDeleteUnusedAssets :exec
-DELETE FROM assets WHERE created_at<unixepoch()-86400 AND NOT EXISTS(SELECT 1 FROM page_assets WHERE page_assets.asset_id=assets.id);
+DELETE FROM assets WHERE created_at<unixepoch()-86400 AND NOT EXISTS(SELECT 1 FROM page_assets WHERE page_assets.asset_id=assets.id) AND NOT EXISTS(SELECT 1 FROM template_assets WHERE template_assets.asset_id=assets.id);
 
 -- name: WorkspaceDeleteOwnerWorkspaces :exec
 DELETE FROM workspaces WHERE owner_id=?;
@@ -182,13 +186,13 @@ UPDATE page_leases SET epoch=epoch+1,expires_at=0,session_id=NULL,client_id='',h
 UPDATE assets SET workspace_id=? WHERE id=?;
 
 -- name: SharingAssetForPage :one
-SELECT count(*) FROM assets a JOIN pages p ON p.id=sqlc.arg(page_id) JOIN workspaces w ON w.id=p.workspace_id WHERE a.id=sqlc.arg(id) AND ((a.owner_id=sqlc.arg(owner_id) AND a.owner_id=w.owner_id) OR a.workspace_id=w.id OR EXISTS(SELECT 1 FROM page_assets pa JOIN pages linked ON linked.id=pa.page_id WHERE pa.asset_id=a.id AND linked.workspace_id=w.id));
+SELECT count(*) FROM assets a JOIN pages p ON p.id=sqlc.arg(page_id) JOIN workspaces w ON w.id=p.workspace_id WHERE a.id=sqlc.arg(id) AND ((a.owner_id=sqlc.arg(owner_id) AND a.owner_id=w.owner_id) OR a.workspace_id=w.id OR EXISTS(SELECT 1 FROM page_assets pa JOIN pages linked ON linked.id=pa.page_id WHERE pa.asset_id=a.id AND linked.workspace_id=w.id) OR EXISTS(SELECT 1 FROM template_assets ta JOIN workspace_templates t ON t.id=ta.template_id WHERE ta.asset_id=a.id AND t.workspace_id=w.id));
 
 -- name: SharingPageOwner :one
 SELECT w.owner_id FROM pages p JOIN workspaces w ON w.id=p.workspace_id WHERE p.id=?;
 
 -- name: SharingAssetWorkspaces :many
-SELECT a.workspace_id FROM assets a WHERE a.id=? AND a.workspace_id IS NOT NULL UNION SELECT p.workspace_id FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=?;
+SELECT a.workspace_id FROM assets a WHERE a.id=? AND a.workspace_id IS NOT NULL UNION SELECT p.workspace_id FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=? UNION SELECT t.workspace_id FROM template_assets ta JOIN workspace_templates t ON t.id=ta.template_id WHERE ta.asset_id=sqlc.arg(template_asset_id);
 
 -- name: SharingRemoveUserMemberships :exec
 DELETE FROM workspace_members WHERE user_id=?;

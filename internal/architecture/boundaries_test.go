@@ -101,7 +101,7 @@ func TestSQLReadsWritesAndForeignKeysStayWithinDomain(t *testing.T) {
 	t.Parallel()
 	ownership := map[string][]string{
 		"account":      {"users", "sessions", "account_tokens", "avatars"},
-		"workspace":    {"workspaces", "pages", "page_assets", "save_receipts", "page_leases", "assets", "asset_variants", "image_jobs", "workspace_members", "workspace_access", "asset_access", "comment_threads", "comment_messages", "editor_requests"},
+		"workspace":    {"workspaces", "pages", "page_assets", "save_receipts", "page_leases", "assets", "asset_variants", "image_jobs", "workspace_members", "workspace_access", "asset_access", "comment_threads", "comment_messages", "editor_requests", "workspace_templates", "template_assets"},
 		"email":        {"mail_jobs"},
 		"installation": {"app_settings"},
 	}

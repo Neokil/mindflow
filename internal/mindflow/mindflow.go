@@ -22,6 +22,7 @@ import (
 	"mindflow/internal/workspace/page/comment"
 	"mindflow/internal/workspace/page/editor"
 	"mindflow/internal/workspace/sharing"
+	"mindflow/internal/workspace/template"
 	"net/http"
 	"strings"
 	"sync"
@@ -102,7 +103,9 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	}
 	service.canvases = canvas.NewService(data.Workspaces, service.images, service.editors, data.Workspaces, publish)
 	service.pages = page.NewService(data.Workspaces, service.canvases, service.images, publish)
-	service.workspace = workspace.NewService(data.Workspaces, service.pages, service.images, publish)
+	templates := template.NewService(data.Workspaces, publish)
+	service.workspace = workspace.NewService(data.Workspaces, service.pages, service.images, templates, publish)
+	templates.RegisterHTTP(service)
 	avatar.NewService(data.Accounts).RegisterHTTP(service)
 	service.accounts.RegisterHTTP(service)
 	service.authentication.RegisterHTTP(service)

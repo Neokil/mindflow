@@ -678,7 +678,7 @@ func (q *Queries) ImageDeleteOrphanVariants(ctx context.Context) error {
 }
 
 const imageDeletePageAssets = `-- name: ImageDeletePageAssets :execresult
-DELETE FROM assets WHERE owner_id=? AND id IN(SELECT asset_id FROM page_assets WHERE page_assets.page_id=?) AND NOT EXISTS(SELECT 1 FROM page_assets pa WHERE pa.asset_id=assets.id AND pa.page_id<>?)
+DELETE FROM assets WHERE owner_id=? AND id IN(SELECT asset_id FROM page_assets WHERE page_assets.page_id=?) AND NOT EXISTS(SELECT 1 FROM page_assets pa WHERE pa.asset_id=assets.id AND pa.page_id<>?) AND NOT EXISTS(SELECT 1 FROM template_assets ta WHERE ta.asset_id=assets.id)
 `
 
 type ImageDeletePageAssetsParams struct {
@@ -692,7 +692,7 @@ func (q *Queries) ImageDeletePageAssets(ctx context.Context, arg ImageDeletePage
 }
 
 const imageDeleteUnusedAssets = `-- name: ImageDeleteUnusedAssets :exec
-DELETE FROM assets WHERE created_at<unixepoch()-86400 AND NOT EXISTS(SELECT 1 FROM page_assets WHERE page_assets.asset_id=assets.id)
+DELETE FROM assets WHERE created_at<unixepoch()-86400 AND NOT EXISTS(SELECT 1 FROM page_assets WHERE page_assets.asset_id=assets.id) AND NOT EXISTS(SELECT 1 FROM template_assets WHERE template_assets.asset_id=assets.id)
 `
 
 func (q *Queries) ImageDeleteUnusedAssets(ctx context.Context) error {
@@ -701,17 +701,20 @@ func (q *Queries) ImageDeleteUnusedAssets(ctx context.Context) error {
 }
 
 const imageDeleteWorkspaceAssets = `-- name: ImageDeleteWorkspaceAssets :execresult
-DELETE FROM assets WHERE owner_id=? AND id IN(SELECT pa.asset_id FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE p.workspace_id=?) AND NOT EXISTS(SELECT 1 FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=assets.id AND p.workspace_id<>?)
+DELETE FROM assets WHERE owner_id=?1 AND (
+ assets.workspace_id=?2 OR id IN(SELECT pa.asset_id FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE p.workspace_id=?2)
+ OR id IN(SELECT ta.asset_id FROM template_assets ta JOIN workspace_templates t ON t.id=ta.template_id WHERE t.workspace_id=?2)
+) AND NOT EXISTS(SELECT 1 FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=assets.id AND p.workspace_id<>?2)
+ AND NOT EXISTS(SELECT 1 FROM template_assets ta JOIN workspace_templates t ON t.id=ta.template_id WHERE ta.asset_id=assets.id AND t.workspace_id<>?2)
 `
 
 type ImageDeleteWorkspaceAssetsParams struct {
-	OwnerID       string
-	WorkspaceID   string
-	WorkspaceID_2 string
+	OwnerID     string
+	WorkspaceID sql.NullString
 }
 
 func (q *Queries) ImageDeleteWorkspaceAssets(ctx context.Context, arg ImageDeleteWorkspaceAssetsParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, imageDeleteWorkspaceAssets, arg.OwnerID, arg.WorkspaceID, arg.WorkspaceID_2)
+	return q.db.ExecContext(ctx, imageDeleteWorkspaceAssets, arg.OwnerID, arg.WorkspaceID)
 }
 
 const imageDueVariant = `-- name: ImageDueVariant :one
@@ -1122,7 +1125,7 @@ func (q *Queries) PageWorkspace(ctx context.Context, id string) (string, error) 
 }
 
 const sharingAssetForPage = `-- name: SharingAssetForPage :one
-SELECT count(*) FROM assets a JOIN pages p ON p.id=?1 JOIN workspaces w ON w.id=p.workspace_id WHERE a.id=?2 AND ((a.owner_id=?3 AND a.owner_id=w.owner_id) OR a.workspace_id=w.id OR EXISTS(SELECT 1 FROM page_assets pa JOIN pages linked ON linked.id=pa.page_id WHERE pa.asset_id=a.id AND linked.workspace_id=w.id))
+SELECT count(*) FROM assets a JOIN pages p ON p.id=?1 JOIN workspaces w ON w.id=p.workspace_id WHERE a.id=?2 AND ((a.owner_id=?3 AND a.owner_id=w.owner_id) OR a.workspace_id=w.id OR EXISTS(SELECT 1 FROM page_assets pa JOIN pages linked ON linked.id=pa.page_id WHERE pa.asset_id=a.id AND linked.workspace_id=w.id) OR EXISTS(SELECT 1 FROM template_assets ta JOIN workspace_templates t ON t.id=ta.template_id WHERE ta.asset_id=a.id AND t.workspace_id=w.id))
 `
 
 type SharingAssetForPageParams struct {
@@ -1139,16 +1142,17 @@ func (q *Queries) SharingAssetForPage(ctx context.Context, arg SharingAssetForPa
 }
 
 const sharingAssetWorkspaces = `-- name: SharingAssetWorkspaces :many
-SELECT a.workspace_id FROM assets a WHERE a.id=? AND a.workspace_id IS NOT NULL UNION SELECT p.workspace_id FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=?
+SELECT a.workspace_id FROM assets a WHERE a.id=? AND a.workspace_id IS NOT NULL UNION SELECT p.workspace_id FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=? UNION SELECT t.workspace_id FROM template_assets ta JOIN workspace_templates t ON t.id=ta.template_id WHERE ta.asset_id=?3
 `
 
 type SharingAssetWorkspacesParams struct {
-	ID      string
-	AssetID string
+	ID              string
+	AssetID         string
+	TemplateAssetID string
 }
 
 func (q *Queries) SharingAssetWorkspaces(ctx context.Context, arg SharingAssetWorkspacesParams) ([]sql.NullString, error) {
-	rows, err := q.db.QueryContext(ctx, sharingAssetWorkspaces, arg.ID, arg.AssetID)
+	rows, err := q.db.QueryContext(ctx, sharingAssetWorkspaces, arg.ID, arg.AssetID, arg.TemplateAssetID)
 	if err != nil {
 		return nil, err
 	}

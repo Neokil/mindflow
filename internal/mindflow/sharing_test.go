@@ -47,7 +47,7 @@ func TestWorkspaceSharingRolesCommentsAndRevocation(t *testing.T) {
 	if member.request("GET", documentPath, nil).Code != 404 {
 		t.Fatal("private document was visible")
 	}
-	for _, role := range []string{"read", "comment", fullAccessRole} {
+	for _, role := range []string{readAccessRole, "comment", fullAccessRole} {
 		owner.ok("PUT", membersPath, map[string]string{emailField: "collaborator@example.com", roleField: role})
 		member.ok("GET", documentPath, nil)
 		member.ok("GET", "/api/v1/assets/"+asset.ID, nil)
@@ -219,6 +219,7 @@ func checkCommentPermissions(owner, member *testClient, workspaceID, pageID stri
 }
 
 const (
+	readAccessRole   = "read"
 	userRole         = "user"
 	imageElementKind = "image"
 	fullAccessRole   = "full"
@@ -245,7 +246,7 @@ func checkReadOnlyRestrictions(member *testClient, role, workspaceID, pageID str
 			t.Fatal("non-editor saved content")
 		}
 	}
-	if role == "read" && member.request("POST", commentsPath, map[string]any{commentBodyField: "Forbidden", "x": 10, "y": 20}).Code != 403 {
+	if role == readAccessRole && member.request("POST", commentsPath, map[string]any{commentBodyField: "Forbidden", "x": 10, "y": 20}).Code != 403 {
 		t.Fatal("read-only user created a comment")
 	}
 }

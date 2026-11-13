@@ -108,7 +108,7 @@ func (a *Repository) OwnedPageWithin(ctx context.Context, transaction *Transacti
 
 // DeleteWorkspaceAssetsWithin deletes originals referenced only by this workspace.
 func (a *Repository) DeleteWorkspaceAssetsWithin(ctx context.Context, transaction *Transaction, owner, id string) (int64, error) {
-	result, err := a.Within(transaction).ImageDeleteWorkspaceAssets(ctx, ImageDeleteWorkspaceAssetsParams{OwnerID: owner, WorkspaceID: id, WorkspaceID_2: id})
+	result, err := a.Within(transaction).ImageDeleteWorkspaceAssets(ctx, ImageDeleteWorkspaceAssetsParams{OwnerID: owner, WorkspaceID: sql.NullString{String: id, Valid: true}})
 
 	return affectedRows(result, err)
 }

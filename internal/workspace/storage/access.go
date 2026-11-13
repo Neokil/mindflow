@@ -104,7 +104,7 @@ func (a *Repository) EventAudience(ctx context.Context, kind, resourceID string)
 		}
 		workspaces = []string{page}
 	case "asset":
-		ids, err := a.SharingAssetWorkspaces(ctx, SharingAssetWorkspacesParams{ID: resourceID, AssetID: resourceID})
+		ids, err := a.SharingAssetWorkspaces(ctx, SharingAssetWorkspacesParams{ID: resourceID, AssetID: resourceID, TemplateAssetID: resourceID})
 		if err != nil {
 			return nil, err
 		}
