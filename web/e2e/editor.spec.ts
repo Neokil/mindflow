@@ -133,6 +133,7 @@ test("takeover fences an offline editor and recovers local changes", async ({
   expect((await warning).type()).toBe("beforeunload");
   expect(page.isClosed()).toBe(false);
   cancelUnload = false;
+  await viewer.bringToFront();
   await viewer
     .getByRole("button", { name: "Take control", exact: true })
     .click();

@@ -56,8 +56,8 @@ func TestGroupLockStateIsConsistent(t *testing.T) {
 	t.Parallel()
 	document := canvas.NewDocument()
 	document.Elements = []canvas.Element{
-		{ID: "one", Type: "shape", Shape: "rectangle", Width: 100, Height: 100, Fill: testTransparent, Border: testBlack, GroupID: "group", Locked: true},
-		{ID: "two", Type: "shape", Shape: "circle", Width: 100, Height: 100, Fill: testTransparent, Border: testBlack, GroupID: "group", Locked: true},
+		{ID: "one", Type: testShapeKind, Shape: "rectangle", Width: 100, Height: 100, Fill: testTransparent, Border: testBlack, GroupID: "group", Locked: true},
+		{ID: "two", Type: testShapeKind, Shape: "circle", Width: 100, Height: 100, Fill: testTransparent, Border: testBlack, GroupID: "group", Locked: true},
 	}
 	err := canvas.ValidateDocument(document)
 	if err != nil {
@@ -127,3 +127,5 @@ func TestLists(t *testing.T) {
 }
 
 const testTextKind = "text"
+
+const testShapeKind = "shape"

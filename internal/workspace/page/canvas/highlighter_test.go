@@ -13,7 +13,7 @@ func TestHighlightStrokeValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	document.Elements[0].Type = "shape"
+	document.Elements[0].Type = testShapeKind
 	document.Elements[0].Shape = "rectangle"
 	document.Elements[0].Fill = "transparent"
 	document.Elements[0].Border = testBlack

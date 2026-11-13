@@ -1,4 +1,5 @@
 E2E_PROJECTS ?= chromium firefox chromium-http ipad-webkit tablet-chromium
+E2E_SHARDS ?= 2
 
 SQLC_VERSION := v1.31.1
 GOLANGCI_VERSION := v2.15.0
@@ -41,7 +42,7 @@ test: frontend-build
 test-e2e: frontend-build
 	mkdir -p .cache/e2e
 	go build -o .cache/e2e/mindflow ./cmd/mindflow
-	cd web && for project in $(E2E_PROJECTS); do npm run test:e2e -- --project="$$project" || exit $$?; done
+	cd web && for project in $(E2E_PROJECTS); do shard=1; while [ "$$shard" -le "$(E2E_SHARDS)" ]; do npm run test:e2e -- --project="$$project" --shard="$$shard/$(E2E_SHARDS)" || exit $$?; shard=$$((shard + 1)); done; done
 
 verify-container:
 	docker build -t mindflow:verification .
