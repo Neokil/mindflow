@@ -1,8 +1,10 @@
+import type { CanvasFullscreen } from "../../useCanvasFullscreen";
 import ControlRequestDialog from "../editor/ControlRequestDialog";
 import {
   ArrowLeft,
   Check,
   ChevronDown,
+  ChevronUp,
   CloudOff,
   Copy,
   FolderOpen,
@@ -25,6 +27,9 @@ import Canvas from "../editor/Canvas";
 import NameDialog from "./NameDialog";
 export default function WorkspaceEditor({
   workspace: initial,
+  headerCollapsed,
+  onToggleHeader,
+  fullscreen,
   activePageId,
   onPageChange: setPageId,
   back,
@@ -33,6 +38,9 @@ export default function WorkspaceEditor({
   serverEvent,
 }: {
   workspace: Workspace;
+  headerCollapsed: boolean;
+  onToggleHeader: () => void;
+  fullscreen: CanvasFullscreen;
   activePageId?: string;
   onPageChange: (pageId?: string, replace?: boolean) => void;
   back: () => void;
@@ -259,143 +267,167 @@ export default function WorkspaceEditor({
   const saveStatus = session?.status || "Loading";
   return (
     <div className="workspace-editor">
-      <div className="editor-heading" id="workspace-heading">
-        <div className="breadcrumb">
-          <button
-            className="icon-button"
-            aria-label="Back to workspaces"
-            onClick={leave}
+      <div className="workspace-navigation">
+        <div className="editor-heading" id="workspace-heading">
+          <div className="breadcrumb">
+            <button
+              className="icon-button"
+              aria-label="Back to workspaces"
+              onClick={leave}
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <span className="breadcrumb-parent">Workspaces</span>
+            <span className="breadcrumb-slash">/</span>
+            <button
+              className="workspace-name"
+              title={canManage ? "Rename workspace" : "Workspace name"}
+              disabled={!canManage}
+              onClick={() =>
+                setDialog({
+                  title: "Rename workspace",
+                  initial: workspace.name,
+                  action: async (name) => {
+                    await api(`/workspaces/${workspaceId}`, "PATCH", {
+                      name,
+                      revision: workspace.revision,
+                    });
+                    await load();
+                  },
+                })
+              }
+            >
+              {workspace.name}
+              <ChevronDown size={13} />
+            </button>
+            <button
+              className="private-badge"
+              aria-label="Workspace sharing"
+              onClick={() => setSharing(true)}
+            >
+              <LockKeyhole size={10} />
+              {workspace.shared ? "Shared" : "Private"}
+            </button>
+          </div>
+          <div
+            className={`save-status ${["Disconnected", "Save failed", "Control lost"].includes(saveStatus) ? "warning" : ""}`}
+            aria-live="polite"
           >
-            <ArrowLeft size={18} />
-          </button>
-          <span className="breadcrumb-parent">Workspaces</span>
-          <span className="breadcrumb-slash">/</span>
-          <button
-            className="workspace-name"
-            title={canManage ? "Rename workspace" : "Workspace name"}
-            disabled={!canManage}
-            onClick={() =>
-              setDialog({
-                title: "Rename workspace",
-                initial: workspace.name,
-                action: async (name) => {
-                  await api(`/workspaces/${workspaceId}`, "PATCH", {
-                    name,
-                    revision: workspace.revision,
-                  });
-                  await load();
-                },
-              })
-            }
-          >
-            {workspace.name}
-            <ChevronDown size={13} />
-          </button>
-          <button
-            className="private-badge"
-            aria-label="Workspace sharing"
-            onClick={() => setSharing(true)}
-          >
-            <LockKeyhole size={10} />
-            {workspace.shared ? "Shared" : "Private"}
-          </button>
+            {saveStatus === "Saving" ? (
+              <Spinner />
+            ) : saveStatus === "Saved" ? (
+              <Check size={13} />
+            ) : saveStatus === "Disconnected" ? (
+              <CloudOff size={14} />
+            ) : (
+              <span className="status-dot" />
+            )}
+            <span data-testid="save-status">{saveStatus}</span>
+          </div>
         </div>
         <div
-          className={`save-status ${["Disconnected", "Save failed", "Control lost"].includes(saveStatus) ? "warning" : ""}`}
-          aria-live="polite"
+          className="page-tabs"
+          id="workspace-pages"
+          role="tablist"
+          aria-label="Workspace pages"
         >
-          {saveStatus === "Saving" ? (
-            <Spinner />
-          ) : saveStatus === "Saved" ? (
-            <Check size={13} />
-          ) : saveStatus === "Disconnected" ? (
-            <CloudOff size={14} />
-          ) : (
-            <span className="status-dot" />
-          )}
-          <span data-testid="save-status">{saveStatus}</span>
-        </div>
-      </div>
-      <div
-        className="page-tabs"
-        id="workspace-pages"
-        role="tablist"
-        aria-label="Workspace pages"
-      >
-        {pages.map((p) => (
-          <div
-            className={`page-tab-wrap ${p.id === pageId ? "active" : ""}`}
-            key={p.id}
-            draggable={canWrite}
-            onDragStart={() => {
-              dragTab.current = p.id;
-            }}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              void moveTab(p.id);
-            }}
-          >
-            <button
-              className="page-tab"
-              role="tab"
-              aria-selected={p.id === pageId}
-              onClick={() => setPageId(p.id)}
-              onDoubleClick={() => {
-                if (canWrite) pageAction(p, "rename");
+          {pages.map((p) => (
+            <div
+              className={`page-tab-wrap ${p.id === pageId ? "active" : ""}`}
+              key={p.id}
+              draggable={canWrite}
+              onDragStart={() => {
+                dragTab.current = p.id;
+              }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                void moveTab(p.id);
               }}
             >
-              <GripVertical className="tab-grip" size={11} />
-              {p.name}
-              {sessions.current.get(p.id)?.unsaved && (
-                <span className="dirty-dot" />
-              )}
-            </button>
-            <div className="menu-anchor">
               <button
-                className="tab-menu icon-button"
-                aria-label={`Page options for ${p.name}`}
-                disabled={!canWrite}
-                onClick={() => setMenu(menu === p.id ? undefined : p.id)}
+                className="page-tab"
+                role="tab"
+                aria-selected={p.id === pageId}
+                onClick={() => setPageId(p.id)}
+                onDoubleClick={() => {
+                  if (canWrite) pageAction(p, "rename");
+                }}
               >
-                <MoreHorizontal size={14} />
+                <GripVertical className="tab-grip" size={11} />
+                {p.name}
+                {sessions.current.get(p.id)?.unsaved && (
+                  <span className="dirty-dot" />
+                )}
               </button>
-              {menu === p.id && (
-                <>
-                  <button
-                    className="menu-dismiss"
-                    aria-label="Close page menu"
-                    onClick={() => setMenu(undefined)}
-                  />
-                  <div className="dropdown">
-                    <button onClick={() => pageAction(p, "rename")}>
-                      <Pencil size={14} />
-                      Rename
-                    </button>
-                    <button onClick={() => pageAction(p, "duplicate")}>
-                      <Copy size={14} />
-                      Duplicate
-                    </button>
+              <div className="menu-anchor">
+                <button
+                  className="tab-menu icon-button"
+                  aria-label={`Page options for ${p.name}`}
+                  disabled={!canWrite}
+                  onClick={() => setMenu(menu === p.id ? undefined : p.id)}
+                >
+                  <MoreHorizontal size={14} />
+                </button>
+                {menu === p.id && (
+                  <>
                     <button
-                      className="danger"
-                      onClick={() => pageAction(p, "delete")}
-                    >
-                      <Trash2 size={14} />
-                      Delete
-                    </button>
-                  </div>
-                </>
-              )}
+                      className="menu-dismiss"
+                      aria-label="Close page menu"
+                      onClick={() => setMenu(undefined)}
+                    />
+                    <div className="dropdown">
+                      <button onClick={() => pageAction(p, "rename")}>
+                        <Pencil size={14} />
+                        Rename
+                      </button>
+                      <button onClick={() => pageAction(p, "duplicate")}>
+                        <Copy size={14} />
+                        Duplicate
+                      </button>
+                      <button
+                        className="danger"
+                        onClick={() => pageAction(p, "delete")}
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+          <button
+            className="icon-button add-page"
+            aria-label="Add page"
+            disabled={!canWrite}
+            onClick={newPage}
+          >
+            <Plus size={17} />
+          </button>
+        </div>
         <button
-          className="icon-button add-page"
-          aria-label="Add page"
-          disabled={!canWrite}
-          onClick={newPage}
+          className="icon-button editor-header-toggle"
+          aria-label={
+            headerCollapsed
+              ? "Show app header and pages"
+              : "Hide app header and pages"
+          }
+          title={
+            headerCollapsed
+              ? "Show app header and pages"
+              : "Hide app header and pages"
+          }
+          aria-expanded={!headerCollapsed}
+          aria-controls="app-header workspace-heading workspace-pages"
+          onClick={onToggleHeader}
         >
-          <Plus size={17} />
+          {headerCollapsed ? (
+            <ChevronDown size={16} />
+          ) : (
+            <ChevronUp size={16} />
+          )}
         </button>
       </div>
       {error && (
@@ -509,6 +541,7 @@ export default function WorkspaceEditor({
         <Canvas
           key={pageId}
           session={session}
+          fullscreen={fullscreen}
           refresh={refresh}
           onImportedPages={(id) => {
             void load()

@@ -1120,10 +1120,15 @@ select {
   color: var(--muted);
   opacity: 0.8;
 }
-.inspector-toggle {
+.canvas-top-actions {
   position: absolute;
   right: 22px;
   top: 23px;
+  display: flex;
+  gap: 8px;
+}
+.inspector-toggle,
+.fullscreen-toggle {
   background: var(--panel);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
@@ -1391,7 +1396,7 @@ kbd {
     width: 30px;
     height: 32px;
   }
-  .inspector-toggle {
+  .canvas-top-actions {
     right: 10px;
     top: 65px;
   }
@@ -1846,11 +1851,11 @@ body {
     top: 14px;
     left: 12px;
     transform: none;
-    max-width: calc(100% - 82px);
+    max-width: calc(100% - 134px);
     overflow-x: auto;
     touch-action: pan-x;
   }
-  .inspector-toggle {
+  .canvas-top-actions {
     top: 15px;
     right: 12px;
   }
@@ -1908,10 +1913,17 @@ body {
   flex: 1;
   height: auto;
 }
+.workspace-navigation {
+  position: relative;
+  flex-shrink: 0;
+}
+.workspace-navigation .page-tabs {
+  padding-right: 72px;
+}
 .editor-header-toggle.icon-button {
   position: absolute;
-  top: 0;
-  left: calc(50% - 22px);
+  bottom: 0;
+  right: 12px;
   width: 44px;
   height: var(--header-toggle-height);
   transform: none;
@@ -1925,20 +1937,28 @@ body {
   background: var(--panel);
   color: var(--muted);
 }
+.header-collapsed .editor-header-toggle {
+  top: 0;
+  bottom: auto;
+}
+.canvas-fullscreen .app-header,
+.canvas-fullscreen .editor-heading,
+.canvas-fullscreen .page-tabs,
+.canvas-fullscreen .editor-header-toggle,
 .header-collapsed .app-header,
 .header-collapsed .editor-heading,
 .header-collapsed .page-tabs {
   display: none;
 }
-.header-collapsed .canvas-toolbar,
-.header-collapsed .inspector-toggle {
+.header-collapsed:not(.canvas-fullscreen) .canvas-toolbar,
+.header-collapsed:not(.canvas-fullscreen) .canvas-top-actions {
   top: calc(var(--header-toggle-height) + 14px);
 }
-.header-collapsed .tool-hint,
-.header-collapsed .inspector {
+.header-collapsed:not(.canvas-fullscreen) .tool-hint,
+.header-collapsed:not(.canvas-fullscreen) .inspector {
   top: calc(var(--header-toggle-height) + 82px);
 }
-.header-collapsed .pen-options {
+.header-collapsed:not(.canvas-fullscreen) .pen-options {
   top: calc(var(--header-toggle-height) + 125px);
 }
 @media (any-pointer: coarse) {

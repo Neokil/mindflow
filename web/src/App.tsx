@@ -1,14 +1,7 @@
 import UpdateBanner from "./UpdateBanner";
 import { useCanvasFullscreen } from "./useCanvasFullscreen";
 import { useWorkspaceRoute } from "./navigation";
-import {
-  ChevronDown,
-  ChevronUp,
-  Github,
-  LogOut,
-  Settings,
-  SunMoon,
-} from "lucide-react";
+import { Github, LogOut, Settings, SunMoon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ServerEvent, User } from "./api";
 import { api, APIError, setCSRF } from "./api";
@@ -185,38 +178,10 @@ export default function App() {
     );
   return (
     <div
-      className={`app${editorOpen ? " editor-open" : ""}${editorOpen && headerCollapsed ? " header-collapsed" : ""}`}
+      className={`app${editorOpen ? " editor-open" : ""}${editorOpen && headerCollapsed ? " header-collapsed" : ""}${editorOpen && fullscreen.active ? " canvas-fullscreen" : ""}`}
     >
       <UpdateBanner />
       <div className="app-content">
-        {editorOpen && (
-          <button
-            className="icon-button editor-header-toggle"
-            aria-label={
-              headerCollapsed
-                ? "Show app header and pages"
-                : "Hide app header and pages"
-            }
-            title={
-              headerCollapsed
-                ? "Show app header and pages"
-                : "Hide app header and pages"
-            }
-            aria-expanded={!headerCollapsed}
-            aria-controls="app-header workspace-heading workspace-pages"
-            onClick={() => {
-              if (headerCollapsed) void fullscreen.exit();
-              else void fullscreen.enter();
-              setHeaderCollapsed(!headerCollapsed);
-            }}
-          >
-            {headerCollapsed ? (
-              <ChevronDown size={16} />
-            ) : (
-              <ChevronUp size={16} />
-            )}
-          </button>
-        )}
         <header className="app-header" id="app-header">
           <div className="app-brand">
             <Brand small />
@@ -301,6 +266,9 @@ export default function App() {
             <WorkspaceEditor
               key={workspace.id}
               workspace={workspace}
+              headerCollapsed={headerCollapsed}
+              onToggleHeader={() => setHeaderCollapsed((value) => !value)}
+              fullscreen={fullscreen}
               activePageId={route.pageId}
               onPageChange={choosePage}
               back={() => navigate({})}

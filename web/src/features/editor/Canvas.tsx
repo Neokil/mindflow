@@ -1,3 +1,4 @@
+import type { CanvasFullscreen } from "../../useCanvasFullscreen";
 import PDFImportDialog from "../pdf/PDFImportDialog";
 import PDFViewer from "../pdf/PDFViewer";
 import useCanvasInput from "./useCanvasInput";
@@ -13,6 +14,8 @@ import {
   LockKeyhole,
   LockKeyholeOpen,
   SlidersHorizontal,
+  Maximize,
+  Minimize,
   Trash2,
   X,
 } from "lucide-react";
@@ -55,10 +58,12 @@ import useEditorShortcuts from "./useEditorShortcuts";
 
 export default function Canvas({
   session,
+  fullscreen,
   refresh = 0,
   onImportedPages,
 }: {
   session: PageSession;
+  fullscreen: CanvasFullscreen;
   refresh?: number;
   onImportedPages: (id: string) => void;
 }) {
@@ -868,14 +873,34 @@ export default function Canvas({
           </label>
         </div>
       )}
-      <button
-        className={`inspector-toggle icon-button ${canvasSettingsOpen ? "active" : ""}`}
-        title="Canvas settings"
-        aria-label="Canvas settings"
-        onClick={() => setCanvasSettingsOpen(!canvasSettingsOpen)}
-      >
-        <SlidersHorizontal size={19} />
-      </button>
+      <div className="canvas-top-actions">
+        <button
+          className="fullscreen-toggle icon-button"
+          aria-label={
+            fullscreen.active ? "Exit fullscreen" : "Enter fullscreen"
+          }
+          title={
+            !fullscreen.available
+              ? "Fullscreen is unavailable in this browser"
+              : fullscreen.active
+                ? "Exit fullscreen"
+                : "Enter fullscreen"
+          }
+          aria-pressed={fullscreen.active}
+          disabled={!fullscreen.available && !fullscreen.active}
+          onClick={() => void fullscreen.toggle()}
+        >
+          {fullscreen.active ? <Minimize size={19} /> : <Maximize size={19} />}
+        </button>
+        <button
+          className={`inspector-toggle icon-button ${canvasSettingsOpen ? "active" : ""}`}
+          title="Canvas settings"
+          aria-label="Canvas settings"
+          onClick={() => setCanvasSettingsOpen(!canvasSettingsOpen)}
+        >
+          <SlidersHorizontal size={19} />
+        </button>
+      </div>
       {canvasSettingsOpen && (
         <CanvasSettings
           settings={doc.settings}
