@@ -67,6 +67,8 @@ A page's `document` is versioned JSON. `pages.revision` tracks saved document ch
 }
 ```
 
+`settings.defaultFill`, `defaultBorder`, and `defaultTextColor` optionally store validated default colors for newly created shapes/text on that page. New pages explicitly use Sprout (`#a4d65e`), Gold (`#d9a441`), and Gold respectively. Missing/empty fields on legacy pages use frontend fallbacks without changing existing elements. Settings are saved in the normal document snapshot; no SQL migration or schema-version change is required.
+
 `settings.backgroundColor` optionally stores a validated CSS color, independent of the dot/plain background pattern. Omitting it keeps the normal theme background. Butterfly imports use it to preserve solid page colors; existing documents require no migration.
 
 The ordered element list defines stacking, back to front. Common fields are stable `id`, `type`, center `x/y` in world units, positive local `width/height`, rotation in radians, and optional `groupId`. Groups are flat memberships; transforms update the member elements. Optional `locked: true` marks group members as fixed in the editor. Every member of a group must have the same lock state; ungrouped elements cannot be locked. Missing `locked` means false. No document-schema bump is required.

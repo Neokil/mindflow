@@ -21,11 +21,15 @@ Primary buttons use white on Forest in light mode (7.75:1 contrast) and Forest o
 
 The old `logo.png` asset has been replaced by the new icon. The reusable `Brand` component owns the application mark and wordmark; use it instead of adding individual logo references throughout the app.
 
+## Color controls
+
+`ColorInput` keeps the native RGB picker but draws a separate swatch and hex label so six-digit, eight-digit, and transparent document colors display correctly. Its checkerboard reveals alpha; choosing a new RGB color produces an opaque color. Object properties use the opaque theme `--panel` surface.
+
 ## Canvas and email
 
 Konva canvas paint styles cannot resolve CSS variables. `useCanvasAccent` reads the computed `--accent` and subscribes to changes of the root `data-theme` attribute. Pass that resolved color to selection outlines, transform handles, and insertion/lasso previews.
 
-New drawing tools start with the current theme accent and a pale Sprout-derived fill. User-chosen colors and stored document elements remain content: switching appearance does not recolor them. Imported colors and uploaded image pixels are preserved.
+New shapes default to Sprout (`#A4D65E`) fills and Gold (`#D9A441`) borders; new text defaults to Gold. `settings.defaultFill`, `defaultBorder`, and `defaultTextColor` provide page-specific overrides in Canvas settings, independently of object properties. Legacy pages without these fields use the same defaults. The pen starts with the current theme accent and keeps its own tool color. User-chosen colors and stored document elements remain content: switching appearance does not recolor them. Imported colors and uploaded image pixels are preserved.
 
 HTML emails use Forest for their heading, action button, and fallback link, with white button text. They retain escaped content, clickable links, and a plain-text alternative. Remote logo images are not required to read credential emails.
 
