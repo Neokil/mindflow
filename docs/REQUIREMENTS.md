@@ -266,3 +266,13 @@ See [ARCHITECTURE.md](ARCHITECTURE.md), [CANVAS_AND_SYNC.md](CANVAS_AND_SYNC.md)
 - Users can upload or remove their profile avatar. Avatars appear beside account identities and on comment pins, with initials as fallback.
 - Sharing dialogs identify the workspace owner for every authorized member.
 - Invitation, password-reset and test emails include styled HTML with clickable links and a plain-text alternative.
+
+### Navigation and editor refinements
+
+- Workspace and page identifiers are included in shareable URLs. Signed-out visitors return to the same destination after login, subject to their permissions. Back/Forward navigates pages and workspaces with unsaved-change protection.
+- A new running build shows a top-of-app reload banner in existing browser sessions. Reloading is explicit and preserves the unsaved-change warning.
+- The workspace owner may force control immediately. Other full-access users continue to request approval.
+- Canvas and element settings are independent. Right-click properties open beside the cursor; toolbar properties open beside the selection button. Control-approval buttons have clear spacing.
+- New elements show their dragged bounds from the start without flashing a default-sized preview.
+- App branding uses `web/public/logo.png`; the app header links to the GitHub repository.
+- The README starts with installation and product guidance. Its workflow GIF is regenerated manually with `make demo` using a disposable Playwright fixture.

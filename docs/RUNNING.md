@@ -170,3 +170,9 @@ The multi-user browser tests create disposable invited accounts and read invitat
 The production runtime uses `scratch`, a static Go binary, CA certificates and UID/GID 10001. There is no shell; invoke maintenance commands through the image entrypoint, or use `/usr/local/bin/mindflow` with `docker exec`. Keep the HTTP origin private behind your HTTPS tunnel and leave production mode enabled. See [SECURITY.md](../SECURITY.md) for boundaries and scanner limitations.
 
 `make audit` checks module integrity and known Go/npm vulnerabilities. `make upgrade` resolves stable dependencies, pins Actions to commit SHAs and Docker references to digests, regenerates code, and runs the quality gate. See [upgrade options and review steps](upgrading.md). Avatar and control-request migrations are applied automatically during startup; snapshot the complete data directory before upgrading.
+
+## Browser updates and page links
+
+Copy the workspace/page URL to link an authorized user directly to that page. The URL remains intact through sign-in; it does not grant workspace access. Browser Back/Forward navigates pages and workspaces, retaining the unsaved-work confirmation when leaving a workspace.
+
+After deployment, open tabs check the running build every minute and when returning to the foreground. A new build shows a reload banner. Reload remains a user action and warns about unsaved work. Tabs running a version from before this notification feature need one initial reload to install it.

@@ -2451,7 +2451,7 @@
             }
           }
         },
-        "description": "Takeover of an active editor creates a pending request. Only that holder may accept/deny and only the requester may cancel. After ten seconds the server automatically accepts, rechecking current edit permission. A control request does not extend its deadline when repeated."
+        "description": "Takeover of an active editor creates a pending request. Only that holder may accept/deny and only the requester may cancel. After ten seconds the server automatically accepts, rechecking current edit permission. A control request does not extend its deadline when repeated. The workspace owner alone may use force to transfer control immediately, cancel pending approval and fence the previous writer. Being an administrator or full-access member does not grant this capability."
       },
       "get": {
         "summary": "GET /pages/{id}/lease",
@@ -3062,6 +3062,33 @@
           }
         }
       }
+    },
+    "/version": {
+      "get": {
+        "summary": "Identify the running application build",
+        "security": [],
+        "description": "Public, no-store build identifier. The served HTML embeds the same identifier; browser clients compare it periodically and on foreground events.",
+        "responses": {
+          "200": {
+            "description": "Current executable build",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "version"
+                  ],
+                  "properties": {
+                    "version": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3274,7 +3301,8 @@
               "takeover",
               "accept",
               "deny",
-              "cancel"
+              "cancel",
+              "force"
             ]
           },
           "epoch": {
