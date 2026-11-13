@@ -287,7 +287,7 @@ func TestAccountDeletionCleansIndependentDomainsAtomically(t *testing.T) {
 		t.Fatal(err)
 	}
 	client.ok("DELETE", endpoint, map[string]bool{confirmField: true})
-	for _, table := range []string{"workspaces", "pages", "assets", "asset_variants", "page_assets", "page_leases", "save_receipts", "image_jobs", "mail_jobs", "account_tokens"} {
+	for _, table := range []string{"workspaces", nativePagesKind, "assets", "asset_variants", "page_assets", "page_leases", "save_receipts", "image_jobs", "mail_jobs", "account_tokens"} {
 		err = client.db.QueryRowContext(t.Context(), "SELECT count(*) FROM "+table).Scan(&count)
 		if err != nil || count != 0 {
 			t.Errorf("%s retained deleted user data: %d, %v", table, count, err)

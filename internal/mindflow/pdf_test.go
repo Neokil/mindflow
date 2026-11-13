@@ -84,7 +84,7 @@ func TestPDFAssetsRequireWorkspaceAccess(t *testing.T) {
 	if pdfUpload(reader, workspaceID, raw, reader.csrf).Code != 403 {
 		t.Fatal("read-only member uploaded PDF")
 	}
-	if reader.request("POST", "/api/v1/workspaces/"+workspaceID+"/pdf-pages", map[string]any{"pages": []map[string]any{{"name": "Blocked PDF page", "assetId": asset.ID, "width": 100, "height": 100}}}).Code != 403 {
+	if reader.request("POST", "/api/v1/workspaces/"+workspaceID+"/pdf-pages", map[string]any{nativePagesKind: []map[string]any{{"name": "Blocked PDF page", "assetId": asset.ID, "width": 100, "height": 100}}}).Code != 403 {
 		t.Fatal("read-only member imported pages")
 	}
 }

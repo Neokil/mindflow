@@ -3988,6 +3988,261 @@
           }
         }
       }
+    },
+    "/workspaces/{id}/export": {
+      "post": {
+        "summary": "Download selected saved content as an editable .mindflow archive",
+        "operationId": "workspaces_id_export",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid content, unsupported version, or exceeded transfer limits."
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "CSRF failure or insufficient workspace role."
+          },
+          "404": {
+            "description": "Workspace unavailable."
+          },
+          "409": {
+            "description": "Another native transfer is running; retry shortly."
+          },
+          "200": {
+            "description": "Successful transfer. New imports are private; appends preserve existing pages.",
+            "content": {
+              "application/vnd.mindflow+zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "description": "Requires session-bound X-CSRF-Token. Native limits: 64 MiB ZIP, 128 MiB expanded, 100 pages, 100 templates, 1,000 assets. Sharing, comments and user metadata are excluded.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportSelection"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/export/snapshot": {
+      "post": {
+        "summary": "Read a consistent saved-page snapshot for browser PDF/PNG export",
+        "operationId": "workspaces_id_export_snapshot",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid content, unsupported version, or exceeded transfer limits."
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "CSRF failure or insufficient workspace role."
+          },
+          "404": {
+            "description": "Workspace unavailable."
+          },
+          "409": {
+            "description": "Another native transfer is running; retry shortly."
+          },
+          "200": {
+            "description": "Successful transfer. New imports are private; appends preserve existing pages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportSnapshot"
+                }
+              }
+            }
+          }
+        },
+        "description": "Requires session-bound X-CSRF-Token. Native limits: 64 MiB ZIP, 128 MiB expanded, 100 pages, 100 templates, 1,000 assets. Sharing, comments and user metadata are excluded.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportSelection"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/import/mindflow": {
+      "post": {
+        "summary": "Import a native archive as a new private workspace",
+        "operationId": "workspaces_import_mindflow",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid content, unsupported version, or exceeded transfer limits."
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "CSRF failure or insufficient workspace role."
+          },
+          "404": {
+            "description": "Workspace unavailable."
+          },
+          "409": {
+            "description": "Another native transfer is running; retry shortly."
+          },
+          "200": {
+            "description": "Successful transfer. New imports are private; appends preserve existing pages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeImportResult"
+                }
+              }
+            }
+          }
+        },
+        "description": "Requires session-bound X-CSRF-Token. Native limits: 64 MiB ZIP, 128 MiB expanded, 100 pages, 100 templates, 1,000 assets. Sharing, comments and user metadata are excluded.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "Optional name for a new workspace; ignored for append."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/import/mindflow": {
+      "post": {
+        "summary": "Append native archive pages and templates to an editable workspace",
+        "operationId": "workspaces_id_import_mindflow",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid content, unsupported version, or exceeded transfer limits."
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "CSRF failure or insufficient workspace role."
+          },
+          "404": {
+            "description": "Workspace unavailable."
+          },
+          "409": {
+            "description": "Another native transfer is running; retry shortly."
+          },
+          "200": {
+            "description": "Successful transfer. New imports are private; appends preserve existing pages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeImportResult"
+                }
+              }
+            }
+          }
+        },
+        "description": "Requires session-bound X-CSRF-Token. Native limits: 64 MiB ZIP, 128 MiB expanded, 100 pages, 100 templates, 1,000 assets. Sharing, comments and user metadata are excluded.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "Optional name for a new workspace; ignored for append."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4571,6 +4826,93 @@
           }
         },
         "description": "Active public profile. No email addresses, roles, statuses, or credentials."
+      },
+      "ExportSelection": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "pageIds": {
+            "type": "array",
+            "maxItems": 100,
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            },
+            "description": "Empty or omitted means all pages. Selected pages follow workspace order."
+          },
+          "includeTemplates": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "NativeImportResult": {
+        "type": "object",
+        "required": [
+          "id",
+          "pageId",
+          "pageCount",
+          "elementCount",
+          "templateCount",
+          "warnings"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "pageId": {
+            "type": "string"
+          },
+          "pageCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "elementCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "templateCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ExportSnapshot": {
+        "type": "object",
+        "required": [
+          "name",
+          "pages"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "pages": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "document"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "document": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

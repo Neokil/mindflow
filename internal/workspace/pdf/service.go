@@ -63,15 +63,9 @@ type Asset struct {
 // Upload stores opaque PDF bytes and a validated PNG thumbnail atomically.
 func (a *Service) Upload(ctx context.Context, actor session.Principal, workspaceID string, data, preview []byte) (_ Asset, err error) {
 	defer func() { err = repositoryError(err) }()
-	if len(data) > maxPDFBytes || !bytes.HasPrefix(data, []byte("%PDF-")) || !bytes.Contains(data[max(0, len(data)-previewBucket):], []byte("%%EOF")) {
-		return Asset{}, invalid("Choose a valid PDF up to 50 MiB.")
-	}
-	if len(preview) > maxPreviewBytes {
-		return Asset{}, invalid("PDF preview is too large.")
-	}
-	config, err := png.DecodeConfig(bytes.NewReader(preview))
-	if err != nil || config.Width < 1 || config.Height < 1 || config.Width > maxPreviewSide || config.Height > maxPreviewSide {
-		return Asset{}, invalid("Choose a valid PDF preview up to 2,048 pixels per side.")
+	prepared, err := Prepare(data, preview)
+	if err != nil {
+		return Asset{}, err
 	}
 	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
@@ -82,19 +76,57 @@ func (a *Service) Upload(ctx context.Context, actor session.Principal, workspace
 	if err != nil {
 		return Asset{}, err
 	}
-	resourceID := newID()
-	digest := sha256.Sum256(data)
-	err = a.repository.CreateImportedAssetWithin(ctx, transaction, workspaceID, storage.ImageCreateAssetParams{ID: resourceID, OwnerID: access.OwnerID, Original: data, Mime: "application/pdf", Width: config.Width, Height: config.Height, Digest: hex.EncodeToString(digest[:]), CreatedAt: time.Now().Unix()})
-	if err != nil {
-		return Asset{}, err
-	}
-	_, err = a.repository.Within(transaction).ImageCreateVariant(ctx, storage.ImageCreateVariantParams{AssetID: resourceID, Bucket: previewBucket, Mime: "image/png", Data: preview, Width: config.Width, Height: config.Height})
+	asset, err := a.StoreWithin(ctx, transaction, access.OwnerID, workspaceID, prepared)
 	if err != nil {
 		return Asset{}, err
 	}
 	err = transaction.Commit()
 	if err != nil {
 		return Asset{}, fmt.Errorf("commit PDF asset: %w", err)
+	}
+
+	return asset, nil
+}
+
+// Prepared contains a validated retained PDF and its first-page preview.
+type Prepared struct {
+	data, preview []byte
+	width, height int
+}
+
+// Prepare validates portable PDF bytes and a bounded PNG preview without persistence.
+func Prepare(data, preview []byte) (Prepared, error) {
+	if len(data) > maxPDFBytes || !bytes.HasPrefix(data, []byte("%PDF-")) || !bytes.Contains(data[max(0, len(data)-previewBucket):], []byte("%%EOF")) {
+		return Prepared{}, invalid("Choose a valid PDF up to 50 MiB.")
+	}
+	if len(preview) > maxPreviewBytes {
+		return Prepared{}, invalid("PDF preview is too large.")
+	}
+	config, err := png.DecodeConfig(bytes.NewReader(preview))
+	if err != nil || config.Width < 1 || config.Height < 1 || config.Width > maxPreviewSide || config.Height > maxPreviewSide {
+		return Prepared{}, invalid("Choose a valid PDF preview up to 2,048 pixels per side.")
+	}
+	_, err = png.Decode(bytes.NewReader(preview))
+	if err != nil {
+		return Prepared{}, invalid("The PDF preview could not be decoded.")
+	}
+
+	return Prepared{data: data, preview: preview, width: config.Width, height: config.Height}, nil
+}
+
+// StoreWithin retains a prepared PDF inside the caller's atomic workspace transaction.
+func (a *Service) StoreWithin(ctx context.Context, transaction *storage.Transaction, ownerID, workspaceID string, prepared Prepared) (Asset, error) {
+	data, preview := prepared.data, prepared.preview
+	config := struct{ Width, Height int }{prepared.width, prepared.height}
+	resourceID := newID()
+	digest := sha256.Sum256(data)
+	err := a.repository.CreateImportedAssetWithin(ctx, transaction, workspaceID, storage.ImageCreateAssetParams{ID: resourceID, OwnerID: ownerID, Original: data, Mime: "application/pdf", Width: config.Width, Height: config.Height, Digest: hex.EncodeToString(digest[:]), CreatedAt: time.Now().Unix()})
+	if err != nil {
+		return Asset{}, err
+	}
+	_, err = a.repository.Within(transaction).ImageCreateVariant(ctx, storage.ImageCreateVariantParams{AssetID: resourceID, Bucket: previewBucket, Mime: "image/png", Data: preview, Width: config.Width, Height: config.Height})
+	if err != nil {
+		return Asset{}, err
 	}
 
 	return Asset{ID: resourceID, Width: config.Width, Height: config.Height}, nil

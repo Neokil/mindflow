@@ -95,18 +95,38 @@ func (a *Service) Get(ctx context.Context, actor session.Principal, workspaceID,
 // Create validates geometry and image access, then retains a selection atomically.
 func (a *Service) Create(ctx context.Context, actor session.Principal, workspaceID string, command CreateCommand) (_ Summary, err error) {
 	defer func() { err = repositoryError(err) }()
+	transaction, err := a.repository.Begin(ctx)
+	if err != nil {
+		return Summary{}, err
+	}
+	defer func() { _ = transaction.Rollback() }()
+	result, err := a.CreateWithin(ctx, transaction, actor.ID, workspaceID, command)
+	if err != nil {
+		return Summary{}, err
+	}
+	err = wrap("commit template", transaction.Commit())
+	if err != nil {
+		return Summary{}, err
+	}
+	a.publish(actor.ID, "workspace", workspaceID)
+
+	return result, nil
+}
+
+// CreateWithin validates and retains a template as part of a workspace import.
+func (a *Service) CreateWithin(ctx context.Context, transaction *storage.Transaction, userID, workspaceID string, command CreateCommand) (Summary, error) {
 	name := strings.TrimSpace(command.Name)
 	if name == "" || utf8.RuneCountInString(name) > maxNameLength || len(command.Elements) < 1 || len(command.Elements) > maxElements {
 		return Summary{}, invalid("Use a name of 1–200 characters and select 1–500 elements.")
 	}
 	document := canvas.NewDocument()
-	document.Elements = command.Elements
+	document.Elements = append([]canvas.Element(nil), command.Elements...)
 	// Inserted copies always start unlocked and independently editable.
 	for index := range document.Elements {
 		document.Elements[index].Locked = false
 		document.Elements[index].GroupID = ""
 	}
-	err = canvas.ValidateDocument(document)
+	err := canvas.ValidateDocument(document)
 	if err != nil {
 		return Summary{}, err
 	}
@@ -117,13 +137,8 @@ func (a *Service) Create(ctx context.Context, actor session.Principal, workspace
 	if len(encoded) > maxSnapshotBytes {
 		return Summary{}, invalid("A template can contain up to 1 MiB of element data.")
 	}
-	transaction, err := a.repository.Begin(ctx)
-	if err != nil {
-		return Summary{}, err
-	}
-	defer func() { _ = transaction.Rollback() }()
 	queries := a.repository.Within(transaction)
-	_, err = queries.RequireWorkspace(ctx, workspaceID, actor.ID, true)
+	_, err = queries.RequireWorkspace(ctx, workspaceID, userID, true)
 	if err != nil {
 		return Summary{}, err
 	}
@@ -146,15 +161,10 @@ func (a *Service) Create(ctx context.Context, actor session.Principal, workspace
 	if err != nil {
 		return Summary{}, err
 	}
-	err = attachAssets(ctx, queries, actor.ID, workspaceID, result.ID, document.Elements)
+	err = attachAssets(ctx, queries, userID, workspaceID, result.ID, document.Elements)
 	if err != nil {
 		return Summary{}, err
 	}
-	err = wrap("commit template", transaction.Commit())
-	if err != nil {
-		return Summary{}, err
-	}
-	a.publish(actor.ID, "workspace", workspaceID)
 
 	return result, nil
 }

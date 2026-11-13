@@ -24,6 +24,7 @@ import (
 	"mindflow/internal/workspace/pdf"
 	"mindflow/internal/workspace/sharing"
 	"mindflow/internal/workspace/template"
+	"mindflow/internal/workspace/transfer"
 	"net/http"
 	"strings"
 	"sync"
@@ -121,7 +122,9 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	service.pages.RegisterHTTP(service)
 	service.canvases.RegisterHTTP(service)
 	service.editors.RegisterHTTP(service)
-	pdf.NewService(data.Workspaces, service.pages, publish).RegisterHTTP(service)
+	pdfs := pdf.NewService(data.Workspaces, service.pages, publish)
+	pdfs.RegisterHTTP(service)
+	transfer.NewService(data.Workspaces, service.workspace, service.pages, service.images, pdfs, templates, publish).RegisterHTTP(service)
 	service.images.RegisterHTTP(service)
 	service.notifications.RegisterHTTP(service)
 
