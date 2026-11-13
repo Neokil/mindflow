@@ -32,7 +32,6 @@ type Props = {
   isPanning: () => boolean;
   onPointerDown: (event: Konva.KonvaEventObject<PointerEvent>) => void;
   onPointerMove: (event: Konva.KonvaEventObject<PointerEvent>) => void;
-  onPointerUp: (event: Konva.KonvaEventObject<PointerEvent>) => void;
   onZoom: (delta: number, mode: number) => void;
   onSelectElement: (id: string, shift?: boolean) => void;
   onSelectionChange: (ids: string[]) => void;
@@ -64,7 +63,6 @@ export default function CanvasScene({
   isPanning,
   onPointerDown,
   onPointerMove,
-  onPointerUp,
   onZoom,
   onSelectElement,
   onSelectionChange,
@@ -81,6 +79,13 @@ export default function CanvasScene({
   useImperativeHandle(
     interactionRef,
     () => ({
+      finish() {
+        transformer.current?.stopTransform();
+        for (const node of nodes.current.values()) node.stopDrag();
+        transformer.current?.forceUpdate();
+        // Native drag end normally redraws the hit graph synchronously.
+        stageRef.current?.draw();
+      },
       cancel() {
         cancelling.current = true;
         drag.current = undefined;
@@ -236,10 +241,7 @@ export default function CanvasScene({
         updateCursor(event);
         onPointerMove(event);
       }}
-      onPointerUp={(event) => {
-        onPointerUp(event);
-        updateCursor(event);
-      }}
+      onPointerUp={updateCursor}
       onPointerLeave={() => {
         const container = stageRef.current?.container();
         if (container) container.style.cursor = "";

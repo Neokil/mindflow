@@ -9,7 +9,7 @@ import type { Point } from "../../model";
 import type { Camera } from "./types";
 import { touchCamera } from "./touchNavigation";
 
-export type CanvasInteraction = { cancel: () => void };
+export type CanvasInteraction = { cancel: () => void; finish: () => void };
 type Event = Konva.KonvaEventObject<PointerEvent>;
 type Contact = Point & { type: string };
 type Navigation = {
@@ -24,7 +24,7 @@ type Props = {
   onCamera: (camera: Camera) => void;
   start: (event: Event) => void;
   move: (event: Event) => void;
-  end: () => void;
+  end: (event: PointerEvent) => void;
   cancel: () => void;
 };
 
@@ -41,6 +41,7 @@ export default function useCanvasInput({
   cancel,
 }: Props) {
   const contacts = useRef(new Map<number, Contact>());
+  const lastMouse = useRef<PointerEvent | undefined>(undefined);
   const blocked = useRef(new Set<number>());
   const primary = useRef<number | undefined>(undefined);
   const pen = useRef<number | undefined>(undefined);
@@ -53,8 +54,13 @@ export default function useCanvasInput({
   useEffect(() => {
     const interrupt = () => {
       if (!contacts.current.size) return;
-      cancel();
-      scene.current?.cancel();
+      const mouse = lastMouse.current;
+      if (mouse && contacts.current.get(mouse.pointerId)?.type === "mouse") {
+        finishPointer(mouse);
+        scene.current?.finish();
+      } else {
+        cancelInteraction();
+      }
       for (const id of contacts.current.keys()) blocked.current.add(id);
       contacts.current.clear();
       primary.current = undefined;
@@ -66,15 +72,21 @@ export default function useCanvasInput({
     const hidden = () => {
       if (document.hidden) interrupt();
     };
+    const mouseRelease = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") finishPointer(event);
+    };
+    // Fallback when release targets something outside the stage after capture loss.
+    window.addEventListener("pointerup", mouseRelease);
     window.addEventListener("blur", interrupt);
     window.addEventListener("resize", interrupt);
     document.addEventListener("visibilitychange", hidden);
     return () => {
+      window.removeEventListener("pointerup", mouseRelease);
       window.removeEventListener("blur", interrupt);
       window.removeEventListener("resize", interrupt);
       document.removeEventListener("visibilitychange", hidden);
     };
-  }, [cancel, scene]);
+  });
   function surface(event: ReactPointerEvent<HTMLDivElement>) {
     return (
       event.target instanceof Element &&
@@ -89,9 +101,20 @@ export default function useCanvasInput({
     cancel();
     scene.current?.cancel();
   }
+  function finishPointer(input: PointerEvent) {
+    if (primary.current !== input.pointerId) return;
+    if (allowed(input)) {
+      stage.current?.setPointersPositions(input);
+      end(input);
+    }
+    primary.current = undefined;
+    pen.current = undefined;
+    contacts.current.delete(input.pointerId);
+  }
   function down(event: ReactPointerEvent<HTMLDivElement>) {
     if (!surface(event)) return;
     const input = event.nativeEvent;
+    if (input.pointerType === "mouse") lastMouse.current = input;
     blocked.current.delete(input.pointerId);
     if (input.pointerType !== "mouse") setCoarse(true);
     if (pen.current !== undefined && input.pointerId !== pen.current) {
@@ -137,6 +160,14 @@ export default function useCanvasInput({
   function captureMove(event: ReactPointerEvent<HTMLDivElement>) {
     const input = event.nativeEvent;
     const contact = contacts.current.get(input.pointerId);
+    if (contact?.type === "mouse") {
+      if (input.buttons === 0) {
+        finishPointer(lastMouse.current || input);
+        scene.current?.finish();
+        return;
+      }
+      lastMouse.current = input;
+    }
     if (contact)
       contacts.current.set(input.pointerId, {
         ...point(input),
@@ -169,10 +200,18 @@ export default function useCanvasInput({
     if (suspended.current) {
       if (!contacts.current.size) suspended.current = false;
       event.stopPropagation();
+      return;
     }
+    finishPointer(event.nativeEvent);
   }
   function interrupted(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!contacts.current.has(event.pointerId)) return;
+    const contact = contacts.current.get(event.pointerId);
+    if (!contact) return;
+    if (contact.type === "mouse") {
+      finishPointer(lastMouse.current || event.nativeEvent);
+      scene.current?.finish();
+      return;
+    }
     cancelInteraction();
     for (const id of contacts.current.keys())
       if (id !== event.pointerId) blocked.current.add(id);
@@ -246,13 +285,6 @@ export default function useCanvasInput({
         stage.current?.setPointersPositions(event.evt);
       }
       move(event);
-    },
-    up(event: Event) {
-      if (primary.current !== event.evt.pointerId) return;
-      if (allowed(event.evt)) end();
-      primary.current = undefined;
-      pen.current = undefined;
-      contacts.current.delete(event.evt.pointerId);
     },
   };
 }

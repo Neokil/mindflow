@@ -445,7 +445,7 @@ export default function Canvas({
     preview.current?.points(g.points.flatMap((p) => [p.x, p.y]));
     preview.current?.getLayer()?.batchDraw();
   }
-  function pointerUp() {
+  function pointerUp(event: PointerEvent) {
     const g = gesture.current;
     gesture.current = undefined;
     if (!g) return;
@@ -466,19 +466,31 @@ export default function Canvas({
       return;
     }
     if (g.kind === "pan") {
-      const position = stage.current?.position();
-      if (position) setCamera({ ...g.camera, ...position });
+      const p = pointer();
+      setCamera({
+        ...g.camera,
+        x: g.camera.x + p.x - g.start.x,
+        y: g.camera.y + p.y - g.start.y,
+      });
       return;
     }
-    if (g.kind === "create" && session.editable && creation) {
+    if (g.kind === "create" && session.editable && g.element) {
       const distance = Math.hypot(
         pointer().x - (g.start.x * camera.zoom + camera.x),
         pointer().y - (g.start.y * camera.zoom + camera.y),
       );
       const element =
-        distance < 3 && g.element
+        distance < 3
           ? { ...g.element, x: g.start.x, y: g.start.y }
-          : creation;
+          : {
+              ...g.element,
+              ...creationBounds(
+                g.start,
+                worldPoint(pointer(), camera),
+                event.shiftKey,
+                doc.settings,
+              ),
+            };
       editElements([...session.doc.elements, element]);
       setCreation(undefined);
       setSelection([element.id]);
@@ -486,6 +498,11 @@ export default function Canvas({
       setTool("select");
       if (element.type === "text") startText(element);
       return;
+    }
+    if ((g.kind === "lasso" || g.kind === "pen") && g.points.length < 20000) {
+      const last = g.points[g.points.length - 1];
+      const release = worldPoint(pointer(), camera);
+      if (last.x !== release.x || last.y !== release.y) g.points.push(release);
     }
     if (g.kind === "lasso") {
       const ids = lassoSelection(session.doc.elements, g.points);
@@ -619,7 +636,6 @@ export default function Canvas({
           isPanning={() => gesture.current?.kind === "pan"}
           onPointerDown={input.down}
           onPointerMove={input.move}
-          onPointerUp={input.up}
           onSelectElement={selectElement}
           onSelectionChange={setSelection}
           onObjectSettings={(id, position) => {
