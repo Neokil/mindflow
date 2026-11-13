@@ -9,6 +9,15 @@ import (
 	"context"
 )
 
+const editorCancelPageRequest = `-- name: EditorCancelPageRequest :exec
+UPDATE editor_requests SET status='cancelled' WHERE page_id=? AND status='pending'
+`
+
+func (q *Queries) EditorCancelPageRequest(ctx context.Context, pageID string) error {
+	_, err := q.db.ExecContext(ctx, editorCancelPageRequest, pageID)
+	return err
+}
+
 const editorCancelRequests = `-- name: EditorCancelRequests :exec
 UPDATE editor_requests SET status='cancelled' WHERE status='pending'
 `

@@ -97,9 +97,7 @@ test("shares roles, discusses points and fences writers across users", async ({
     await expect(
       page.getByRole("button", { name: "Rectangle", exact: true }),
     ).toBeEnabled();
-    await guest
-      .getByRole("button", { name: `Open ${name}`, exact: true })
-      .click();
+    await guest.goto(page.url());
     await expect(guest.getByTestId("element-count")).toHaveText("1 element");
     await guest
       .getByRole("button", { name: "Workspace sharing", exact: true })
@@ -194,6 +192,15 @@ test("shares roles, discusses points and fences writers across users", async ({
         exact: true,
       }),
     ).toBeVisible();
+    const acceptBox = await page
+      .getByRole("button", { name: /^Accept \(\d+\)$/ })
+      .boundingBox();
+    const denyBox = await page
+      .getByRole("button", { name: "Deny", exact: true })
+      .boundingBox();
+    expect(acceptBox!.x - (denyBox!.x + denyBox!.width)).toBeGreaterThanOrEqual(
+      10,
+    );
     await page.getByRole("button", { name: "Deny", exact: true }).click();
     await expect(
       guest.getByRole("dialog", {

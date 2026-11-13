@@ -482,14 +482,14 @@ export class PageSession {
     this.control = undefined;
     this.notify();
   }
-  async takeover() {
+  async takeover(force = false) {
     if (this.busy || this.recovery || !this.canWrite) return;
     try {
       if (this.dirty) this.recovery = clone(this.doc);
       const lease = await this.request<Lease>(
         `/pages/${this.id}/lease`,
         "POST",
-        { clientId: this.clientId, action: "takeover" },
+        { clientId: this.clientId, action: force ? "force" : "takeover" },
       );
       const data = await this.request<PageData>(`/pages/${this.id}/document`);
       this.doc = data.document;

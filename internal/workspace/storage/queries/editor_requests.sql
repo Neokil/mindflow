@@ -10,3 +10,6 @@ UPDATE editor_requests SET status='cancelled' WHERE status='pending';
 
 -- name: EditorDeleteUserRequests :exec
 DELETE FROM editor_requests WHERE requester_id=? OR page_id IN (SELECT page_id FROM page_leases WHERE holder_user_id=?);
+
+-- name: EditorCancelPageRequest :exec
+UPDATE editor_requests SET status='cancelled' WHERE page_id=? AND status='pending';

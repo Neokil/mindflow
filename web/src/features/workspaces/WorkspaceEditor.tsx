@@ -445,7 +445,22 @@ export default function WorkspaceEditor({
           >
             Take control
           </button>
-
+          {session.permission === "owner" && (
+            <button
+              className="secondary compact"
+              disabled={!!session.recovery}
+              onClick={() => {
+                if (
+                  confirm(
+                    "Force control immediately? The current editor will become read-only.",
+                  )
+                )
+                  void session.takeover(true);
+              }}
+            >
+              Force control
+            </button>
+          )}
         </div>
       )}
       {[...sessions.current.entries()]

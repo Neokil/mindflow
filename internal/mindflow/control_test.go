@@ -96,3 +96,38 @@ func TestControlRequestCancelsAfterRequesterSignsOut(t *testing.T) {
 		t.Fatal("signed-out requester received control")
 	}
 }
+
+func TestOnlyWorkspaceOwnerMayForceControl(t *testing.T) {
+	t.Parallel()
+	owner := fixture(t)
+	owner.setup()
+	member, userID := sharedUser(owner, "editor-admin@example.com")
+	owner.ok("PATCH", "/api/v1/admin/users/"+userID, map[string]string{roleField: "admin"})
+	workspaceID, pageID := owner.workspace()
+	owner.ok("PUT", "/api/v1/workspaces/"+workspaceID+"/members", map[string]string{emailField: "editor-admin@example.com", roleField: fullAccessRole})
+	previous := requestLease(member, pageID, "member-editor", "acquire", "")
+	path := "/api/v1/pages/" + pageID + "/lease"
+	if member.request("POST", path, editor.LeaseCommand{ClientID: "other-editor", Action: "force"}).Code != 403 {
+		t.Fatal("non-owner administrator forced control")
+	}
+	pending := requestLease(owner, pageID, "request-owner", "takeover", "")
+	if pending.Request == nil {
+		t.Fatal("missing approval request")
+	}
+	forced := requestLease(owner, pageID, "forced-owner", "force", "")
+	if !forced.Editable || forced.Epoch <= previous.Epoch {
+		t.Fatal("owner force failed to fence current editor")
+	}
+	stale := member.request("PUT", "/api/v1/pages/"+pageID+"/document", map[string]any{"clientId": "member-editor", "epoch": previous.Epoch, "baseRevision": 0, "mutationId": "forced-stale-save", "document": emptyDocument()})
+	if stale.Code != 409 {
+		t.Fatal("forced-out editor saved", stale.Code)
+	}
+	var pendingCount int
+	err := owner.db.QueryRowContext(t.Context(), "SELECT count(*) FROM editor_requests WHERE page_id=? AND status='pending'", pageID).Scan(&pendingCount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pendingCount != 0 {
+		t.Fatal("force left a live approval request")
+	}
+}

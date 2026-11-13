@@ -36,12 +36,12 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 	if err != nil {
 		return LeaseResult{}, err
 	}
+	command, force, err := a.prepareControl(ctx, transaction, access, resourceID, command)
+	if err != nil {
+		return LeaseResult{}, err
+	}
 	if !storage.CanEdit(access.Role) {
-		if command.Action == leaseTakeover || command.Action == leaseRenew {
-			return LeaseResult{}, &storage.AccessError{}
-		}
-
-		return LeaseResult{Permission: access.Role, Revision: page.Revision}, nil
+		return viewingLease(access.Role, page.Revision, command.Action)
 	}
 	_, err = a.repository.Within(transaction).EditorEnsureLease(ctx, page.ID)
 	if err != nil {
@@ -58,7 +58,7 @@ func (a *Service) Lease(ctx context.Context, actor session.Principal, resourceID
 	if err != nil {
 		return LeaseResult{}, err
 	}
-	if command.Action == leaseTakeover && expires > a.now().Unix() && (session != caller.SessionID || client != command.ClientID) {
+	if !force && command.Action == leaseTakeover && expires > a.now().Unix() && (session != caller.SessionID || client != command.ClientID) {
 		err = a.requestControl(ctx, transaction, actor, resourceID, command.ClientID)
 		if err != nil {
 			return LeaseResult{}, err
@@ -136,9 +136,30 @@ func (a *Service) LeaseStatus(ctx context.Context, actor session.Principal, reso
 
 func validAction(action string) bool {
 	switch action {
-	case "acquire", leaseTakeover, leaseRenew, "release", controlAccept, controlDeny, controlCancel:
+	case "force", "acquire", leaseTakeover, leaseRenew, "release", controlAccept, controlDeny, controlCancel:
 		return true
 	default:
 		return false
 	}
+}
+
+func (a *Service) prepareControl(ctx context.Context, transaction *storage.Transaction, access storage.Access, pageID string, command LeaseCommand) (LeaseCommand, bool, error) {
+	if command.Action != "force" {
+		return command, false, nil
+	}
+	if access.Role != "owner" {
+		return command, false, &storage.AccessError{}
+	}
+	command.Action = leaseTakeover
+	err := a.repository.Within(transaction).EditorCancelPageRequest(ctx, pageID)
+
+	return command, true, err
+}
+
+func viewingLease(role string, revision int, action string) (LeaseResult, error) {
+	if action == leaseTakeover || action == leaseRenew {
+		return LeaseResult{}, &storage.AccessError{}
+	}
+
+	return LeaseResult{Permission: role, Revision: revision}, nil
 }
