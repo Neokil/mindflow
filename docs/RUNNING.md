@@ -163,3 +163,10 @@ Use **Add comment** in the toolbox and click a canvas point to write a comment. 
 This update appends workspace migration 2 and upgrades existing databases automatically. Existing workspaces remain private. Shared image uploads remain with the workspace owner's content if the uploader's account is deleted. Workspace/page copies start without memberships or comment threads.
 
 The multi-user browser tests create disposable invited accounts and read invitation tokens from the temporary fixture's queued email in SQLite using Node's built-in SQLite API. They exercise the actual invite acceptance UI; no token lookup route is exposed by the application and no real email is sent.
+
+
+## Security and dependency maintenance
+
+The production runtime uses `scratch`, a static Go binary, CA certificates and UID/GID 10001. There is no shell; invoke maintenance commands through the image entrypoint, or use `/usr/local/bin/mindflow` with `docker exec`. Keep the HTTP origin private behind your HTTPS tunnel and leave production mode enabled. See [SECURITY.md](../SECURITY.md) for boundaries and scanner limitations.
+
+`make audit` checks module integrity and known Go/npm vulnerabilities. `make upgrade` resolves stable dependencies, pins Actions to commit SHAs and Docker references to digests, regenerates code, and runs the quality gate. See [upgrade options and review steps](upgrading.md). Avatar and control-request migrations are applied automatically during startup; snapshot the complete data directory before upgrading.

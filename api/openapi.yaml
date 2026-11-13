@@ -2450,7 +2450,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Takeover of an active editor creates a pending request. Only that holder may accept/deny and only the requester may cancel. After ten seconds the server automatically accepts, rechecking current edit permission. A control request does not extend its deadline when repeated."
       },
       "get": {
         "summary": "GET /pages/{id}/lease",
@@ -2878,6 +2879,189 @@
           }
         }
       }
+    },
+    "/auth/avatar": {
+      "post": {
+        "summary": "Replace your own avatar",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "CSRF, origin or workspace permission denied"
+          },
+          "404": {
+            "description": "Unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "PNG, JPEG or WebP; at most 2 MB, 8 megapixels and 8192 pixels per side. Re-encoded to a 128px square PNG."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove your own avatar",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "CSRF, origin or workspace permission denied"
+          },
+          "404": {
+            "description": "Unavailable"
+          }
+        }
+      }
+    },
+    "/accounts/{id}/avatar": {
+      "get": {
+        "summary": "View an active account avatar",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Normalized PNG; authenticated and no-store",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "CSRF, origin or workspace permission denied"
+          },
+          "404": {
+            "description": "Unavailable"
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/sharing-info": {
+      "get": {
+        "summary": "Identify the owner of a workspace you can access",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workspace owner public identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "userId": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string"
+                    },
+                    "avatarVersion": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "CSRF, origin or workspace permission denied"
+          },
+          "404": {
+            "description": "Unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3087,11 +3271,18 @@
               "acquire",
               "renew",
               "release",
-              "takeover"
+              "takeover",
+              "accept",
+              "deny",
+              "cancel"
             ]
           },
           "epoch": {
             "type": "integer"
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Required when accepting, denying or cancelling a pending request."
           }
         },
         "additionalProperties": false
@@ -3110,6 +3301,9 @@
           },
           "revision": {
             "type": "integer"
+          },
+          "request": {
+            "$ref": "#/components/schemas/ControlRequest"
           }
         }
       },
@@ -3178,6 +3372,10 @@
               "admin",
               "user"
             ]
+          },
+          "avatarVersion": {
+            "type": "string",
+            "description": "Changes when the profile PNG is replaced; empty means initials."
           }
         }
       },
@@ -3244,6 +3442,35 @@
             "items": {
               "type": "integer"
             }
+          }
+        }
+      },
+      "ControlRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "requesterEmail": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "integer"
+          },
+          "serverNow": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "incoming": {
+            "type": "boolean"
+          },
+          "requesterId": {
+            "type": "string"
+          },
+          "avatarVersion": {
+            "type": "string"
           }
         }
       }

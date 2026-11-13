@@ -82,9 +82,9 @@ New workspaces are private. Clicking the Private/Shared badge opens sharing sett
 | Full access | Comment capabilities plus editing canvas content, managing pages and taking editor control. |
 | Owner | Full capabilities plus managing sharing and workspace rename, duplication and deletion. |
 
-Full-access users compete for one persisted editor lease per page. A second opener sees a read-only canvas and can explicitly take control, fencing the previous writer. Comment participation does not require the canvas edit lease. Revocation blocks subsequent page, image and comment requests; downgrades/remove fence the affected writer without disturbing other users' leases.
+Full-access users compete for one persisted editor lease per page. A second opener sees a read-only canvas and can request control. The current writer sees the requester’s email with Accept and Deny buttons. Accept shows a ten-second countdown; at zero the request is automatically accepted. The requester sees a waiting dialog with the same countdown/progress and can cancel. Acceptance fences the previous writer. Comment participation does not require the canvas edit lease. Revocation blocks subsequent page, image and comment requests; downgrades/remove fence the affected writer without disturbing other users' leases.
 
-The toolbox includes Add comment. Clicking a canvas point opens a composer; posting adds a point with initials derived from the author's account email. Hovering or focusing a pin opens the thread. Comment/full members can reply to unresolved threads. Only the thread creator or workspace owner can resolve, reopen or delete the whole thread. Resolved pins are hidden by default and can be shown. Removing a thread removes its replies. Comments persist separately from canvas snapshots and do not participate in canvas undo/redo.
+The toolbox includes Add comment. Clicking a canvas point opens a composer; posting adds a point with the author’s avatar or initials derived from their email. Hovering or focusing a pin opens the thread. Comment/full members can reply to unresolved threads. Only the thread creator or workspace owner can resolve, reopen or delete the whole thread. Resolved pins are hidden by default and can be shown. Removing a thread removes its replies. Comments persist separately from canvas snapshots and do not participate in canvas undo/redo.
 
 Account deletion removes that user's owned workspaces, memberships, authored threads and replies. Image uploads made while editing a shared workspace belong to the workspace owner so collaborator deletion does not break retained content. Workspace/page duplication copies the canvas but starts without sharing grants or discussions.
 
@@ -255,3 +255,14 @@ The following product behavior was clarified during technical design. These deci
 - TrueNAS manages backups. All durable application data, including images, is stored in SQLite.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md), [CANVAS_AND_SYNC.md](CANVAS_AND_SYNC.md), and [DEPLOYMENT.md](DEPLOYMENT.md) for the technical drafts. Proposed implementation defaults in those documents are distinguished from interview decisions.
+
+
+### Additional editor and profile behavior
+
+- The top-right settings button shows canvas settings only. Object settings open from Selection properties or right-clicking an object.
+- Holding the middle mouse button pans the canvas.
+- New text defaults to centered horizontal and vertical alignment.
+- Select an insertion tool, press and drag to preview size, then release to create. Shift locks width and height to 1:1. Pen remains freehand; comments are positioned points.
+- Users can upload or remove their profile avatar. Avatars appear beside account identities and on comment pins, with initials as fallback.
+- Sharing dialogs identify the workspace owner for every authorized member.
+- Invitation, password-reset and test emails include styled HTML with clickable links and a plain-text alternative.

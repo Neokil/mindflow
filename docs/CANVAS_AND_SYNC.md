@@ -148,7 +148,7 @@ A lease is scoped to one page and one browser client/tab within an authenticated
 
 Proposed timing: renew every 15 seconds, expire after 60 seconds without successful renewal. A browser close releases best-effort; correctness depends on expiry, never on receiving a close notification. Timer throttling may expire background-tab leases; returning clients must verify control before saving.
 
-Opening a page atomically attempts acquisition if there is no live holder. Otherwise show its latest saved document read-only with a “Take control” action. Takeover is explicit and confirmed. It atomically replaces the holder, increments the persisted epoch, and notifies both sessions. An epoch never resets on expiry/release, preventing old saves from becoming valid again.
+Opening a page atomically attempts acquisition if there is no live holder. Otherwise show its latest saved document read-only with a “Take control” action. Takeover creates a server-persisted request tied to the holder’s session, client and fencing epoch. Both parties see a ten-second countdown. Only that holder can accept or deny; the requester can cancel. At the deadline the server accepts automatically, provided the requester still has full/owner permission and an active account/session. Repeated requests do not extend the deadline; a different concurrent requester is rejected. Acceptance atomically replaces the holder, increments the persisted epoch, and notifies both sessions. The deadline is enforced on server operations, including saves; polling finalizes a due transfer without depending on browser timers. Pending requests are cancelled on server restart. An epoch never resets on expiry/release, preventing old saves from becoming valid again.
 
 The server must check lease fencing inside the same transaction as every page-content mutation. Save and takeover races therefore serialize: either the old save commits before takeover, or it is rejected afterward. SSE delivery speed is not a correctness mechanism.
 
@@ -219,6 +219,15 @@ Text `verticalAlign` defaults to `top` for existing documents. The renderer uses
 
 ### Shared page control and comments
 
-Lease acquisition/status reports `permission` (`owner`, `full`, `comment`, `read`). Viewing roles load the document with `editable=false` and cannot take over. A full member acquires control only when free or via explicit takeover. Role downgrade/removal increments epochs and clears only leases held by the affected account. Server saves always recheck membership inside the same transaction as document/receipt updates.
+Lease acquisition/status reports `permission` (`owner`, `full`, `comment`, `read`). Viewing roles load the document with `editable=false` and cannot take over. A full member acquires control when free or after the control-request flow. Role downgrade/removal increments epochs and clears only leases held by the affected account. Server saves always recheck membership inside the same transaction as document/receipt updates.
 
 Discussion pins and replies use their own endpoints and tables; they never contend for the document writer lease or increment canvas revision. Any permitted reader can view threads, while comment/full roles can post independently of which user holds control. Only workspace owners and thread creators manage threads. SSE notifies current members; comments also poll every five seconds. Revocation removes the rendered document while preserving any existing local unsaved recovery state.
+
+
+## Creation, inspectors and identity
+
+Rectangle, circle, star, text and image tools create a live preview while dragging. Release commits one element with normalized positive bounds, including reverse drags. Shift constrains width and height to 1:1. A click keeps the tool's default size. Pen strokes remain freehand; comments remain points. New text is horizontally centered and vertically middle-aligned; existing text retains its saved alignment and legacy fallback.
+
+The top-right settings button opens only canvas settings. Selection properties in the bottom bar or an object's context menu opens only object properties. Middle-button dragging pans without moving elements; Cmd/Ctrl drag remains available.
+
+Profile avatars are account-owned PNG BLOBs. Uploads accept PNG/JPEG/WebP up to 2 MB, 8 megapixels and 8192px per side; decoding is serialized and output is center-cropped/re-encoded to 128px PNG. This strips metadata and prevents active SVG content. Only the authenticated user may change their avatar. Active-account avatars are visible to signed-in users and are served without caching. Avatar versions are included with account, member and comment-author metadata. Missing avatars use initials. Workspace sharing information exposes the owner to any authorized member; the member-management list remains owner-only.

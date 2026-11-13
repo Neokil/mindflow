@@ -5,8 +5,9 @@ export default function EditorHelp({ close }: { close: () => void }) {
     <Modal title="A few helpful shortcuts" close={close}>
       <div className="shortcut-list">
         {[
-          ["Pan", "Cmd / Ctrl + drag"],
+          ["Pan", "Cmd / Ctrl + drag or middle button"],
           ["Zoom around cursor", "Scroll"],
+          ["Create an element", "Drag; Shift for 1:1"],
           ["Select enclosed elements", "Drag a freehand lasso"],
           ["Add to selection", "Shift + click / lasso"],
           ["Undo / redo", "Cmd / Ctrl + Z / Shift + Z"],

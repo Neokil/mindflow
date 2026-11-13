@@ -1,6 +1,6 @@
 # Updating dependencies
 
-Run `make upgrade` in a clean working tree with Go, Node/npm, Python 3, and network access available. It resolves current stable versions from official registries and releases, updates Go modules and npm dependencies, refreshes sqlc, golangci-lint and govulncheck, and updates GitHub Actions and Docker image references. Actions remain pinned to full commit SHAs; images are pinned to registry digests. The final runtime remains `scratch`.
+Run `make upgrade` in a clean working tree with Go, Node/npm, Python 3, and network access available. It resolves current stable versions from official registries and releases, updates Go modules and npm dependencies, refreshes sqlc, golangci-lint, actionlint and govulncheck, and updates GitHub Actions and Docker image references. Actions remain pinned to full commit SHAs; images are pinned to registry digests. The final runtime remains `scratch`.
 
 `make upgrade UPGRADE_FLAGS=--dry-run` resolves the reference changes without writing files or installing dependencies. `make upgrade UPGRADE_FLAGS=--full` additionally runs browser and Docker verification. The default runs generation, formatting/lint checks, tests, and vulnerability scans. Resolution or verification failures stop the command and leave the diff available for review. It never commits, pushes, or publishes.
 
