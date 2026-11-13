@@ -1,10 +1,15 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Page, type Locator } from "@playwright/test";
 import { readFileSync } from "node:fs";
 const email = "owner@test.invalid",
   password = "a private test passphrase";
+export async function activate(page: Page, target: Locator) {
+  if (await page.evaluate(() => "ontouchstart" in window)) await target.tap();
+  else await target.click();
+}
 export async function login(page: Page) {
   await page.goto("/");
-  await page.bringToFront();
+  if (page.context().browser()?.browserType().name() === "firefox")
+    await page.bringToFront();
   if (await page.getByLabel("Setup credential").isVisible()) {
     await page
       .getByLabel("Setup credential")
@@ -17,23 +22,31 @@ export async function login(page: Page) {
     await page.getByLabel("SMTP host").fill("127.0.0.1");
     await page.getByLabel("Port", { exact: true }).fill("9");
     await page.getByLabel("Sender email").fill("mindflow@test.invalid");
-    await page
-      .getByRole("button", { name: "Create mindflow", exact: true })
-      .click();
+    await activate(
+      page,
+      page.getByRole("button", { name: "Create mindflow", exact: true }),
+    );
   }
+  await expect(
+    page.getByRole("button", { name: "Sign in", exact: true }),
+  ).toBeVisible();
   await page.getByLabel("Email address", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await activate(
+    page,
+    page.getByRole("button", { name: "Sign in", exact: true }),
+  );
   await expect(
     page.getByRole("heading", { name: "Workspaces", exact: true }),
   ).toBeVisible();
 }
 export async function create(page: Page, name: string) {
-  await page
-    .getByRole("button", { name: "New workspace", exact: true })
-    .click();
+  await activate(
+    page,
+    page.getByRole("button", { name: "New workspace", exact: true }),
+  );
   await page.getByLabel("Name", { exact: true }).fill(name);
-  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await activate(page, page.getByRole("button", { name: "Save", exact: true }));
   await expect(page.getByTestId("canvas")).toBeVisible();
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
 }

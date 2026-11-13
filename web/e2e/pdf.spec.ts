@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { login, create } from "./helpers";
+import { login, create, activate } from "./helpers";
 import type { CanvasDocument } from "../src/model";
 import { pdfFixture } from "./pdf-fixture";
 test("imports PDF images onto this canvas, separate pages, and a retained viewer", async ({
@@ -11,17 +11,22 @@ test("imports PDF images onto this canvas, separate pages, and a retained viewer
   await create(page, `PDF tools ${Date.now()}`);
   const id = page.url().split("/pages/")[1];
   const choose = async (mode: string) => {
-    await page.getByRole("button", { name: "Import PDF", exact: true }).click();
+    await activate(
+      page,
+      page.getByRole("button", { name: "Import PDF", exact: true }),
+    );
     await page.getByLabel("PDF file", { exact: true }).setInputFiles({
       name: "example.pdf",
       mimeType: "application/pdf",
       buffer: pdfFixture(),
     });
     await page.getByLabel("PDF placement").selectOption(mode);
-    await page
-      .getByRole("dialog", { name: "Import PDF", exact: true })
-      .getByRole("button", { name: "Import PDF", exact: true })
-      .click();
+    await activate(
+      page,
+      page
+        .getByRole("dialog", { name: "Import PDF", exact: true })
+        .getByRole("button", { name: "Import PDF", exact: true }),
+    );
     await expect(
       page.getByRole("dialog", { name: "Import PDF", exact: true }),
     ).toHaveCount(0, { timeout: 30000 });
@@ -43,23 +48,32 @@ test("imports PDF images onto this canvas, separate pages, and a retained viewer
   const raw = await page.request.get(`/api/v1/assets/${pdf.assetId}`);
   expect(raw.headers()["content-type"]).toBe("application/pdf");
   expect(raw.headers()["content-disposition"]).toContain("attachment");
-  await page
-    .getByRole("button", { name: "Selection properties", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "Open PDF viewer", exact: true })
-    .click();
+  await activate(
+    page,
+    page.getByRole("button", { name: "Selection properties", exact: true }),
+  );
+  await activate(
+    page,
+    page.getByRole("button", { name: "Open PDF viewer", exact: true }),
+  );
   await expect(
     page.getByRole("img", { name: "PDF page 1", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Next page", exact: true }).click();
+  await activate(
+    page,
+    page.getByRole("button", { name: "Next page", exact: true }),
+  );
   await expect(
     page.getByRole("img", { name: "PDF page 2", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Close dialog", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Close settings", exact: true })
-    .click();
+  await activate(
+    page,
+    page.getByRole("button", { name: "Close dialog", exact: true }),
+  );
+  await activate(
+    page,
+    page.getByRole("button", { name: "Close settings", exact: true }),
+  );
   await choose("pages");
   await expect(page.getByRole("tab", { name: /example.*1/ })).toBeVisible();
   await expect(page.getByRole("tab", { name: /example.*2/ })).toBeVisible();
