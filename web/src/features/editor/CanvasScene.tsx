@@ -310,7 +310,12 @@ export default function CanvasScene({
               }}
               onPointerDblClick={(event) => {
                 if (!allowPointer(event.evt)) return;
-                if (e.type === "text" && !e.locked) onTextEdit(e);
+                if (event.evt.pointerType === "pen") {
+                  onObjectSettings(e.id, {
+                    x: event.evt.clientX,
+                    y: event.evt.clientY,
+                  });
+                } else if (e.type === "text" && !e.locked) onTextEdit(e);
               }}
               onDragStart={(event) => {
                 const container = stageRef.current?.container();

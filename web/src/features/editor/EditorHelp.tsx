@@ -13,6 +13,7 @@ export default function EditorHelp({ close }: { close: () => void }) {
           ["Pan", "Pan tool (H), Cmd/Ctrl + drag, or middle button"],
           ["Zoom around cursor", "Scroll; two-finger pinch on tablets"],
           ["Create an element", "Drag; Shift for 1:1"],
+          ["Object properties", "Right-click; Pencil double-tap in Select"],
           ["Select enclosed elements", "Drag a freehand lasso"],
           ["Add to selection", "Shift + click / lasso"],
           ["Undo / redo", "Cmd / Ctrl + Z / Shift + Z"],

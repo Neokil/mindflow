@@ -267,3 +267,48 @@ test("image upload, object properties and comments work without a mouse", async 
   await page.getByRole("button", { name: "Reply", exact: true }).tap();
   await expect(page.getByText("And a reply", { exact: true })).toBeVisible();
 });
+
+test("Pencil double taps open object properties beside the pen, including for text", async ({
+  page,
+  browserName,
+}) => {
+  const { input, point } = await prepare(
+    page,
+    browserName,
+    "Pencil properties",
+  );
+  await page.getByRole("button", { name: "Rectangle", exact: true }).tap();
+  await input.drag(point(250, 220), point(450, 340));
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  const doubleTap = async (x: number, y: number) => {
+    const p = point(x, y);
+    for (let tap = 0; tap < 2; tap++) {
+      await input.pen("down", p.x, p.y);
+      await input.pen("up", p.x, p.y);
+      if (tap === 0)
+        await expect(
+          page.getByLabel("Object properties", { exact: true }),
+        ).toHaveCount(0);
+    }
+    await expect(
+      page.getByLabel("Object properties", { exact: true }),
+    ).toBeVisible();
+    const panel = (await page
+      .getByLabel("Object properties", { exact: true })
+      .boundingBox())!;
+    expect(panel.x).toBeCloseTo(p.x, 0);
+    await expect(page.getByLabel("Edit canvas text")).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Close settings", exact: true })
+      .tap();
+  };
+  await doubleTap(350, 280);
+  await page.getByRole("button", { name: "Text (T)", exact: true }).tap();
+  await input.drag(point(250, 500), point(450, 600));
+  await page.getByLabel("Edit canvas text").fill("Pencil properties");
+  await page
+    .getByRole("button", { name: "Done editing text", exact: true })
+    .tap();
+  await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  await doubleTap(350, 550);
+});
