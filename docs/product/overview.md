@@ -8,6 +8,8 @@ Users organize their work in private-by-default workspaces containing tabbed inf
 
 Butterfly version-13 exports can be imported into new private workspaces, preserving ordered pages, embedded images, text, freehand strokes, and rectangle/ellipse shapes. Conversion notes identify approximations and unsupported content.
 
+Selections can be saved as workspace templates and inserted on other pages as independently editable copies. Groups can be locked to protect them against accidental editing or movement.
+
 Workspaces can be shared with existing users as read-only, comment, or full access. Comment threads attach conversations to canvas points. Each page has one writer at a time; other users can request control, and the workspace owner can force a transfer. Saved changes are visible to other sessions.
 
 Accounts are invite-only. Administrators manage users and invitations without gaining access to private workspaces. The first administrator and email settings are configured during initial setup.

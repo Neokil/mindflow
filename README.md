@@ -57,6 +57,7 @@ For TrueNAS Apps, use [the installation guide](docs/user-docs/installation.md) a
 
 - **Room for ideas:** infinite pan and cursor-centered zoom, tabbed pages, a dot grid, and optional snapping.
 - **Create freely:** drag to size images, shapes, and text; draw with the mouse. Crop, rotate, group, duplicate, and arrange elements.
+- **Reuse layouts:** save selections as workspace templates and lock groups to keep finished content in place.
 - **Share deliberately:** invite-only accounts and private workspaces, with read-only, comment, or full access for selected users.
 - **Discuss in context:** positioned comments, replies, avatars, and resolution controls.
 - **Stay in control:** one writer per page, approval-based control requests, owner force control, and recovery of displaced unsaved work.

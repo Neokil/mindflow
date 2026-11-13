@@ -11,6 +11,7 @@ SQLite is the persistent store for documents, original/derived image BLOBs, acco
 | Workspace | `page_leases`, `editor_requests` | Current writer/session/client, fencing epoch/expiry, and pending/finished control requests. |
 | Workspace | `assets`, `asset_variants`, `page_assets` | Immutable originals, size-bucket variants, and retained page/image associations. |
 | Workspace | `save_receipts`, `image_jobs` | Idempotent save acknowledgments and deferred image processing. |
+| Workspace | `workspace_templates`, `template_assets` | Named reusable element snapshots and retained image references. |
 | Workspace | `comment_threads`, `comment_messages` | Positioned discussions, authorship, replies, and resolution. |
 | Workspace | `workspace_access`, `asset_access` views | Workspace roles and authorized image visibility. |
 | Email | `mail_jobs` | Deduplicated credential email, attempts, next run, and delivery status. |
@@ -35,6 +36,9 @@ erDiagram
     pages ||--o{ page_assets : retains
     assets ||--o{ page_assets : references
     assets ||--o{ asset_variants : derives
+    workspaces ||--o{ workspace_templates : defines
+    workspace_templates ||--o{ template_assets : retains
+    assets ||--o{ template_assets : references
 ```
 
 ## Canvas JSON
@@ -65,7 +69,7 @@ A page's `document` is versioned JSON. `pages.revision` tracks saved document ch
 
 `settings.backgroundColor` optionally stores a validated CSS color, independent of the dot/plain background pattern. Omitting it keeps the normal theme background. Butterfly imports use it to preserve solid page colors; existing documents require no migration.
 
-The ordered element list defines stacking, back to front. Common fields are stable `id`, `type`, center `x/y` in world units, positive local `width/height`, rotation in radians, and optional `groupId`. Groups are flat memberships; transforms update the member elements.
+The ordered element list defines stacking, back to front. Common fields are stable `id`, `type`, center `x/y` in world units, positive local `width/height`, rotation in radians, and optional `groupId`. Groups are flat memberships; transforms update the member elements. Optional `locked: true` marks group members as fixed in the editor. Every member of a group must have the same lock state; ungrouped elements cannot be locked. Missing `locked` means false. No document-schema bump is required.
 
 | Element type | Additional fields |
 | --- | --- |
@@ -78,8 +82,9 @@ New text defaults to horizontal center/vertical middle. Legacy missing alignment
 
 ## Lifecycles and storage details
 
-- Image originals are immutable. Variants are keyed by asset and resolution bucket; a workspace can scope uploads to its owner. `page_assets` retains images for page history/recovery, and duplicate pages can share those originals. Removing an element does not immediately destroy its retained image.
+- Image originals are immutable. Variants are keyed by asset and resolution bucket; a workspace can scope uploads to its owner. `page_assets` and `template_assets` retain images for page history/recovery and reusable snapshots, and duplicate pages can share those originals. Removing an element does not immediately destroy its retained image.
 - Workspace deletion cascades through its pages, memberships, discussions, and related page records. Cross-domain account deletion removes owned content and related memberships/authored discussion/requests through service collaborators. Shared uploads belong to the workspace owner, so deleting their uploader does not remove retained shared content.
+- Workspace templates store validated element JSON separately from pages, with bounded counts and size. They have no dependency on source element IDs or page lifetimes. Insertions assign fresh IDs, remove grouping/locks, and retain immutable image references. Workspace copies retain template assets across deletion of the source workspace.
 - Comment threads/messages live outside the page JSON and its document revision. Authors and permissions are assigned/checked by the server.
 - Avatar uploads become metadata-free 128px square PNGs; `users.avatar_version` changes when the image changes.
 - Sessions store verifier hashes; invitation/reset records store token hashes. Pending email payloads and SMTP configuration are sensitive backup contents.

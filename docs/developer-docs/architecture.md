@@ -9,7 +9,7 @@ mindflow is one Go process serving an embedded React/TypeScript frontend, a same
 | `cmd/mindflow` | Server entrypoint, health check, migrations, data checks, and credential revocation commands. |
 | `cmd/genmigrations` | Generate/check the embedded domain migration catalog. |
 | `internal/account` | Accounts, password policy, avatars, authentication, sessions, invitations, and resets. |
-| `internal/workspace` | Workspaces, sharing, pages, canvas documents, editor control, comments, and images. |
+| `internal/workspace` | Workspaces, sharing, pages, canvas documents, editor control, comments, images, imports, and workspace templates. |
 | `internal/email` | SMTP delivery and retry queue. |
 | `internal/installation` | Initial setup and instance configuration. |
 | `internal/mindflow` | Compose domain services and provide common HTTP mechanics. Its storage package owns connection/migration infrastructure, not all domain queries. |
@@ -22,7 +22,7 @@ mindflow is one Go process serving an embedded React/TypeScript frontend, a same
 
 ## Backend domains
 
-Behavior belongs to the domain that owns it. Account subdomains include `authentication`, `session`, `invitation`, `passwordreset`, and `avatar`. Workspace subdomains include `sharing`, `image`, `page`, and the page's `canvas`, `editor`, and `comment` packages.
+Behavior belongs to the domain that owns it. Account subdomains include `authentication`, `session`, `invitation`, `passwordreset`, and `avatar`. Workspace subdomains include `sharing`, `image`, `template`, `butterfly`, `page`, and the page's `canvas`, `editor`, and `comment` packages.
 
 Only the topmost domain defines its database structure. Its `storage/` contains repository adapters, sqlc queries/generated bindings, and Goose migrations. Nested domains share that parent storage. The account, workspace, email, and installation schemas are independent: no cross-domain foreign keys or table access. References into another domain are opaque IDs.
 
@@ -32,7 +32,7 @@ Authentication is a domain and HTTP middleware. Domain handlers declare whether 
 
 ## Frontend boundaries
 
-React owns application navigation and UI state. Konva renders a viewport-sized canvas; world coordinates remain independent of the camera. `CanvasScene` renders/transforms elements, while components handle tools, text input, crop dialogs, comments, canvas settings, and anchored object properties. Canvas and object inspectors have separate visibility state.
+React owns application navigation and UI state. Konva renders a viewport-sized canvas; world coordinates remain independent of the camera. `CanvasScene` renders/transforms elements, while components handle tools, text input, crop dialogs, comments, canvas settings, and anchored object properties. Canvas and object inspectors have separate visibility state. `TemplateLibrary` manages named snapshots and `templates.ts` creates independent placements; template persistence belongs to the workspace `template` subdomain and parent storage.
 
 `PageSession` owns the saved document/revision, client identity, editor epoch, local history, pending saves, and recovery copy. Components request edits instead of implementing parallel save protocols. Media loading keeps original/variant selection separate from document editing.
 

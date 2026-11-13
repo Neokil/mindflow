@@ -47,6 +47,16 @@ To crop, select one image and choose **Crop image** in its properties. Draw/adju
 
 Open **Your profile** beside your email to upload or remove an avatar. Avatars use PNG/JPEG/WebP up to 2 MiB, 8 megapixels, and 8,192 pixels per side, and are cropped to a square. Initials appear when no avatar is set. Appearance follows your system preference by default and updates when it changes. The appearance button cycles system/light/dark mode if you want an explicit override.
 
+## Workspace templates and locked groups
+
+Select one or more elements and choose **Save as template** in the bottom selection bar or object properties. Give it a name such as “Heading”. Choose **Workspace templates** in the drawing toolbar on any page, select **Insert**, and click on the canvas to place the preview. Escape cancels placement.
+
+Templates are snapshots of the selection, including images and relative placement. Insertions get fresh identities and start ungrouped and unlocked, so each element can be edited independently. Editing an original, template copy, or another instance does not change the others. Original images remain available even if the source page is deleted. The library supports up to 100 templates per workspace, 500 elements and 1 MiB of element data per template. Names must be unique within the workspace.
+
+All workspace members can view the library. Owners and full-access members can save or delete templates; inserting requires page editor control. Deleting a template leaves inserted elements unchanged. Duplicating a workspace also copies its template library into the new private workspace.
+
+To fix objects in place, select them, group them with Cmd/Ctrl + G, and choose **Lock groups** in the selection bar or object properties. Locked groups remain selectable and show dashed outlines, but cannot be dragged, resized, rotated, edited, reordered, ungrouped, or deleted through the editor. A selection containing a locked group is protected as a whole. Choose **Unlock groups** before changing it. Locking is saved with the page and supports undo/redo; an editor with full access and control can unlock a group. It is an editing safeguard, not a separate access permission. Copies and templates can still be made from locked content.
+
 ## Sharing and comments
 
 Click **Private** beside the workspace name to add an existing active user's email. The badge becomes **Shared**; every member can see who owns the workspace.
