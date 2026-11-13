@@ -37,8 +37,8 @@ func NormalizeEmail(settings string) (string, error) {
 
 // ValidatePassword checks the supported password length.
 func ValidatePassword(password string) error {
-	if utf8.RuneCountInString(password) < retryBaseSeconds || utf8.RuneCountInString(password) > 128 {
-		return invalid("Use a password between 15 and 128 characters.")
+	if utf8.RuneCountInString(password) < 8 || utf8.RuneCountInString(password) > 128 {
+		return invalid("Use a password between 8 and 128 characters.")
 	}
 
 	return nil

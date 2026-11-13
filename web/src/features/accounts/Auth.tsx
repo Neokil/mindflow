@@ -5,6 +5,7 @@ import type { Settings, User } from "../../api";
 import { api, setCSRF } from "../../api";
 import { Brand, ErrorMessage, Spinner } from "../../ui";
 import SMTPFields from "./SMTPFields";
+import NewPassword from "./NewPassword";
 export default function Auth({
   setup = false,
   onLogin,
@@ -148,7 +149,7 @@ export default function Auth({
                 : mode.includes("invite")
                   ? "Set a password to accept your invitation."
                   : mode.includes("reset")
-                    ? "Use at least 15 characters. A passphrase works well."
+                    ? "Use at least 8 characters. A random passphrase works well."
                     : "Your ideas, sketches, and inspiration. All in one quiet place."}
           </p>
           <form onSubmit={submit}>
@@ -178,27 +179,27 @@ export default function Auth({
                 />
               </label>
             )}
-            {mode !== "forgot" && (
-              <label>
-                Password
-                <input
-                  type="password"
-                  required
-                  minLength={mode === "login" ? undefined : 15}
-                  maxLength={128}
-                  autoComplete={
-                    mode === "login" ? "current-password" : "new-password"
-                  }
+            {mode !== "forgot" &&
+              (mode === "login" ? (
+                <label>
+                  Password
+                  <input
+                    type="password"
+                    required
+                    maxLength={128}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Your password"
+                  />
+                </label>
+              ) : (
+                <NewPassword
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={
-                    mode === "login"
-                      ? "Your password"
-                      : "At least 15 characters"
-                  }
+                  onChange={setPassword}
+                  disabled={busy}
                 />
-              </label>
-            )}
+              ))}
             {mode === "setup" && (
               <>
                 <hr />

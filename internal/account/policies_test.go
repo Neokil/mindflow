@@ -23,3 +23,15 @@ func TestAdministratorAndInvitationRules(t *testing.T) {
 		t.Fatal("valid account update refused")
 	}
 }
+
+func TestPasswordLength(t *testing.T) {
+	t.Parallel()
+	for _, value := range []struct {
+		password string
+		valid    bool
+	}{{"1234567", false}, {"12345678", true}, {"éééééééé", true}, {"a long random passphrase", true}} {
+		if (account.ValidatePassword(value.password) == nil) != value.valid {
+			t.Errorf("unexpected validation for length %d", len([]rune(value.password)))
+		}
+	}
+}
