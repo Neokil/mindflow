@@ -54,6 +54,17 @@ func (q *Queries) AccessWorkspace(ctx context.Context, arg AccessWorkspaceParams
 	return i, err
 }
 
+const canvasAssetMIME = `-- name: CanvasAssetMIME :one
+SELECT mime FROM assets WHERE id=?
+`
+
+func (q *Queries) CanvasAssetMIME(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, canvasAssetMIME, id)
+	var mime string
+	err := row.Scan(&mime)
+	return mime, err
+}
+
 const canvasAttachAsset = `-- name: CanvasAttachAsset :execresult
 INSERT OR IGNORE INTO page_assets(page_id,asset_id) VALUES(?,?)
 `
@@ -527,7 +538,7 @@ func (q *Queries) EditorUpdateLease(ctx context.Context, arg EditorUpdateLeasePa
 }
 
 const imageAssetDimensions = `-- name: ImageAssetDimensions :one
-SELECT width,height,owner_id FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=?2)
+SELECT width,height,owner_id,mime FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=?2)
 `
 
 type ImageAssetDimensionsParams struct {
@@ -539,12 +550,18 @@ type ImageAssetDimensionsRow struct {
 	Width   int
 	Height  int
 	OwnerID string
+	Mime    string
 }
 
 func (q *Queries) ImageAssetDimensions(ctx context.Context, arg ImageAssetDimensionsParams) (ImageAssetDimensionsRow, error) {
 	row := q.db.QueryRowContext(ctx, imageAssetDimensions, arg.ID, arg.OwnerID)
 	var i ImageAssetDimensionsRow
-	err := row.Scan(&i.Width, &i.Height, &i.OwnerID)
+	err := row.Scan(
+		&i.Width,
+		&i.Height,
+		&i.OwnerID,
+		&i.Mime,
+	)
 	return i, err
 }
 

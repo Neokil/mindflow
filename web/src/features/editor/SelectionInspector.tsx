@@ -31,6 +31,7 @@ type Props = {
   onDelete: () => void;
   onEditText: (element: CanvasElement) => void;
   onCrop: (element: CanvasElement) => void;
+  onPDFOpen: (element: CanvasElement) => void;
   onClose: () => void;
 };
 export default function SelectionInspector({
@@ -50,6 +51,7 @@ export default function SelectionInspector({
   onDelete,
   onEditText,
   onCrop,
+  onPDFOpen,
   onClose,
 }: Props) {
   useEffect(() => {
@@ -122,7 +124,7 @@ export default function SelectionInspector({
             <p className="muted">Unlock the group to edit its elements.</p>
           )}
           <span className="eyebrow">APPEARANCE</span>
-          {first?.type !== "image" && (
+          {first?.type !== "image" && first?.type !== "pdf" && (
             <>
               <label>
                 Color
@@ -320,6 +322,11 @@ export default function SelectionInspector({
                 </>
               )}
             </>
+          )}
+          {first.type === "pdf" && selected.length === 1 && (
+            <button className="secondary full" onClick={() => onPDFOpen(first)}>
+              Open PDF viewer
+            </button>
           )}
           {first.type === "image" && selected.length === 1 && (
             <button

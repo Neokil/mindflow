@@ -165,6 +165,9 @@ func orient(src image.Image, orientation int) image.Image {
 func (a *Service) QueueVariant(ctx context.Context, owner, resourceID string, width, height float64) error {
 	var originalWidth, originalHeight int
 	assetDimensionsRow, err := a.repository.ImageAssetDimensions(ctx, storage.ImageAssetDimensionsParams{ID: resourceID, OwnerID: owner})
+	if assetDimensionsRow.Mime == "application/pdf" {
+		return invalid("PDF previews are created during import.")
+	}
 	originalWidth = assetDimensionsRow.Width
 	originalHeight = assetDimensionsRow.Height
 	if err != nil {

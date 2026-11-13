@@ -1,3 +1,5 @@
+import PDFImportDialog from "../pdf/PDFImportDialog";
+import PDFViewer from "../pdf/PDFViewer";
 import useCanvasInput from "./useCanvasInput";
 import type { CanvasInteraction } from "./useCanvasInput";
 import ColorInput from "../../ColorInput";
@@ -54,10 +56,14 @@ import useEditorShortcuts from "./useEditorShortcuts";
 export default function Canvas({
   session,
   refresh = 0,
+  onImportedPages,
 }: {
   session: PageSession;
   refresh?: number;
+  onImportedPages: (id: string) => void;
 }) {
+  const [pdfImport, setPDFImport] = useState(false);
+  const [viewingPDF, setViewingPDF] = useState<string>();
   const accent = useCanvasAccent();
   const interaction = useRef<CanvasInteraction>(null);
   const host = useRef<HTMLDivElement>(null),
@@ -660,6 +666,7 @@ export default function Canvas({
             setObjectSettingsAnchor(position);
           }}
           onTextEdit={startText}
+          onPDFOpen={(element) => setViewingPDF(element.assetId)}
           onElementsChange={editElements}
           onZoom={(delta, mode) =>
             setCamera(
@@ -756,6 +763,7 @@ export default function Canvas({
         }}
         onTemplates={() => setTemplatesOpen("browse")}
         onImages={() => fileInput.current?.click()}
+        onPDF={() => setPDFImport(true)}
         onUndo={() => session.undo()}
         onRedo={() => session.redo()}
       />
@@ -789,6 +797,39 @@ export default function Canvas({
                       : `Drag to size a ${tool}. Hold Shift for a square.`}
           <kbd>esc</kbd>
         </div>
+      )}
+      {pdfImport && (
+        <PDFImportDialog
+          workspaceId={session.workspaceId}
+          elementCount={doc.elements.length}
+          close={() => setPDFImport(false)}
+          onPages={onImportedPages}
+          onElements={(elements) => {
+            if (!session.editable)
+              throw new Error(
+                "Editor control was lost. Take control and retry the import.",
+              );
+            const center = worldPoint(
+              { x: size.width / 2, y: size.height / 2 },
+              camera,
+            );
+            const first = elements[0];
+            const placed = elements.map((element) => ({
+              ...element,
+              x: element.x + center.x - first.x,
+              y: element.y + center.y - first.y,
+            }));
+            editElements([...session.doc.elements, ...placed]);
+            setSelection(placed.map((element) => element.id));
+            setTool("select");
+          }}
+        />
+      )}
+      {viewingPDF && (
+        <PDFViewer
+          assetId={viewingPDF}
+          close={() => setViewingPDF(undefined)}
+        />
       )}
       {(tool === "pen" || tool === "highlighter") && session.editable && (
         <div className="pen-options">
@@ -861,6 +902,7 @@ export default function Canvas({
           onDelete={remove}
           onEditText={startText}
           onCrop={setCropping}
+          onPDFOpen={(element) => setViewingPDF(element.assetId)}
           onClose={() => setObjectSettingsAnchor(undefined)}
         />
       )}

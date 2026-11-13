@@ -4,6 +4,7 @@ import {
   Blocks,
   MessageCircle,
   ImagePlus,
+  FileUp,
   MousePointer2,
   Pencil,
   Highlighter,
@@ -23,6 +24,7 @@ type Props = {
   canRedo: boolean;
   onTool: (tool: Tool) => void;
   onImages: () => void;
+  onPDF: () => void;
   onTemplates: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -47,6 +49,7 @@ export default function EditorToolbar({
   canRedo,
   onTool,
   onImages,
+  onPDF,
   onTemplates,
   onUndo,
   onRedo,
@@ -87,6 +90,15 @@ export default function EditorToolbar({
         onClick={onImages}
       >
         <ImagePlus size={18} />
+      </button>
+      <button
+        className="tool"
+        aria-label="Import PDF"
+        title="Import PDF"
+        disabled={!editable}
+        onClick={onPDF}
+      >
+        <FileUp size={18} />
       </button>
       <span className="toolbar-divider" />
       <button

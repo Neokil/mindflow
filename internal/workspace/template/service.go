@@ -161,7 +161,7 @@ func (a *Service) Create(ctx context.Context, actor session.Principal, workspace
 
 func attachAssets(ctx context.Context, queries *storage.Queries, userID, workspaceID, resourceID string, elements []canvas.Element) error {
 	for _, element := range elements {
-		if element.Type != "image" {
+		if element.Type != "image" && element.Type != "pdf" {
 			continue
 		}
 		allowed, err := queries.TemplateAssetAllowed(ctx, storage.TemplateAssetAllowedParams{WorkspaceID: workspaceID, AssetID: element.AssetID, UserID: userID})
@@ -170,6 +170,13 @@ func attachAssets(ctx context.Context, queries *storage.Queries, userID, workspa
 		}
 		if allowed != 1 {
 			return invalid("A template image is not available in this workspace. Wait for uploads to finish and retry.")
+		}
+		mime, mimeErr := queries.CanvasAssetMIME(ctx, element.AssetID)
+		if mimeErr != nil {
+			return mimeErr
+		}
+		if (element.Type == "pdf" && mime != "application/pdf") || (element.Type == "image" && mime == "application/pdf") {
+			return invalid("Asset format does not match the template element.")
 		}
 		err = queries.TemplateAttachAsset(ctx, storage.TemplateAttachAssetParams{TemplateID: resourceID, AssetID: element.AssetID})
 		if err != nil {

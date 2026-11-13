@@ -506,7 +506,16 @@ export default function WorkspaceEditor({
           <Spinner />
         </div>
       ) : session?.loaded ? (
-        <Canvas key={pageId} session={session} refresh={refresh} />
+        <Canvas
+          key={pageId}
+          session={session}
+          refresh={refresh}
+          onImportedPages={(id) => {
+            void load()
+              .then(() => setPageId(id))
+              .catch((err) => setError(err.message));
+          }}
+        />
       ) : session?.status === "Page unavailable" ||
         (pageId && !pages.some((page) => page.id === pageId)) ? (
         <Empty icon={<LockKeyhole size={25} />} title="Page unavailable">

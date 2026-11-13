@@ -167,7 +167,7 @@ func validateElement(entry Element) error {
 		if len(entry.Text) > 100000 || entry.FontSize < 1 || entry.FontSize > 2000 || !ValidColor(entry.Color) || (entry.Align != "left" && entry.Align != "center" && entry.Align != "right") {
 			return invalid("Invalid text style or size.")
 		}
-	case elementImage:
+	case elementImage, elementPDF:
 		if entry.AssetID == "" || len(entry.AssetID) > maxIdentifierLength {
 			return invalid("Image asset is missing.")
 		}

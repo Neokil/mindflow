@@ -59,6 +59,9 @@ func (a *httpHandler) getAsset(writer http.ResponseWriter, r *http.Request) (any
 		return nil, err
 	}
 	writer.Header().Set("Content-Type", blob.MIME)
+	if blob.MIME == "application/pdf" {
+		writer.Header().Set("Content-Disposition", "attachment; filename=document.pdf")
+	}
 	writer.Header().Set("Content-Length", strconv.Itoa(len(blob.Data)))
 	writer.Header().Set("X-Image-Width", strconv.Itoa(blob.Width))
 	writer.Header().Set("X-Image-Height", strconv.Itoa(blob.Height))

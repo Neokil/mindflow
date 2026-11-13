@@ -5,6 +5,7 @@ const (
 	defaultFillColor   = "#1b5e3b"
 	defaultGoldColor   = "#d9a441"
 	elementImage       = "image"
+	elementPDF         = "pdf"
 	elementText        = "text"
 
 	maxElements         = 10000

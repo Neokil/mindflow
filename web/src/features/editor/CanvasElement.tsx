@@ -47,6 +47,12 @@ function ImageContent({
           if (!canceled) setFailed(true);
         });
     };
+    if (e.type === "pdf") {
+      load(`/api/v1/assets/${assetID}?bucket=1024`);
+      return () => {
+        canceled = true;
+      };
+    }
     if (assetID.startsWith("local:")) {
       if (local) load(local.url);
       return () => {
@@ -84,7 +90,7 @@ function ImageContent({
       clearTimeout(retry);
     };
     // Re-evaluate image resolution only when the actual display requirement changes.
-  }, [assetID, renderWidth, renderHeight, refresh]);
+  }, [assetID, renderWidth, renderHeight, refresh, e.type]);
   return image ? (
     <KImage
       image={image}
@@ -136,8 +142,25 @@ const ElementContent = memo(function ElementContent({
   refresh: number;
   onToggleCheck?: (index: number) => void;
 }) {
-  if (e.type === "image")
-    return <ImageContent element={e} zoom={zoom} refresh={refresh} />;
+  if (e.type === "image" || e.type === "pdf")
+    return (
+      <>
+        <ImageContent element={e} zoom={zoom} refresh={refresh} />
+        {e.type === "pdf" && (
+          <Text
+            text="PDF · Open viewer in properties"
+            x={-e.width / 2}
+            y={e.height / 2 - 24}
+            width={e.width}
+            height={24}
+            fontSize={12}
+            fill="#1b5e3b"
+            align="center"
+            listening={false}
+          />
+        )}
+      </>
+    );
   if (e.type === "text" && e.listStyle)
     return <CanvasList element={e} onToggle={onToggleCheck} />;
   if (e.type === "text")

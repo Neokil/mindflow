@@ -1960,3 +1960,17 @@ body {
   line-height: 1.5;
   margin: 8px 0 16px;
 }
+
+.pdf-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+}
+.pdf-page {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}

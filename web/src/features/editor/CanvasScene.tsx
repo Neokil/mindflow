@@ -36,6 +36,7 @@ type Props = {
   onSelectElement: (id: string, shift?: boolean) => void;
   onSelectionChange: (ids: string[]) => void;
   onTextEdit: (element: CanvasElement) => void;
+  onPDFOpen: (element: CanvasElement) => void;
   onElementsChange: (elements: CanvasElement[]) => void;
 };
 const radiansToDegrees = (value: number) => (value * 180) / Math.PI;
@@ -67,6 +68,7 @@ export default function CanvasScene({
   onSelectElement,
   onSelectionChange,
   onTextEdit,
+  onPDFOpen,
   onElementsChange,
 }: Props) {
   const nodes = useRef(new Map<string, Konva.Group>()),
@@ -315,7 +317,8 @@ export default function CanvasScene({
                     x: event.evt.clientX,
                     y: event.evt.clientY,
                   });
-                } else if (e.type === "text" && !e.locked) onTextEdit(e);
+                } else if (e.type === "pdf") onPDFOpen(e);
+                else if (e.type === "text" && !e.locked) onTextEdit(e);
               }}
               onDragStart={(event) => {
                 const container = stageRef.current?.container();
@@ -496,7 +499,10 @@ export default function CanvasScene({
               (anchor.includes("top") || anchor.includes("bottom"));
             tr.keepRatio(
               selected.length > 1 ||
-                (corner && (first?.type === "image" || first?.type === "text")),
+                (corner &&
+                  (first?.type === "image" ||
+                    first?.type === "pdf" ||
+                    first?.type === "text")),
             );
           }}
           onTransformEnd={commitTransform}

@@ -118,10 +118,9 @@ func (a *Service) SaveDocument(ctx context.Context, actor session.Principal, res
 func (a *Service) ValidateAssetsWithin(ctx context.Context, transaction *storage.Transaction, owner, pageID string, d Document) error {
 	seen := map[string]bool{}
 	for _, entry := range d.Elements {
-		if entry.Type != elementImage || seen[entry.AssetID] {
+		if entry.Type != elementImage && entry.Type != elementPDF {
 			continue
 		}
-		seen[entry.AssetID] = true
 		var count int
 		countOwnedAssetRow, err := a.images.CountOwnedWithin(ctx, transaction, owner, pageID, entry.AssetID)
 		count = int(countOwnedAssetRow)
@@ -131,6 +130,17 @@ func (a *Service) ValidateAssetsWithin(ctx context.Context, transaction *storage
 		if count != 1 {
 			return failure("asset_missing", "An image is unavailable. Reattach it before saving.")
 		}
+		mime, mimeErr := a.repository.Within(transaction).CanvasAssetMIME(ctx, entry.AssetID)
+		if mimeErr != nil {
+			return mimeErr
+		}
+		if (entry.Type == elementPDF && mime != "application/pdf") || (entry.Type == elementImage && mime != "image/png" && mime != "image/jpeg" && mime != "image/webp") {
+			return invalid("Asset format does not match the element.")
+		}
+		if seen[entry.AssetID] {
+			continue
+		}
+		seen[entry.AssetID] = true
 		_, attachAssetErr := a.repository.Within(transaction).CanvasAttachAsset(ctx, storage.CanvasAttachAssetParams{PageID: pageID, AssetID: entry.AssetID})
 		if attachAssetErr != nil {
 			return attachAssetErr

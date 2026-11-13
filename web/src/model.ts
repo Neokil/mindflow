@@ -1,7 +1,7 @@
 export type ImageCrop = { x: number; y: number; width: number; height: number };
 export type CanvasElement = {
   id: string;
-  type: "image" | "shape" | "text" | "stroke";
+  type: "image" | "shape" | "text" | "stroke" | "pdf";
   x: number;
   y: number;
   width: number;
@@ -126,7 +126,7 @@ export function validClipboardElements(
     if (
       !e ||
       typeof e !== "object" ||
-      !["image", "shape", "text", "stroke"].includes(e.type)
+      !["image", "shape", "text", "stroke", "pdf"].includes(e.type)
     )
       return false;
     for (const key of ["x", "y", "width", "height", "rotation"])

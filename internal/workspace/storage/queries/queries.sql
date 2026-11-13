@@ -107,7 +107,7 @@ SELECT id,width,height,mime FROM assets WHERE id=? AND id IN (SELECT asset_id FR
 SELECT bucket FROM asset_variants WHERE asset_id=? ORDER BY bucket;
 
 -- name: ImageAssetDimensions :one
-SELECT width,height,owner_id FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=sqlc.arg(owner_id));
+SELECT width,height,owner_id,mime FROM assets WHERE id=? AND id IN (SELECT asset_id FROM asset_access WHERE user_id=sqlc.arg(owner_id));
 
 -- name: ImageCountVariants :one
 SELECT count(*) FROM asset_variants WHERE asset_id=? AND bucket=?;
@@ -235,3 +235,6 @@ SELECT count(*) FROM comment_messages WHERE thread_id=?;
 
 -- name: SharingInvalidateUserLeases :exec
 UPDATE page_leases SET epoch=epoch+1,expires_at=0,session_id=NULL,client_id='',holder_user_id='' WHERE holder_user_id=?;
+
+-- name: CanvasAssetMIME :one
+SELECT mime FROM assets WHERE id=?;
