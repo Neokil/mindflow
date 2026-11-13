@@ -1,6 +1,13 @@
 import UpdateBanner from "./UpdateBanner";
 import { useWorkspaceRoute } from "./navigation";
-import { Github, LogOut, Settings, SunMoon } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Github,
+  LogOut,
+  Settings,
+  SunMoon,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ServerEvent, User } from "./api";
 import { api, APIError, setCSRF } from "./api";
@@ -35,6 +42,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [profile, setProfile] = useState(false);
   const [admin, setAdmin] = useState(false);
+  const [headerCollapsed, setHeaderCollapsed] = useState(false);
   useEffect(() => {
     (async () => {
       try {
@@ -171,107 +179,137 @@ export default function App() {
         />
       </>
     );
+  const editorOpen =
+    !opening && workspace?.id === route.workspaceId && !!workspace;
   return (
-    <div className="app">
+    <div
+      className={`app${editorOpen ? " editor-open" : ""}${editorOpen && headerCollapsed ? " header-collapsed" : ""}`}
+    >
       <UpdateBanner />
-      <header className="app-header">
-        <div className="app-brand">
-          <Brand small />
-          <a
-            className="icon-button"
-            href="https://github.com/Neokil/mindflow"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="mindflow on GitHub"
-            title="View on GitHub"
-          >
-            <Github size={18} />
-          </a>
-        </div>
-        <div className="header-actions">
+      <div className="app-content">
+        {editorOpen && (
           <button
-            className="account-profile"
-            aria-label="Your profile"
-            onClick={() => setProfile(true)}
+            className="icon-button editor-header-toggle"
+            aria-label={
+              headerCollapsed
+                ? "Show app header and pages"
+                : "Hide app header and pages"
+            }
+            title={
+              headerCollapsed
+                ? "Show app header and pages"
+                : "Hide app header and pages"
+            }
+            aria-expanded={!headerCollapsed}
+            aria-controls="app-header workspace-heading workspace-pages"
+            onClick={() => setHeaderCollapsed((value) => !value)}
           >
-            <Avatar
-              id={user.id}
-              email={user.email}
-              version={user.avatarVersion}
-            />
-            <span className="account-email">{user.email}</span>
+            {headerCollapsed ? (
+              <ChevronDown size={16} />
+            ) : (
+              <ChevronUp size={16} />
+            )}
           </button>
-          <button
-            className="icon-button"
-            title={`Appearance: ${user.appearance}`}
-            aria-label="Change appearance"
-            onClick={appearance}
-          >
-            <SunMoon size={18} />
-          </button>
-          {user.role === "admin" && (
+        )}
+        <header className="app-header" id="app-header">
+          <div className="app-brand">
+            <Brand small />
+            <a
+              className="icon-button"
+              href="https://github.com/Neokil/mindflow"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="mindflow on GitHub"
+              title="View on GitHub"
+            >
+              <Github size={18} />
+            </a>
+          </div>
+          <div className="header-actions">
+            <button
+              className="account-profile"
+              aria-label="Your profile"
+              onClick={() => setProfile(true)}
+            >
+              <Avatar
+                id={user.id}
+                email={user.email}
+                version={user.avatarVersion}
+              />
+              <span className="account-email">{user.email}</span>
+            </button>
             <button
               className="icon-button"
-              aria-label="Administration"
-              onClick={() => setAdmin(true)}
+              title={`Appearance: ${user.appearance}`}
+              aria-label="Change appearance"
+              onClick={appearance}
             >
-              <Settings size={18} />
+              <SunMoon size={18} />
             </button>
-          )}
-          <button
-            className="icon-button"
-            aria-label="Sign out"
-            onClick={async () => {
-              if (
-                dirty.current &&
-                !confirm("Discard unsaved changes and sign out?")
-              )
-                return;
-              try {
-                await api("/auth/logout", "POST", {});
-                setWorkspace(undefined);
-                setUser(undefined);
-                setCSRF("");
-                dirty.current = false;
-                setAdmin(false);
-                setReauth(false);
-                for (const image of localImages.values())
-                  URL.revokeObjectURL(image.url);
-                localImages.clear();
-                clearMedia();
-              } catch (e) {
-                setError((e as Error).message);
-              }
-            }}
-          >
-            <LogOut size={18} />
-          </button>
-        </div>
-      </header>
-      <ErrorMessage message={error} />
-      <>
-        {opening ? (
-          <div className="editor-loading">
-            <Spinner />
+            {user.role === "admin" && (
+              <button
+                className="icon-button"
+                aria-label="Administration"
+                onClick={() => setAdmin(true)}
+              >
+                <Settings size={18} />
+              </button>
+            )}
+            <button
+              className="icon-button"
+              aria-label="Sign out"
+              onClick={async () => {
+                if (
+                  dirty.current &&
+                  !confirm("Discard unsaved changes and sign out?")
+                )
+                  return;
+                try {
+                  await api("/auth/logout", "POST", {});
+                  setWorkspace(undefined);
+                  setUser(undefined);
+                  setCSRF("");
+                  dirty.current = false;
+                  setAdmin(false);
+                  setReauth(false);
+                  for (const image of localImages.values())
+                    URL.revokeObjectURL(image.url);
+                  localImages.clear();
+                  clearMedia();
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+              }}
+            >
+              <LogOut size={18} />
+            </button>
           </div>
-        ) : workspace && workspace.id === route.workspaceId ? (
-          <WorkspaceEditor
-            key={workspace.id}
-            workspace={workspace}
-            activePageId={route.pageId}
-            onPageChange={choosePage}
-            back={() => navigate({})}
-            dirtyChanged={updateDirty}
-            onAuthenticationRequired={requireAuthentication}
-            serverEvent={serverEvent}
-          />
-        ) : (
-          <Dashboard
-            open={(value) => navigate({ workspaceId: value.id })}
-            serverEvent={serverEvent}
-          />
-        )}
-      </>
+        </header>
+        <ErrorMessage message={error} />
+        <>
+          {opening ? (
+            <div className="editor-loading">
+              <Spinner />
+            </div>
+          ) : workspace && workspace.id === route.workspaceId ? (
+            <WorkspaceEditor
+              key={workspace.id}
+              workspace={workspace}
+              activePageId={route.pageId}
+              onPageChange={choosePage}
+              back={() => navigate({})}
+              dirtyChanged={updateDirty}
+              onAuthenticationRequired={requireAuthentication}
+              serverEvent={serverEvent}
+            />
+          ) : (
+            <Dashboard
+              open={(value) => navigate({ workspaceId: value.id })}
+              serverEvent={serverEvent}
+            />
+          )}
+        </>
+      </div>
       {profile && (
         <Profile
           user={user}

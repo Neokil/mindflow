@@ -32,12 +32,12 @@ export default defineConfig({
     },
     {
       name: "ipad-webkit",
-      testMatch: "**/tablet.spec.ts",
+      testMatch: ["**/tablet.spec.ts", "**/focus-mode.spec.ts"],
       use: { ...devices["iPad Pro 11"], browserName: "webkit" },
     },
     {
       name: "tablet-chromium",
-      testMatch: "**/tablet.spec.ts",
+      testMatch: ["**/tablet.spec.ts", "**/focus-mode.spec.ts"],
       use: { ...devices["iPad Pro 11"], browserName: "chromium" },
     },
     {

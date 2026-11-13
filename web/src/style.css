@@ -1879,3 +1879,60 @@ body {
     display: none;
   }
 }
+
+/* Collapsing navigation changes layout without remounting the active canvas. */
+.app.editor-open {
+  --header-toggle-height: 24px;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+.editor-open > .app-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.editor-open .app-header {
+  flex-shrink: 0;
+}
+.editor-open .workspace-editor {
+  flex: 1;
+  height: auto;
+}
+.editor-header-toggle.icon-button {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44px;
+  height: var(--header-toggle-height);
+  z-index: 10;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 9px 9px;
+  background: var(--panel);
+  color: var(--muted);
+}
+.header-collapsed .app-header,
+.header-collapsed .editor-heading,
+.header-collapsed .page-tabs {
+  display: none;
+}
+.header-collapsed .canvas-toolbar,
+.header-collapsed .inspector-toggle {
+  top: calc(var(--header-toggle-height) + 14px);
+}
+.header-collapsed .tool-hint,
+.header-collapsed .inspector {
+  top: calc(var(--header-toggle-height) + 82px);
+}
+.header-collapsed .pen-options {
+  top: calc(var(--header-toggle-height) + 125px);
+}
+@media (any-pointer: coarse) {
+  .app.editor-open {
+    --header-toggle-height: 44px;
+  }
+}

@@ -259,7 +259,7 @@ export default function WorkspaceEditor({
   const saveStatus = session?.status || "Loading";
   return (
     <div className="workspace-editor">
-      <div className="editor-heading">
+      <div className="editor-heading" id="workspace-heading">
         <div className="breadcrumb">
           <button
             className="icon-button"
@@ -316,7 +316,12 @@ export default function WorkspaceEditor({
           <span data-testid="save-status">{saveStatus}</span>
         </div>
       </div>
-      <div className="page-tabs" role="tablist" aria-label="Workspace pages">
+      <div
+        className="page-tabs"
+        id="workspace-pages"
+        role="tablist"
+        aria-label="Workspace pages"
+      >
         {pages.map((p) => (
           <div
             className={`page-tab-wrap ${p.id === pageId ? "active" : ""}`}
