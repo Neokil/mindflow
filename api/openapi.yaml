@@ -3089,6 +3089,92 @@
           }
         }
       }
+    },
+    "/workspaces/import/butterfly": {
+      "post": {
+        "summary": "Import a Butterfly version-13 document as a new private workspace",
+        "operationId": "import_butterfly_workspace",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private workspace created; no sharing permissions are imported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ButterflyImportResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "Optional workspace name; defaults to export metadata or filename."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Atomic import with ordered editable pages and embedded images. Unsupported features are reported in warnings. ZIP limit 64 MiB, expanded archive limit 128 MiB, at most 100 pages."
+      }
     }
   },
   "components": {
@@ -3140,6 +3226,10 @@
           },
           "snap": {
             "type": "boolean"
+          },
+          "backgroundColor": {
+            "type": "string",
+            "description": "Optional validated CSS color overriding the theme background; omission uses the theme."
           }
         }
       },
@@ -3499,6 +3589,39 @@
           },
           "avatarVersion": {
             "type": "string"
+          }
+        }
+      },
+      "ButterflyImportResult": {
+        "type": "object",
+        "required": [
+          "id",
+          "pageId",
+          "pageCount",
+          "elementCount",
+          "warnings"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "pageId": {
+            "type": "string"
+          },
+          "pageCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "elementCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }

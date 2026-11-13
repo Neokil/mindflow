@@ -5,7 +5,7 @@ These items are deferred; none has a committed release date. Current functionali
 | Improvement | Open questions |
 | --- | --- |
 | Canvas export | Choose formats and define treatment of infinite bounds, images, text, and comments. |
-| Import from Linwood Butterfly | Investigate file-format compatibility and how faithfully supported content can be translated. |
+| Broader Butterfly compatibility | Extend the version-13 importer with more element types, backgrounds, typography, and pen fidelity. Current conversion limits are documented in the user guide. |
 | More shape types | Decide which shapes are useful and extend the existing shape tools without complicating the editor. |
 | Simultaneous canvas writers | A possible future collaboration model; requires decisions about conflicts, synchronization, and recovery. The current model remains one writer per page. |
 

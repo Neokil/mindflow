@@ -18,6 +18,7 @@
 - [Data structures](developer-docs/data-model.md)
 - [Canvas and synchronization](developer-docs/canvas-and-sync.md)
 - [Development workflow](developer-docs/development.md)
+- [Butterfly import](developer-docs/butterfly-import.md)
 - [Dependency updates](developer-docs/dependencies.md)
 - [Demo recording](developer-docs/demo.md)
 - [Wiki publishing](developer-docs/wiki.md)

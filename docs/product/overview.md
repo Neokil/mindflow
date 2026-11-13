@@ -6,6 +6,8 @@ mindflow provides a quiet, flexible space for collecting images, arranging thoug
 
 Users organize their work in private-by-default workspaces containing tabbed infinite-canvas pages. Pages support images, rectangle/circle/star shapes, plain text with element-wide formatting, and freehand pen strokes. Elements can be selected, moved, resized, rotated, grouped, duplicated, cropped where applicable, and arranged in layers.
 
+Butterfly version-13 exports can be imported into new private workspaces, preserving ordered pages, embedded images, text, freehand strokes, and rectangle/ellipse shapes. Conversion notes identify approximations and unsupported content.
+
 Workspaces can be shared with existing users as read-only, comment, or full access. Comment threads attach conversations to canvas points. Each page has one writer at a time; other users can request control, and the workspace owner can force a transfer. Saved changes are visible to other sessions.
 
 Accounts are invite-only. Administrators manage users and invitations without gaining access to private workspaces. The first administrator and email settings are configured during initial setup.

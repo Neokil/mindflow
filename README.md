@@ -61,11 +61,12 @@ For TrueNAS Apps, use [the installation guide](docs/user-docs/installation.md) a
 - **Discuss in context:** positioned comments, replies, avatars, and resolution controls.
 - **Stay in control:** one writer per page, approval-based control requests, owner force control, and recovery of displaced unsaved work.
 - **Keep your place:** workspace/page links, autosave, temporary disconnected editing, and a banner when a new build is available.
+- **Bring existing work:** import Butterfly `.bfly` documents as private workspaces with editable pages and embedded images.
 - **Make it yours:** light/dark appearance and a quiet interface designed for desktop Chrome and Firefox.
 
 Scroll to zoom. Cmd/Ctrl + drag or hold the middle mouse button to pan. Hold Shift while creating an element for equal width and height. The editor's keyboard button lists more shortcuts.
 
-Export and Linwood Butterfly import are planned for later.
+Choose **Import workspace** on the workspace list to import a Butterfly version-13 export. See the [user guide](docs/user-docs/using-mindflow.md#import-from-butterfly) for supported content and conversion limits. Canvas export is planned for later.
 
 ## Development
 

@@ -63,6 +63,8 @@ A page's `document` is versioned JSON. `pages.revision` tracks saved document ch
 }
 ```
 
+`settings.backgroundColor` optionally stores a validated CSS color, independent of the dot/plain background pattern. Omitting it keeps the normal theme background. Butterfly imports use it to preserve solid page colors; existing documents require no migration.
+
 The ordered element list defines stacking, back to front. Common fields are stable `id`, `type`, center `x/y` in world units, positive local `width/height`, rotation in radians, and optional `groupId`. Groups are flat memberships; transforms update the member elements.
 
 | Element type | Additional fields |

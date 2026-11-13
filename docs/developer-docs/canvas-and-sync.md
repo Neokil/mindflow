@@ -6,6 +6,8 @@ This page describes the current protocol. See the [data model](data-model.md) fo
 
 The camera maps world coordinates into a viewport-sized Konva stage. Pan/zoom updates camera state, never the stored element coordinates. Zoom centers on the cursor; rendering culls distant content and reuses decoded images.
 
+On first opening a saved nonempty page, the camera fits its content. Session cameras take precedence when returning to a page.
+
 Element bounds are centered local coordinates with rotation. Lasso containment uses transformed footprints and selects only fully enclosed elements, including groups. Snapping uses configurable world units when moving/resizing. Insertion previews are outside the document until release; their initial bounds are minimal so they do not flash default-sized content. A click without dragging uses default dimensions. Pen strokes are collected into normalized local points.
 
 Text input uses matching Konva/textarea font metrics and wrapping. Image crop rectangles are normalized against the original; display-resolution requests account for crop fraction, zoom, and display density. Smaller variants are generated only when useful below the 0.8 scale threshold, never by replacing/upscaling the original. Jobs are bounded and deduplicated, and existing decoded content can remain visible while a better variant is generated.

@@ -2,6 +2,21 @@
 
 Sign in to see your own and shared workspaces. Create a workspace, open it, and use the page tabs to organize separate canvases. Workspaces and pages can be renamed, duplicated, or deleted; page tabs can be reordered. Workspace lifecycle and sharing management belong to the owner.
 
+## Import from Butterfly
+
+On the workspace list, choose **Import workspace**, select a `.bfly` export, enter a workspace name, and choose **Import**. Review the conversion notes, then choose **Open workspace**. The new workspace is private; existing workspaces and the source file are unchanged. A failed import leaves no partial workspace.
+
+The importer supports unencrypted Butterfly **file format version 13** documents with numbered pages. Page names, order, stacking, positions, sizes, rotations, collection groups, and solid background colors are preserved. Supported content becomes editable mindflow elements:
+
+- Embedded PNG/JPEG/WebP images retain their originals and display dimensions.
+- Pen paths become selectable, resizable strokes. Pressure, smoothing, and filled strokes are approximated.
+- Rectangle and circle/ellipse shapes preserve solid outlines and fills.
+- Text preserves its content, one style per element, color, whole-number font size, and basic alignment. Empty labels are omitted. Fonts, rich text, and advanced layout may differ.
+
+Exports can be up to **64 MiB**, with at most **100 pages**. Individual images follow the normal upload limits. External image URLs are never fetched. Other format versions, encrypted files, nested page folders, corrupt or oversized data, and unsupported image constraints are rejected. Unsupported element types (including PDF/SVG elements), gradient shapes, layered/textured backgrounds, areas, waypoints, and animations are skipped or simplified with conversion notes. Keep the original export if you need those features.
+
+Pages open fitted to their content; your camera position is retained when switching pages during the session. Imported background colors are configurable in **Canvas settings**.
+
 ## Canvas controls
 
 | Action | Control |
@@ -26,7 +41,7 @@ Add images by upload, drag-and-drop, or clipboard paste. Once ready, an image fo
 
 All element types support moving, resizing, and rotation. Image corner handles preserve aspect ratio; side handles stretch. Text starts centered horizontally and vertically, with whole-number font sizes (1–2,000), bold/italic, color, and alignment settings. The pen has adjustable color and thickness.
 
-The top-right button opens **Canvas settings**: background, grid spacing, and snapping. The default is a dot grid with 20-unit spacing and snapping off. **Selection properties** in the bottom toolbar or right-clicking an object opens a separate panel beside that button or cursor. The panels are independent.
+The top-right button opens **Canvas settings**: background, an optional custom background color, grid spacing, and snapping. The default is a dot grid with 20-unit spacing and snapping off. **Selection properties** in the bottom toolbar or right-clicking an object opens a separate panel beside that button or cursor. The panels are independent.
 
 To crop, select one image and choose **Crop image** in its properties. Draw/adjust the crop rectangle or use percentage trims, then Apply. Cancel discards the draft; Reset crop followed by Apply restores the original. Cropping supports undo/redo and does not alter the original file.
 
