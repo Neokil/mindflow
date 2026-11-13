@@ -1285,7 +1285,6 @@ export const words: string[] = [
   "yeast",
   "yelp",
   "yield",
-  "yo-yo",
   "yodel",
   "yoga",
   "yoyo",

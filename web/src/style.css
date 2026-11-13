@@ -1943,3 +1943,13 @@ body {
 .editor-header-toggle.icon-button:active {
   transform: none;
 }
+.password-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+.password-help {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 8px 0 16px;
+}

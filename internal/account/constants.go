@@ -15,8 +15,6 @@ const (
 	passwordIterations = 2
 	passwordKeyBytes   = 32
 	passwordSaltBytes  = 16
-
-	retryBaseSeconds = 15
 )
 
 const (
