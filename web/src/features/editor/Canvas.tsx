@@ -6,7 +6,6 @@ import {
   footprint,
   lassoSelection,
   selectedWithGroup,
-  snap,
   worldPoint,
   zoomAt,
 } from "../../geometry";
@@ -15,6 +14,8 @@ import { clone, duplicateElements, uid } from "../../model";
 import { PageSession, localImages } from "../../session";
 import ImageCropDialog from "./ImageCropDialog";
 import CommentsLayer from "./CommentsLayer";
+import CanvasSettings from "./CanvasSettings";
+import { creationBounds } from "./creation";
 import CanvasControls from "./CanvasControls";
 import CanvasScene from "./CanvasScene";
 import CanvasTextEditor from "./CanvasTextEditor";
@@ -41,7 +42,7 @@ export default function Canvas({
   );
   const [tool, setTool] = useState<Tool>("select"),
     [selection, setSelection] = useState<string[]>([]),
-    [inspector, setInspector] = useState(false),
+    [inspector, setInspector] = useState<"canvas" | "object">(),
     [help, setHelp] = useState(false);
   const [color, setColor] = useState("#6c63d9"),
     [fill, setFill] = useState("#e8e4fa"),
@@ -52,10 +53,12 @@ export default function Canvas({
   const [editing, setEditing] = useState<string>(),
     [textValue, setTextValue] = useState("");
   const [commentPoint, setCommentPoint] = useState<Point>();
+  const [creation, setCreation] = useState<CanvasElement>();
   const [cropping, setCropping] = useState<CanvasElement>();
   const gesture = useRef<
     | {
-        kind: "pan" | "lasso" | "pen";
+        kind: "pan" | "lasso" | "pen" | "create";
+        element?: CanvasElement;
         start: Point;
         camera: Camera;
         points: Point[];
@@ -88,6 +91,7 @@ export default function Canvas({
   useEffect(() => {
     if (!session.editable) {
       setPending([]);
+      setCreation(undefined);
       setEditing(undefined);
       setCropping(undefined);
       gesture.current = undefined;
@@ -172,54 +176,39 @@ export default function Canvas({
     );
     setEditing(undefined);
   }
-  function createAt(p: Point) {
-    const position = doc.settings.snap
-      ? {
-          x: snap(p.x, doc.settings.gridSize),
-          y: snap(p.y, doc.settings.gridSize),
-        }
-      : p;
-    if (pending.length) {
-      const [item, ...rest] = pending;
-      const added = { ...item, ...position };
-      editElements([...session.doc.elements, added]);
-      setPending(rest);
-      setSelection([added.id]);
-      return;
-    }
-    const base = {
-      id: uid(),
-      ...position,
-      width: 160,
-      height: 120,
-      rotation: 0,
-    };
-    if (tool === "text") {
-      const text: CanvasElement = {
-        ...base,
-        type: "text",
-        width: 240,
-        height: 100,
-        text: "",
-        fontSize: 28,
-        color,
-        align: "left",
-      };
-      editElements([...session.doc.elements, text]);
-      startText(text);
-    } else if (["rectangle", "circle", "star"].includes(tool)) {
-      const shape: CanvasElement = {
-        ...base,
-        type: "shape",
-        shape: tool as "rectangle",
-        fill,
-        border: color,
-        borderWidth: 2,
-      };
-      editElements([...session.doc.elements, shape]);
-      setSelection([shape.id]);
-      setTool("select");
-    }
+  function beginCreation(p: Point) {
+    const element: CanvasElement =
+      pending[0] ||
+      (tool === "text"
+        ? {
+            id: uid(),
+            type: "text",
+            x: p.x,
+            y: p.y,
+            width: 240,
+            height: 100,
+            rotation: 0,
+            text: "",
+            fontSize: 28,
+            color,
+            align: "center",
+            verticalAlign: "middle",
+          }
+        : {
+            id: uid(),
+            type: "shape",
+            x: p.x,
+            y: p.y,
+            width: 160,
+            height: 120,
+            rotation: 0,
+            shape: tool as "rectangle",
+            fill,
+            border: color,
+            borderWidth: 2,
+          });
+    gesture.current = { kind: "create", start: p, camera, points: [], element };
+    setCreation({ ...element, x: p.x, y: p.y });
   }
   async function filesAdded(files: File[]) {
     if (!session.editable) return;
@@ -290,17 +279,18 @@ export default function Canvas({
       setPending([]);
       setSelection([]);
       gesture.current = undefined;
+      setCreation(undefined);
       preview.current?.points([]);
       setTool("select");
     },
   });
 
   function mouseDown(e: Konva.KonvaEventObject<MouseEvent>) {
-    if (e.evt.button !== 0) return;
+    if (e.evt.button !== 0 && e.evt.button !== 1) return;
     const p = pointer();
     const world = worldPoint(p, camera);
     const target = e.target;
-    if (e.evt.metaKey || e.evt.ctrlKey) {
+    if (e.evt.button === 1 || e.evt.metaKey || e.evt.ctrlKey) {
       e.evt.preventDefault();
       gesture.current = { kind: "pan", start: p, camera, points: [] };
       return;
@@ -315,7 +305,7 @@ export default function Canvas({
       return;
     }
     if (pending.length && session.editable) {
-      createAt(world);
+      beginCreation(world);
       return;
     }
     if (tool !== "select" && session.editable) {
@@ -333,7 +323,7 @@ export default function Canvas({
           fill: undefined,
           closed: false,
         });
-      } else createAt(world);
+      } else beginCreation(world);
       return;
     }
     if (target === stage.current) {
@@ -354,7 +344,7 @@ export default function Canvas({
       });
     }
   }
-  function mouseMove() {
+  function mouseMove(event: Konva.KonvaEventObject<MouseEvent>) {
     const p = pointer(),
       world = worldPoint(p, camera);
     if (pending.length) setCursor(world);
@@ -369,6 +359,13 @@ export default function Canvas({
       stage.current?.position(position);
       if (host.current)
         host.current.style.backgroundPosition = `${position.x}px ${position.y}px`;
+      return;
+    }
+    if (g.kind === "create" && g.element) {
+      setCreation({
+        ...g.element,
+        ...creationBounds(g.start, world, event.evt.shiftKey, doc.settings),
+      });
       return;
     }
     const last = g.points[g.points.length - 1];
@@ -387,6 +384,23 @@ export default function Canvas({
     if (g.kind === "pan") {
       const position = stage.current?.position();
       if (position) setCamera({ ...g.camera, ...position });
+      return;
+    }
+    if (g.kind === "create" && session.editable && creation) {
+      const distance = Math.hypot(
+        pointer().x - (g.start.x * camera.zoom + camera.x),
+        pointer().y - (g.start.y * camera.zoom + camera.y),
+      );
+      const element =
+        distance < 3 && g.element
+          ? { ...g.element, x: g.start.x, y: g.start.y }
+          : creation;
+      editElements([...session.doc.elements, element]);
+      setCreation(undefined);
+      setSelection([element.id]);
+      if (pending.length) setPending(pending.slice(1));
+      setTool("select");
+      if (element.type === "text") startText(element);
       return;
     }
     if (g.kind === "lasso") {
@@ -494,6 +508,7 @@ export default function Canvas({
           e.preventDefault();
           void filesAdded([...e.dataTransfer.files]);
         }}
+        onAuxClick={(event) => event.preventDefault()}
         onContextMenu={(event) => event.preventDefault()}
         data-testid="canvas"
       >
@@ -505,7 +520,8 @@ export default function Canvas({
           editable={session.editable}
           tool={tool}
           editing={editing}
-          placement={pending[0]}
+          placement={creation ? undefined : pending[0]}
+          creation={creation}
           cursor={cursor}
           refresh={refresh}
           stageRef={stage}
@@ -516,6 +532,10 @@ export default function Canvas({
           onPointerUp={mouseUp}
           onSelectElement={selectElement}
           onSelectionChange={setSelection}
+          onObjectSettings={(id) => {
+            setSelection(selectedWithGroup(session.doc.elements, id));
+            setInspector("object");
+          }}
           onTextEdit={startText}
           onElementsChange={editElements}
           onZoom={(delta, mode) =>
@@ -591,14 +611,14 @@ export default function Canvas({
       {(pending.length > 0 || tool !== "select") && (
         <div className="tool-hint">
           {pending.length
-            ? `Click to place image${pending.length > 1 ? ` (${pending.length} remaining)` : ""}`
+            ? `Drag to size image${pending.length > 1 ? ` (${pending.length} remaining)` : ""}`
             : tool === "pen"
               ? "Draw freely. Select a stroke to move or delete it."
               : tool === "text"
-                ? "Click anywhere to start writing."
+                ? "Drag to size a text box."
                 : tool === "comment"
                   ? "Click to leave a comment."
-                  : `Click to place a ${tool}.`}
+                  : `Drag to size a ${tool}. Hold Shift for a square.`}
           <kbd>esc</kbd>
         </div>
       )}
@@ -629,17 +649,26 @@ export default function Canvas({
       )}
       <button
         className={`inspector-toggle icon-button ${inspector ? "active" : ""}`}
-        title="Canvas & selection settings"
+        title="Canvas settings"
         aria-label="Canvas settings"
-        onClick={() => setInspector(!inspector)}
+        onClick={() =>
+          setInspector(inspector === "canvas" ? undefined : "canvas")
+        }
       >
         <SlidersHorizontal size={19} />
       </button>
-      {inspector && (
+      {inspector === "canvas" && (
+        <CanvasSettings
+          settings={doc.settings}
+          editable={session.editable}
+          onSettings={(settings) => session.edit({ ...session.doc, settings })}
+          onClose={() => setInspector(undefined)}
+        />
+      )}
+      {inspector === "object" && selected.length > 0 && (
         <SelectionInspector
           selected={selected}
           editable={session.editable}
-          settings={doc.settings}
           color={color}
           fill={fill}
           onColor={setColor}
@@ -652,8 +681,7 @@ export default function Canvas({
           onDelete={remove}
           onEditText={startText}
           onCrop={setCropping}
-          onSettings={(settings) => session.edit({ ...session.doc, settings })}
-          onClose={() => setInspector(false)}
+          onClose={() => setInspector(undefined)}
         />
       )}
       {cropping && session.editable && (
@@ -672,13 +700,13 @@ export default function Canvas({
           }}
         />
       )}
-      {selected.length > 0 && !inspector && (
+      {selected.length > 0 && inspector !== "object" && (
         <div className="selection-bar">
           <span>{selected.length} selected</span>
           <button
             className="icon-button"
             aria-label="Selection properties"
-            onClick={() => setInspector(true)}
+            onClick={() => setInspector("object")}
           >
             <SlidersHorizontal size={16} />
           </button>

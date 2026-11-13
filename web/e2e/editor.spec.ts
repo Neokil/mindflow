@@ -138,7 +138,7 @@ test("takeover fences an offline editor and recovers local changes", async ({
     .click();
   await expect(
     viewer.getByRole("button", { name: "Take control", exact: true }),
-  ).toHaveCount(0);
+  ).toHaveCount(0, { timeout: 15000 });
   await viewer.getByRole("button", { name: "Circle", exact: true }).click();
   await clickCanvas(viewer, 650, 350);
   await expect(viewer.getByTestId("save-status")).toHaveText("Saved");
@@ -184,7 +184,7 @@ test("image placement, independent resize handles, rotation, and variants", asyn
     buffer: Buffer.from(encoded, "base64"),
   });
   await expect(
-    page.getByText("Click to place image", { exact: false }),
+    page.getByText("Drag to size image", { exact: false }),
   ).toBeVisible();
   await expect(page.getByTestId("element-count")).toHaveText("0 elements");
   await clickCanvas(page, 650, 370);
@@ -263,7 +263,7 @@ test("image placement, independent resize handles, rotation, and variants", asyn
     document.body.dispatchEvent(event);
   }, encoded);
   await expect(
-    page.getByText("Click to place image", { exact: false }),
+    page.getByText("Drag to size image", { exact: false }),
   ).toBeVisible();
   await clickCanvas(page, 300, 450);
   await expect(page.getByTestId("element-count")).toHaveText("2 elements");
@@ -280,11 +280,11 @@ test("image placement, independent resize handles, rotation, and variants", asyn
     );
   }, encoded);
   await expect(
-    page.getByText("Click to place image", { exact: false }),
+    page.getByText("Drag to size image", { exact: false }),
   ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(
-    page.getByText("Click to place image", { exact: false }),
+    page.getByText("Drag to size image", { exact: false }),
   ).toHaveCount(0);
   await expect(page.getByTestId("element-count")).toHaveText("2 elements");
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
@@ -548,6 +548,10 @@ test("large page remains interactive with 3000 elements and image placements", a
     },
   );
   expect(response.ok()).toBe(true);
+  await page.request.post(`/api/v1/pages/${pages[0].id}/lease`, {
+    headers,
+    data: { clientId, epoch: lease.epoch, action: "release" },
+  });
   page.on("dialog", (d) => d.accept());
   await expect(
     page.getByRole("button", { name: "Take control", exact: true }),

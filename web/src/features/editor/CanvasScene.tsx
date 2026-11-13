@@ -1,7 +1,7 @@
 import Konva from "konva";
 import type { RefObject } from "react";
 import { useEffect, useRef } from "react";
-import { Group, Layer, Line, Stage, Transformer } from "react-konva";
+import { Group, Layer, Line, Rect, Stage, Transformer } from "react-konva";
 import { selectedWithGroup, snap, worldPoint } from "../../geometry";
 import type { CanvasDocument, CanvasElement, Point } from "../../model";
 import { wholeFontSize } from "../../model";
@@ -16,13 +16,15 @@ type Props = {
   tool: Tool;
   editing?: string;
   placement?: CanvasElement;
+  creation?: CanvasElement;
+  onObjectSettings: (id: string) => void;
   cursor: Point;
   refresh: number;
   stageRef: RefObject<Konva.Stage | null>;
   previewRef: RefObject<Konva.Line | null>;
   isPanning: () => boolean;
   onPointerDown: (event: Konva.KonvaEventObject<MouseEvent>) => void;
-  onPointerMove: () => void;
+  onPointerMove: (event: Konva.KonvaEventObject<MouseEvent>) => void;
   onPointerUp: () => void;
   onZoom: (delta: number, mode: number) => void;
   onSelectElement: (id: string, shift?: boolean) => void;
@@ -40,6 +42,8 @@ export default function CanvasScene({
   tool,
   editing,
   placement,
+  creation,
+  onObjectSettings,
   cursor,
   refresh,
   stageRef,
@@ -164,7 +168,7 @@ export default function CanvasScene({
       onMouseOver={updateCursor}
       onMouseMove={(event) => {
         updateCursor(event);
-        onPointerMove();
+        onPointerMove(event);
       }}
       onMouseUp={(event) => {
         onPointerUp();
@@ -207,10 +211,15 @@ export default function CanvasScene({
               rotation={radiansToDegrees(e.rotation)}
               visible={editing !== e.id}
               draggable={
-                editable && tool === "select" && !placement && !editing
+                editable &&
+                tool === "select" &&
+                !placement &&
+                !editing &&
+                !creation
               }
               onMouseDown={(event) => {
                 if (
+                  event.evt.button !== 0 ||
                   event.evt.metaKey ||
                   event.evt.ctrlKey ||
                   tool !== "select" ||
@@ -218,6 +227,10 @@ export default function CanvasScene({
                 )
                   return;
                 onSelectElement(e.id, event.evt.shiftKey);
+              }}
+              onContextMenu={(event) => {
+                event.evt.preventDefault();
+                onObjectSettings(e.id);
               }}
               onDblClick={() => {
                 if (e.type === "text") onTextEdit(e);
@@ -280,6 +293,24 @@ export default function CanvasScene({
         })}
       </Layer>
       <Layer>
+        {creation && (
+          <Group x={creation.x} y={creation.y} opacity={0.65} listening={false}>
+            <Rect
+              x={-creation.width / 2}
+              y={-creation.height / 2}
+              width={creation.width}
+              height={creation.height}
+              stroke="#8b80dd"
+              strokeWidth={1 / camera.zoom}
+              dash={[4 / camera.zoom, 4 / camera.zoom]}
+            />
+            <CanvasElementView
+              e={creation}
+              zoom={camera.zoom}
+              refresh={refresh}
+            />
+          </Group>
+        )}
         <Line
           ref={previewRef}
           listening={false}
@@ -297,7 +328,7 @@ export default function CanvasScene({
         )}
         <Transformer
           ref={transformer}
-          visible={editable && !editing && !placement}
+          visible={editable && !editing && !placement && !creation}
           rotateEnabled
           flipEnabled={false}
           padding={4}

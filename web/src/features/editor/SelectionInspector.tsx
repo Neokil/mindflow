@@ -7,12 +7,11 @@ import {
   Ungroup,
   X,
 } from "lucide-react";
-import type { CanvasDocument, CanvasElement } from "../../model";
+import type { CanvasElement } from "../../model";
 import { wholeFontSize } from "../../model";
 type Props = {
   selected: CanvasElement[];
   editable: boolean;
-  settings: CanvasDocument["settings"];
   color: string;
   fill: string;
   onColor: (color: string) => void;
@@ -25,13 +24,11 @@ type Props = {
   onDelete: () => void;
   onEditText: (element: CanvasElement) => void;
   onCrop: (element: CanvasElement) => void;
-  onSettings: (settings: CanvasDocument["settings"]) => void;
   onClose: () => void;
 };
 export default function SelectionInspector({
   selected,
   editable,
-  settings,
   color,
   fill,
   onColor,
@@ -44,7 +41,6 @@ export default function SelectionInspector({
   onDelete,
   onEditText,
   onCrop,
-  onSettings,
   onClose,
 }: Props) {
   const first = selected[0];
@@ -312,49 +308,6 @@ export default function SelectionInspector({
           <hr />
         </>
       ) : null}
-      <span className="eyebrow">CANVAS</span>
-      <label>
-        Background
-        <select
-          value={settings.background}
-          disabled={!editable}
-          onChange={(e) =>
-            onSettings({
-              ...settings,
-              background: e.target.value as "dots",
-            })
-          }
-        >
-          <option value="dots">Dot grid</option>
-          <option value="plain">Plain</option>
-        </select>
-      </label>
-      <label>
-        Grid spacing
-        <input
-          aria-label="Grid spacing"
-          type="number"
-          min="1"
-          max="1000"
-          disabled={!editable}
-          value={settings.gridSize}
-          onChange={(e) =>
-            onSettings({
-              ...settings,
-              gridSize: Math.max(1, Math.min(1000, +e.target.value)),
-            })
-          }
-        />
-      </label>
-      <label className="check-label">
-        <input
-          type="checkbox"
-          checked={settings.snap}
-          disabled={!editable}
-          onChange={(e) => onSettings({ ...settings, snap: e.target.checked })}
-        />
-        Snap when moving & resizing
-      </label>
     </aside>
   );
 }

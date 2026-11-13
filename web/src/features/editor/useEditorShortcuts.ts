@@ -89,7 +89,8 @@ export default function useEditorShortcuts({
           text: raw.slice(0, 100000),
           fontSize: 24,
           color,
-          align: "left",
+          align: "center",
+          verticalAlign: "middle",
         };
         editElements([...session.doc.elements, text]);
         setSelection([text.id]);
