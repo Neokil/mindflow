@@ -63,6 +63,8 @@ Use the small **up arrow at the top center** of an open workspace to hide the ap
 
 Collapsing navigation also requests browser fullscreen to hide the browser tabs and address bar. Restoring navigation or leaving the workspace exits fullscreen entered by this button. You can also use the browser’s exit gesture or Escape; the app header stays collapsed until you restore it. Fullscreen works in desktop Chrome and Firefox as well as supported tablet browsers, including Safari on iPadOS 16.4 or later, and depends on browser permission. If unavailable or declined, navigation still collapses normally. See [WebKit’s fullscreen documentation](https://webkit.org/blog/13966/webkit-features-in-safari-16-4/#fullscreen-api).
 
+**Firefox on iPad:** fullscreen for non-video content is currently blocked by Firefox for iOS ([Mozilla issue #33992](https://github.com/mozilla-mobile/firefox-ios/issues/33992)). Mindflow can hide its own header and tabs, but cannot hide Firefox’s address bar or tabs. Use Safari for browser fullscreen on iPad. Desktop Firefox support does not imply support in the Firefox iPad app.
+
 ## Tablets and Pencil
 
 On an iPad, use Safari. Choose a tool, then drag with one finger or Pencil to create a shape, text box, image, or pen stroke. In Select mode, drag a freehand lasso or drag an object to move it. Selection handles resize/rotate objects; use **Selection properties** in the bottom bar to change appearance, edit text, crop, group, duplicate, or delete without a right-click. Double-tap text with a finger to edit it, then choose **Done** to dismiss the editor. In Select mode, double-tap any object with the Pencil tip to open its properties beside the tap, just like a mouse right-click; for text, choose **Edit text** in that panel.

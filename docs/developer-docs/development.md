@@ -41,6 +41,8 @@ Commit migrations, SQL, sqlc bindings, and the generated migration catalog toget
 | `make test-e2e` | Desktop Chrome/Firefox, insecure HTTP, and iPad WebKit/tablet Chromium interaction workflows. |
 | `make verify-container` | Scratch runtime, migrations, HTTPS cookies/SSE, TLS mail, persistence, restore, and non-root/read-only operation. |
 
+The Playwright `firefox` project tests desktop Firefox. The `ipad-webkit` project emulates an iPad in Playwright WebKit; it does not run the Firefox iPad app or reproduce that app’s browser-level restrictions. Fullscreen tests cover native desktop Chrome/Firefox and simulated permission/failure cases. Physical-device checks are required for browser-specific iPad behavior. Firefox for iOS currently restricts fullscreen for non-video content; track [Mozilla issue #33992](https://github.com/mozilla-mobile/firefox-ios/issues/33992).
+
 Install browsers once with `cd web && npx playwright install chromium firefox webkit`. Browser fixtures bind to `127.0.0.1:8087` and use disposable accounts/data and a non-delivering SMTP target. Container checks require Docker, Python 3, and OpenSSL. No production token lookup endpoint exists; invitation tests read only their disposable email queue. Failure artifacts remain under ignored cache/test-result directories.
 
 Each browser project runs two shards, each with a fresh disposable backend, to avoid consuming production authentication rate limits with unrelated test sign-ins. Set `E2E_SHARDS=1` for a small targeted run. Run a subset with `make test-e2e E2E_PROJECTS=ipad-webkit` (or a space-separated list). CI runs the projects as independent matrix jobs.
