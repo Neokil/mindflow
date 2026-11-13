@@ -10,7 +10,7 @@
     "test:e2e": "playwright test",
     "format": "prettier --write src",
     "lint": "eslint . --max-warnings 0",
-    "format:check": "prettier --check src e2e *.ts *.js",
+    "format:check": "prettier --check src e2e scripts *.ts *.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

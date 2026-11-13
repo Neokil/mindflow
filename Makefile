@@ -79,3 +79,16 @@ upgrade:
 $(ACTIONLINT):
 	mkdir -p "$(@D)"
 	GOBIN="$(@D)" go install github.com/rhysd/actionlint/cmd/actionlint@$(ACTIONLINT_VERSION)
+
+# Manual README recording. The app and accounts exist only in a temporary fixture.
+.PHONY: demo
+demo: frontend-build $(CURDIR)/.cache/demo-venv/.ready
+	mkdir -p .cache/demo
+	go build -o .cache/demo/mindflow ./cmd/mindflow
+	cd web && npx playwright install chromium
+	node web/scripts/record-demo.mjs
+
+$(CURDIR)/.cache/demo-venv/.ready: scripts/demo-requirements.txt
+	python3 -m venv .cache/demo-venv
+	.cache/demo-venv/bin/python -m pip install -r scripts/demo-requirements.txt
+	touch "$@"

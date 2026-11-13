@@ -133,6 +133,9 @@ def plan():
             version = latest_release(repository)
         makefile = re.sub(rf'(?m)^{variable} := .*$', variable + ' := ' + version, makefile)
     changes[ROOT / 'Makefile'] = makefile
+    demo_metadata, _ = fetch('https://pypi.org/pypi/Pillow/json')
+    changes[ROOT / 'scripts/demo-requirements.txt'] = 'Pillow==' + demo_metadata['info']['version'] + '\n'
+
     return changes
 
 
