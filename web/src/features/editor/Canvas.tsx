@@ -1,6 +1,6 @@
 import Konva from "konva";
 import { Copy, SlidersHorizontal, Trash2, X } from "lucide-react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, SetStateAction } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   footprint,
@@ -41,8 +41,9 @@ export default function Canvas({
     session.camera || { x: 500, y: 350, zoom: 1 },
   );
   const [tool, setTool] = useState<Tool>("select"),
-    [selection, setSelection] = useState<string[]>([]),
-    [inspector, setInspector] = useState<"canvas" | "object">(),
+    [selection, updateSelection] = useState<string[]>([]),
+    [canvasSettingsOpen, setCanvasSettingsOpen] = useState(false),
+    [objectSettingsAnchor, setObjectSettingsAnchor] = useState<Point>(),
     [help, setHelp] = useState(false);
   const [color, setColor] = useState("#6c63d9"),
     [fill, setFill] = useState("#e8e4fa"),
@@ -50,6 +51,10 @@ export default function Canvas({
     [pending, setPending] = useState<CanvasElement[]>([]),
     [cursor, setCursor] = useState<Point>({ x: 0, y: 0 }),
     [error, setError] = useState("");
+  function setSelection(value: SetStateAction<string[]>) {
+    setObjectSettingsAnchor(undefined);
+    updateSelection(value);
+  }
   const [editing, setEditing] = useState<string>(),
     [textValue, setTextValue] = useState("");
   const [commentPoint, setCommentPoint] = useState<Point>();
@@ -208,7 +213,7 @@ export default function Canvas({
             borderWidth: 2,
           });
     gesture.current = { kind: "create", start: p, camera, points: [], element };
-    setCreation({ ...element, x: p.x, y: p.y });
+    setCreation({ ...element, ...creationBounds(p, p, false, doc.settings) });
   }
   async function filesAdded(files: File[]) {
     if (!session.editable) return;
@@ -532,9 +537,9 @@ export default function Canvas({
           onPointerUp={mouseUp}
           onSelectElement={selectElement}
           onSelectionChange={setSelection}
-          onObjectSettings={(id) => {
+          onObjectSettings={(id, position) => {
             setSelection(selectedWithGroup(session.doc.elements, id));
-            setInspector("object");
+            setObjectSettingsAnchor(position);
           }}
           onTextEdit={startText}
           onElementsChange={editElements}
@@ -648,25 +653,24 @@ export default function Canvas({
         </div>
       )}
       <button
-        className={`inspector-toggle icon-button ${inspector ? "active" : ""}`}
+        className={`inspector-toggle icon-button ${canvasSettingsOpen ? "active" : ""}`}
         title="Canvas settings"
         aria-label="Canvas settings"
-        onClick={() =>
-          setInspector(inspector === "canvas" ? undefined : "canvas")
-        }
+        onClick={() => setCanvasSettingsOpen(!canvasSettingsOpen)}
       >
         <SlidersHorizontal size={19} />
       </button>
-      {inspector === "canvas" && (
+      {canvasSettingsOpen && (
         <CanvasSettings
           settings={doc.settings}
           editable={session.editable}
           onSettings={(settings) => session.edit({ ...session.doc, settings })}
-          onClose={() => setInspector(undefined)}
+          onClose={() => setCanvasSettingsOpen(false)}
         />
       )}
-      {inspector === "object" && selected.length > 0 && (
+      {objectSettingsAnchor && selected.length > 0 && (
         <SelectionInspector
+          anchor={objectSettingsAnchor}
           selected={selected}
           editable={session.editable}
           color={color}
@@ -681,7 +685,7 @@ export default function Canvas({
           onDelete={remove}
           onEditText={startText}
           onCrop={setCropping}
-          onClose={() => setInspector(undefined)}
+          onClose={() => setObjectSettingsAnchor(undefined)}
         />
       )}
       {cropping && session.editable && (
@@ -700,13 +704,16 @@ export default function Canvas({
           }}
         />
       )}
-      {selected.length > 0 && inspector !== "object" && (
+      {selected.length > 0 && (
         <div className="selection-bar">
           <span>{selected.length} selected</span>
           <button
             className="icon-button"
             aria-label="Selection properties"
-            onClick={() => setInspector("object")}
+            onClick={(event) => {
+              const box = event.currentTarget.getBoundingClientRect();
+              setObjectSettingsAnchor({ x: box.left, y: box.top });
+            }}
           >
             <SlidersHorizontal size={16} />
           </button>

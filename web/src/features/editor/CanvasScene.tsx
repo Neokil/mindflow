@@ -17,7 +17,7 @@ type Props = {
   editing?: string;
   placement?: CanvasElement;
   creation?: CanvasElement;
-  onObjectSettings: (id: string) => void;
+  onObjectSettings: (id: string, position: Point) => void;
   cursor: Point;
   refresh: number;
   stageRef: RefObject<Konva.Stage | null>;
@@ -230,7 +230,10 @@ export default function CanvasScene({
               }}
               onContextMenu={(event) => {
                 event.evt.preventDefault();
-                onObjectSettings(e.id);
+                onObjectSettings(e.id, {
+                  x: event.evt.clientX,
+                  y: event.evt.clientY,
+                });
               }}
               onDblClick={() => {
                 if (e.type === "text") onTextEdit(e);

@@ -1649,3 +1649,70 @@ button.private-badge {
   accent-color: var(--accent);
   margin: 8px 0;
 }
+
+.object-inspector {
+  position: fixed;
+  z-index: 50;
+  width: 240px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+.object-inspector label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 12px 0;
+}
+.object-inspector input[type="number"] {
+  width: 78px;
+}
+.object-inspector select {
+  max-width: 130px;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.update-banner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.brand-mark {
+  background: transparent;
+}
+.brand-mark img {
+  object-fit: contain;
+}
+.object-inspector .eyebrow {
+  font-size: 9px;
+  letter-spacing: 1.4px;
+}
+.object-inspector input,
+.object-inspector select {
+  font-size: 11px;
+  padding: 8px;
+}

@@ -7,9 +7,12 @@ import {
   Ungroup,
   X,
 } from "lucide-react";
-import type { CanvasElement } from "../../model";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import type { CanvasElement, Point } from "../../model";
 import { wholeFontSize } from "../../model";
 type Props = {
+  anchor: Point;
   selected: CanvasElement[];
   editable: boolean;
   color: string;
@@ -27,6 +30,7 @@ type Props = {
   onClose: () => void;
 };
 export default function SelectionInspector({
+  anchor,
   selected,
   editable,
   color,
@@ -43,13 +47,47 @@ export default function SelectionInspector({
   onCrop,
   onClose,
 }: Props) {
+  useEffect(() => {
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", escape);
+    return () => document.removeEventListener("keydown", escape);
+  }, [onClose]);
   const first = selected[0];
-  return (
-    <aside className="inspector">
+  const panel = useRef<HTMLElement>(null);
+  const [position, setPosition] = useState(anchor);
+  useLayoutEffect(() => {
+    const layout = () => {
+      const box = panel.current!.getBoundingClientRect();
+      const gap = 12;
+      const x = Math.max(
+        gap,
+        Math.min(anchor.x, window.innerWidth - box.width - gap),
+      );
+      const below = anchor.y + gap;
+      const y =
+        below + box.height <= window.innerHeight - gap
+          ? below
+          : Math.max(gap, anchor.y - box.height - gap);
+      setPosition({ x, y });
+    };
+    layout();
+    window.addEventListener("resize", layout);
+    return () => window.removeEventListener("resize", layout);
+  }, [anchor, selected.length, first?.type]);
+  return createPortal(
+    <aside
+      ref={panel}
+      className="object-inspector"
+      aria-label="Object properties"
+      style={{ left: position.x, top: position.y }}
+    >
       <div className="inspector-head">
-        <span>
-          {selected.length ? `${selected.length} selected` : "Canvas settings"}
-        </span>
+        <span>{`${selected.length} selected`}</span>
         <button
           className="icon-button"
           aria-label="Close settings"
@@ -308,6 +346,7 @@ export default function SelectionInspector({
           <hr />
         </>
       ) : null}
-    </aside>
+    </aside>,
+    document.body,
   );
 }

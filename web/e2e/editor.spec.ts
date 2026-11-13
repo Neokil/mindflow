@@ -431,9 +431,9 @@ test("move cursors, whole font sizes and vertical text alignment", async ({
     )
     .toBeGreaterThan(50);
   await page.getByLabel("Edit canvas text").press("Control+Enter");
-  await page
-    .getByRole("button", { name: "Close settings", exact: true })
-    .click();
+  await expect(
+    page.getByLabel("Object properties", { exact: true }),
+  ).toHaveCount(0);
   await page.mouse.move(center.x + 124, center.y + 54);
   await page.mouse.down();
   await page.mouse.move(center.x + 161, center.y + 69, { steps: 8 });

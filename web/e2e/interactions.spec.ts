@@ -31,6 +31,23 @@ test("drag creation, separate inspectors, middle pan and profile avatars", async
   await page.getByRole("button", { name: "Rectangle", exact: true }).click();
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  const flash = await page
+    .locator('[data-testid="canvas"] canvas')
+    .last()
+    .evaluate((canvas) => {
+      const element = canvas as HTMLCanvasElement;
+      const scale = element.width / element.getBoundingClientRect().width;
+      return element
+        .getContext("2d")!
+        .getImageData(640 * scale, 410 * scale, 1, 1).data[3];
+    });
+  expect(flash).toBe(0);
   await page.mouse.move(from.x - 200, from.y - 100, { steps: 8 });
   await expect(page.getByTestId("element-count")).toHaveText("0 elements");
   await page.screenshot({
@@ -49,7 +66,21 @@ test("drag creation, separate inspectors, middle pan and profile avatars", async
     .getByRole("button", { name: "Selection properties", exact: true })
     .click();
   await expect(page.getByLabel("Element color", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Grid spacing", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Grid spacing", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Canvas settings", exact: true }),
+  ).toHaveClass(/active/);
+  await page
+    .getByLabel("Canvas settings panel", { exact: true })
+    .getByRole("button", { name: "Close settings", exact: true })
+    .click();
+  const floating = await page
+    .getByLabel("Object properties", { exact: true })
+    .boundingBox();
+  const properties = await page
+    .getByRole("button", { name: "Selection properties", exact: true })
+    .boundingBox();
+  expect(floating!.y + floating!.height).toBeLessThanOrEqual(properties!.y + 1);
   await page
     .getByRole("button", { name: "Close settings", exact: true })
     .click();
