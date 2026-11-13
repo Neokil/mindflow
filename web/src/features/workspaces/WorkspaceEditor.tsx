@@ -63,17 +63,17 @@ export default function WorkspaceEditor({
   const dragTab = useRef<string | undefined>(undefined);
   const workspaceId = workspace.id;
   const pageId = activePageId;
-  const pageRef = useRef(pageId);
-  pageRef.current = pageId;
   const session = pageId ? sessions.current.get(pageId) : undefined;
+  useEffect(() => {
+    if (!pageId && pages[0]) setPageId(pages[0].id, true);
+  }, [pageId, pages, setPageId]);
   const load = useCallback(async () => {
     const list = await api<Page[]>(`/workspaces/${workspaceId}/pages`);
     setPages(list);
     const all = await api<Workspace[]>("/workspaces");
     const current = all.find((w) => w.id === workspaceId);
     if (current) setWorkspace(current);
-    if (!pageRef.current && list[0]) setPageId(list[0].id, true);
-  }, [workspaceId, setPageId]);
+  }, [workspaceId]);
   useEffect(() => {
     const openSessions = sessions.current;
     const subscriptions = unsubscribers.current;

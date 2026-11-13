@@ -24,6 +24,17 @@ test("page links survive sign-in and browser back/forward", async ({
   ).toHaveAttribute("aria-selected", "true");
   await page.evaluate(() => history.forward());
   await expect(page).toHaveURL(linked);
+  // A workspace-only link also chooses a real page when this editor is already open.
+  await page.evaluate((hash) => {
+    location.hash = hash;
+  }, new URL(first).hash.split("/pages/")[0]);
+  await expect(page).toHaveURL(first);
+  await page.evaluate((hash) => {
+    location.hash = hash;
+  }, new URL(linked).hash);
+  await expect(
+    page.getByRole("tab", { name: "Project notes", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
   const context = await browser.newContext();
   try {
     const guest = await context.newPage();

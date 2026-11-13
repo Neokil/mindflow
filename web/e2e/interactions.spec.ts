@@ -86,6 +86,10 @@ test("drag creation, separate inspectors, middle pan and profile avatars", async
     .click();
   await page.mouse.click(from.x - 100, from.y - 50, { button: "right" });
   await expect(page.getByLabel("Element color", { exact: true })).toBeVisible();
+  const contextPanel = await page
+    .getByLabel("Object properties", { exact: true })
+    .boundingBox();
+  expect(contextPanel!.x).toBeCloseTo(from.x - 100, 0);
   await page
     .getByRole("button", { name: "Close settings", exact: true })
     .click();
