@@ -29,7 +29,7 @@ The public application URL comes from setup. Forwarded headers are not trusted f
 
 ## TrueNAS Apps
 
-1. Create a local dataset, such as `/mnt/POOL/apps/mindflow`, and grant UID/GID `10001:10001` read/write and traversal permissions. Do not host the SQLite database on SMB/NFS.
+1. Create a local dataset, such as `/mnt/Pool1/Apps/Mindflow`, and grant UID/GID `10001:10001` read/write and traversal permissions. Do not host the SQLite database on SMB/NFS.
 2. Edit [the TrueNAS YAML](../../deploy/truenas.yaml), choosing an image tag, dataset path, and host port.
 3. In **Apps → Discover Apps → three-dot menu → Custom App → Install via YAML**, paste the edited configuration.
 4. Watch the `migrate` service: it must finish with exit code 0 before `mindflow` starts. A completed migration container is expected to remain stopped. Read the `mindflow` log for the first-run setup credential, route your HTTPS hostname, and complete setup.
