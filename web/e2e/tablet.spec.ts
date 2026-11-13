@@ -255,8 +255,12 @@ test("image upload, object properties and comments work without a mouse", async 
     .getByLabel("Comment text", { exact: true })
     .fill("A tablet comment");
   await page.getByRole("button", { name: "Post comment", exact: true }).tap();
+  const author = await (await page.request.get("/api/v1/auth/me")).json();
   await page
-    .getByRole("button", { name: "Comment by owner@test.invalid", exact: true })
+    .getByRole("button", {
+      name: `Comment by ${author.user.displayName}`,
+      exact: true,
+    })
     .tap();
   await expect(
     page.getByText("A tablet comment", { exact: true }),

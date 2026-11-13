@@ -381,16 +381,13 @@ try {
     await page
       .getByRole("button", { name: "Workspace sharing", exact: true })
       .click();
-    await page
-      .getByLabel("Share with email", { exact: true })
-      .fill("sam@demo.invalid");
+    await page.getByLabel("Search users", { exact: true }).fill("sam");
+    await page.getByRole("radio", { name: "sam", exact: true }).check();
     await page
       .getByLabel("Sharing access", { exact: true })
       .selectOption("comment");
     await page.getByRole("button", { name: "Add user", exact: true }).click();
-    await expect(page.getByLabel("Access for sam@demo.invalid")).toHaveValue(
-      "comment",
-    );
+    await expect(page.getByLabel("Access for sam")).toHaveValue("comment");
     await delay(1000);
     await page
       .getByRole("button", { name: "Close dialog", exact: true })
@@ -411,7 +408,7 @@ try {
       .click();
     await page
       .getByRole("button", {
-        name: "Comment by alex@demo.invalid",
+        name: "Comment by alex",
         exact: true,
       })
       .hover();

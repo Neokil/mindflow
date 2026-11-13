@@ -12,6 +12,8 @@ export default function Profile({
   changed: (user: User) => void;
   close: () => void;
 }) {
+  const [name, setName] = useState(user.displayName);
+  const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   async function update(file?: File) {
@@ -33,12 +35,71 @@ export default function Profile({
       setBusy(false);
     }
   }
+  async function saveName() {
+    setBusy(true);
+    setError("");
+    setSaved(false);
+    try {
+      const updated = await api<User>("/auth/profile", "PATCH", {
+        displayName: name,
+      });
+      changed(updated);
+      setName(updated.displayName);
+      setSaved(true);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <Modal title="Your profile" close={close}>
       <div className="profile-identity">
-        <Avatar id={user.id} email={user.email} version={user.avatarVersion} />
-        <strong>{user.email}</strong>
+        <Avatar
+          id={user.id}
+          email={user.email}
+          name={user.displayName}
+          version={user.avatarVersion}
+        />
+        <span>
+          <strong>{user.displayName}</strong>
+          <br />
+          <small>{user.email}</small>
+        </span>
       </div>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void saveName();
+        }}
+      >
+        <label>
+          Display name
+          <input
+            autoComplete="name"
+            value={name}
+            required
+            maxLength={80}
+            disabled={busy}
+            onChange={(event) => {
+              setName(event.target.value);
+              setSaved(false);
+            }}
+          />
+        </label>
+        <button
+          className="primary"
+          disabled={busy || name.trim() === user.displayName}
+        >
+          Save name
+        </button>
+        {saved && (
+          <p className="success" role="status">
+            Display name saved.
+          </p>
+        )}
+      </form>
+      <hr />
       <label>
         Avatar
         <input

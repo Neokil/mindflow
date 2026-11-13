@@ -29,6 +29,7 @@ export default function Auth({
     setup ? "setup" : initialHash ? initialHash.split("/")[0] : "login",
   );
   const [email, setEmail] = useState(expectedEmail || "");
+  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [credential, setCredential] = useState("");
   const [settings, setSettings] = useState<Settings>({
@@ -67,6 +68,7 @@ export default function Auth({
       if (mode === "setup") {
         await api("/setup/complete", "POST", {
           credential,
+          displayName,
           email,
           password,
           settings,
@@ -82,6 +84,7 @@ export default function Auth({
         await api(`/auth/${mode}`, "POST", {
           token: initialHash.split("/")[1],
           password,
+          ...(mode === "accept-invite" ? { displayName } : {}),
         });
         setMode("login");
         setPassword("");
@@ -176,6 +179,19 @@ export default function Auth({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
+                />
+              </label>
+            )}
+            {(mode === "setup" || mode === "accept-invite") && (
+              <label>
+                Display name
+                <input
+                  autoComplete="name"
+                  maxLength={80}
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder="How others see you"
+                  disabled={busy}
                 />
               </label>
             )}

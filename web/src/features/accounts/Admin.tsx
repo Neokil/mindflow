@@ -123,12 +123,18 @@ export default function Admin({
           <div className="user-list">
             {users.map(({ user: u, mailError }) => (
               <div className="user-row" key={u.id}>
-                <Avatar id={u.id} email={u.email} version={u.avatarVersion} />
+                <Avatar
+                  id={u.id}
+                  email={u.email}
+                  name={u.displayName}
+                  version={u.avatarVersion}
+                />
                 <div className="user-info">
                   <strong>
-                    {u.email}
+                    {u.displayName}
                     {u.id === self.id ? " (you)" : ""}
                   </strong>
+                  <small>{u.email}</small>
                   <span>
                     {u.role === "admin" ? "Administrator" : "User"} · {u.status}
                   </span>

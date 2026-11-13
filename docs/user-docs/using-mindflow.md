@@ -91,7 +91,7 @@ Color controls show the actual swatch and hex value, including transparency from
 
 To crop, select one image and choose **Crop image** in its properties. Draw/adjust the crop rectangle or use percentage trims, then Apply. Cancel discards the draft; Reset crop followed by Apply restores the original. Cropping supports undo/redo and does not alter the original file.
 
-Open **Your profile** beside your email to upload or remove an avatar. Avatars use PNG/JPEG/WebP up to 2 MiB, 8 megapixels, and 8,192 pixels per side, and are cropped to a square. Initials appear when no avatar is set. Appearance follows your system preference by default and updates when it changes. The appearance button cycles system/light/dark mode if you want an explicit override.
+Open **Your profile** beside your display name to change your name or upload/remove an avatar. Names contain 1–80 characters and appear in sharing, comments, control requests, and avatar initials. You can also choose a name during setup or invitation acceptance. Existing accounts start with the part of their email before `@`; change it in your profile. Names can be shared by multiple people, so use avatars to help identify the intended recipient. Avatars use PNG/JPEG/WebP up to 2 MiB, 8 megapixels, and 8,192 pixels per side, and are cropped to a square. Initials appear when no avatar is set. Appearance follows your system preference by default and updates when it changes. The appearance button cycles system/light/dark mode if you want an explicit override.
 
 ## Workspace templates and locked groups
 
@@ -105,7 +105,7 @@ To fix objects in place, select them, group them with Cmd/Ctrl + G, and choose *
 
 ## Sharing and comments
 
-Click **Private** beside the workspace name to add an existing active user's email. The badge becomes **Shared**; every member can see who owns the workspace.
+Click **Private** beside the workspace name to choose a registered user by display name. The picker lists active users with avatars and supports case-insensitive name search, including common accent differences. Select a person, choose their access level, and click **Add user**. Email addresses are not displayed. Existing members are managed in the member list; invited or inactive accounts are not offered. The badge becomes **Shared**; every member can see who owns the workspace.
 
 | Access | Capabilities |
 | --- | --- |

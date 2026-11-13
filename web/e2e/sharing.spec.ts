@@ -1,41 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { invite } from "./accounts";
 import { login, create } from "./helpers";
 
-async function invite(page: Page, email: string) {
-  const status = await page.evaluate(async (address) => {
-    const me = await (await fetch("/api/v1/auth/me")).json();
-    return (
-      await fetch("/api/v1/admin/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": me.csrf,
-        },
-        body: JSON.stringify({ email: address, role: "user" }),
-      })
-    ).status;
-  }, email);
-  expect(status).toBe(200);
-  // Read only the disposable fixture's captured email job; never add a production token endpoint.
-  const directory = readFileSync("../.cache/e2e/data-dir", "utf8");
-  const database = new DatabaseSync(join(directory, "mindflow.sqlite"), {
-    readOnly: true,
-  });
-  try {
-    const row = database
-      .prepare(
-        "SELECT payload FROM mail_jobs WHERE user_id=(SELECT id FROM users WHERE email=?)",
-      )
-      .get(email);
-    const body = JSON.parse(String(row?.payload)).body as string;
-    return body.split("/").at(-1)!.split("\n")[0];
-  } finally {
-    database.close();
-  }
-}
 async function canvasClick(page: Page, x: number, y: number) {
   const box = await page.getByTestId("canvas").boundingBox();
   if (!box) throw new Error("Canvas missing");
@@ -51,6 +17,7 @@ test("shares roles, discusses points and fences writers across users", async ({
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("dialog", (dialog) => dialog.accept());
   await login(page);
+  const self = await (await page.request.get("/api/v1/auth/me")).json();
   const name = `Shared ideas ${info.project.name} ${Date.now()}`;
   await create(page, name);
   await page.getByRole("button", { name: "Rectangle", exact: true }).click();
@@ -58,6 +25,7 @@ test("shares roles, discusses points and fences writers across users", async ({
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
   const email = `guest-${info.project.name}-${Date.now()}@test.invalid`;
   const password = "a shared test passphrase";
+  const displayName = "Sam Tester";
   const token = await invite(page, email);
   const guestContext = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
@@ -67,6 +35,7 @@ test("shares roles, discusses points and fences writers across users", async ({
   guest.on("dialog", (dialog) => dialog.accept());
   try {
     await guest.goto(`http://127.0.0.1:8087/#accept-invite/${token}`);
+    await guest.getByLabel("Display name", { exact: true }).fill(displayName);
     await guest.getByLabel("Password", { exact: true }).fill(password);
     await guest
       .getByRole("button", { name: "Set password", exact: true })
@@ -83,13 +52,14 @@ test("shares roles, discusses points and fences writers across users", async ({
     await page
       .getByRole("button", { name: "Workspace sharing", exact: true })
       .click();
-    await page.getByLabel("Share with email", { exact: true }).fill(email);
+    await page.getByLabel("Search users", { exact: true }).fill("sam");
+    await page.getByRole("radio", { name: displayName, exact: true }).check();
     await page
       .getByLabel("Sharing access", { exact: true })
       .selectOption("read");
     await page.getByRole("button", { name: "Add user", exact: true }).click();
     await expect(
-      page.getByLabel(`Access for ${email}`, { exact: true }),
+      page.getByLabel(`Access for ${displayName}`, { exact: true }),
     ).toHaveValue("read");
     await page
       .getByRole("button", { name: "Close dialog", exact: true })
@@ -108,7 +78,7 @@ test("shares roles, discusses points and fences writers across users", async ({
     await expect(
       guest
         .getByRole("dialog")
-        .getByText("owner@test.invalid", { exact: true }),
+        .getByText(self.user.displayName, { exact: true }),
     ).toBeVisible();
     await guest
       .getByRole("button", { name: "Close dialog", exact: true })
@@ -126,7 +96,7 @@ test("shares roles, discusses points and fences writers across users", async ({
       .getByRole("button", { name: "Workspace sharing", exact: true })
       .click();
     await page
-      .getByLabel(`Access for ${email}`, { exact: true })
+      .getByLabel(`Access for ${displayName}`, { exact: true })
       .selectOption("comment");
     await page
       .getByRole("button", { name: "Close dialog", exact: true })
@@ -145,7 +115,7 @@ test("shares roles, discusses points and fences writers across users", async ({
       .getByRole("button", { name: "Post comment", exact: true })
       .click();
     const pin = page.getByRole("button", {
-      name: `Comment by ${email}`,
+      name: `Comment by ${displayName}`,
       exact: true,
     });
     await pin.hover();
@@ -157,14 +127,17 @@ test("shares roles, discusses points and fences writers across users", async ({
       .fill("Let's keep it.");
     await page.getByRole("button", { name: "Reply", exact: true }).click();
     await guest
-      .getByRole("button", { name: `Comment by ${email}`, exact: true })
+      .getByRole("button", { name: `Comment by ${displayName}`, exact: true })
       .hover();
     await expect(
       guest.getByText("Let's keep it.", { exact: true }),
     ).toBeVisible();
     await guest.getByRole("button", { name: "Resolve", exact: true }).click();
     await expect(
-      page.getByRole("button", { name: `Comment by ${email}`, exact: true }),
+      page.getByRole("button", {
+        name: `Comment by ${displayName}`,
+        exact: true,
+      }),
     ).toBeHidden();
     await page
       .getByRole("button", { name: "Show resolved comments", exact: true })
@@ -175,7 +148,7 @@ test("shares roles, discusses points and fences writers across users", async ({
       .getByRole("button", { name: "Workspace sharing", exact: true })
       .click();
     await page
-      .getByLabel(`Access for ${email}`, { exact: true })
+      .getByLabel(`Access for ${displayName}`, { exact: true })
       .selectOption("full");
     await page
       .getByRole("button", { name: "Close dialog", exact: true })
@@ -188,7 +161,7 @@ test("shares roles, discusses points and fences writers across users", async ({
       .click();
     await expect(
       page.getByRole("dialog", {
-        name: `${email} is requesting session control`,
+        name: `${displayName} is requesting session control`,
         exact: true,
       }),
     ).toBeVisible();
@@ -230,7 +203,7 @@ test("shares roles, discusses points and fences writers across users", async ({
       .getByRole("button", { name: "Workspace sharing", exact: true })
       .click();
     await page
-      .getByRole("button", { name: `Remove ${email}`, exact: true })
+      .getByRole("button", { name: `Remove ${displayName}`, exact: true })
       .click();
     await page
       .getByRole("button", { name: "Close dialog", exact: true })

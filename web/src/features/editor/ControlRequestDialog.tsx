@@ -57,9 +57,10 @@ export default function ControlRequestDialog({
             <Avatar
               id={request.requesterId}
               email={request.requesterEmail}
+              name={request.requesterDisplayName}
               version={request.avatarVersion}
             />{" "}
-            {request.requesterEmail} is requesting session control
+            {request.requesterDisplayName} is requesting session control
           </>
         ) : (
           "Requesting session control"

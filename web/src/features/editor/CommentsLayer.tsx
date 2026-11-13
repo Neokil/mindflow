@@ -9,6 +9,7 @@ import { ErrorMessage } from "../../ui";
 type Message = {
   id: string;
   authorEmail: string;
+  authorDisplayName: string;
   authorId: string;
   avatarVersion?: string;
   body: string;
@@ -18,6 +19,7 @@ type Thread = {
   id: string;
   initials: string;
   authorEmail: string;
+  authorDisplayName: string;
   authorId: string;
   avatarVersion?: string;
   x: number;
@@ -116,7 +118,7 @@ export default function CommentsLayer({
           >
             <button
               className={`comment-pin ${thread.resolved ? "resolved" : ""}`}
-              aria-label={`Comment by ${thread.authorEmail}`}
+              aria-label={`Comment by ${thread.authorDisplayName}`}
               aria-expanded={open === thread.id}
               onFocus={() => setOpen(thread.id)}
               onClick={() => setOpen(thread.id)}
@@ -125,6 +127,7 @@ export default function CommentsLayer({
                 <Avatar
                   id={thread.authorId}
                   email={thread.authorEmail}
+                  name={thread.authorDisplayName}
                   version={thread.avatarVersion}
                 />
               ) : (
@@ -156,10 +159,11 @@ export default function CommentsLayer({
                       <strong className="profile-identity">
                         <Avatar
                           id={message.authorId}
-                          email={message.authorEmail}
+                          email={message.authorDisplayName}
+                          name={message.authorDisplayName}
                           version={message.avatarVersion}
                         />
-                        {message.authorEmail}
+                        {message.authorDisplayName}
                       </strong>
                       <p>{message.body}</p>
                     </div>

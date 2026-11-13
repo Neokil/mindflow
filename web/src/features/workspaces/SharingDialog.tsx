@@ -1,3 +1,5 @@
+import SharingUserPicker from "./SharingUserPicker";
+import type { DirectoryUser } from "../../api";
 import Avatar from "../accounts/Avatar";
 import { useEffect, useState } from "react";
 import { api } from "../../api";
@@ -6,7 +8,7 @@ import { Modal, ErrorMessage } from "../../ui";
 
 type Member = {
   userId: string;
-  email: string;
+  displayName: string;
   role: string;
   avatarVersion?: string;
 };
@@ -29,7 +31,10 @@ export default function SharingDialog({
   const owner = !workspace.role || workspace.role === "owner";
   const [workspaceOwner, setWorkspaceOwner] = useState<Member>();
   const [members, setMembers] = useState<Member[]>([]),
-    [email, setEmail] = useState(""),
+    [query, setQuery] = useState(""),
+    [selected, setSelected] = useState(""),
+    [users, setUsers] = useState<DirectoryUser[]>([]),
+    [loadingUsers, setLoadingUsers] = useState(true),
     [role, setRole] = useState("read"),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -43,12 +48,21 @@ export default function SharingDialog({
         if (!canceled) setError(err.message);
       });
     if (owner)
-      void api<Member[]>(`/workspaces/${workspace.id}/members`)
-        .then((value) => {
-          if (!canceled) setMembers(value);
+      void Promise.all([
+        api<Member[]>(`/workspaces/${workspace.id}/members`),
+        api<DirectoryUser[]>("/accounts/directory"),
+      ])
+        .then(([members, users]) => {
+          if (!canceled) {
+            setMembers(members);
+            setUsers(users);
+          }
         })
         .catch((err) => {
           if (!canceled) setError(err.message);
+        })
+        .finally(() => {
+          if (!canceled) setLoadingUsers(false);
         });
     return () => {
       canceled = true;
@@ -61,16 +75,17 @@ export default function SharingDialog({
       await action();
       setMembers(await api(`/workspaces/${workspace.id}/members`));
       await changed();
-      setEmail("");
+      setQuery("");
+      setSelected("");
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setBusy(false);
     }
   }
-  const grant = (address: string, permission: string) =>
+  const grant = (userId: string, permission: string) =>
     api(`/workspaces/${workspace.id}/members`, "PUT", {
-      email: address,
+      userId,
       role: permission,
     });
   return (
@@ -79,11 +94,11 @@ export default function SharingDialog({
         <div className="profile-identity">
           <Avatar
             id={workspaceOwner.userId}
-            email={workspaceOwner.email}
+            name={workspaceOwner.displayName}
             version={workspaceOwner.avatarVersion}
           />
           <span>
-            <strong>{workspaceOwner.email}</strong>
+            <strong>{workspaceOwner.displayName}</strong>
             <br />
             <small>Workspace owner</small>
           </span>
@@ -92,26 +107,31 @@ export default function SharingDialog({
       {owner ? (
         <>
           <p className="muted">
-            Only people you add can open this workspace. Add an existing active
-            mindflow user by email.
+            Only people you add can open this workspace. Choose a registered
+            user by display name.
           </p>
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              void update(() => grant(email, role));
+              if (selected) void update(() => grant(selected, role));
             }}
           >
-            <label>
-              Email address
-              <input
-                type="email"
-                aria-label="Share with email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                disabled={busy}
-              />
-            </label>
+            <SharingUserPicker
+              users={users.filter(
+                (user) =>
+                  user.id !== workspaceOwner?.userId &&
+                  !members.some((member) => member.userId === user.id),
+              )}
+              query={query}
+              onQuery={(value) => {
+                setQuery(value);
+                setSelected("");
+              }}
+              selected={selected}
+              onSelect={setSelected}
+              disabled={busy}
+              loading={loadingUsers || !workspaceOwner}
+            />
             <label>
               Access
               <select
@@ -123,7 +143,7 @@ export default function SharingDialog({
                 {roles}
               </select>
             </label>
-            <button className="primary full" disabled={busy}>
+            <button className="primary full" disabled={busy || !selected}>
               Add user
             </button>
           </form>
@@ -136,24 +156,27 @@ export default function SharingDialog({
                   <span className="profile-identity">
                     <Avatar
                       id={member.userId}
-                      email={member.email}
+                      email={member.displayName}
+                      name={member.displayName}
                       version={member.avatarVersion}
                     />
-                    {member.email}
+                    {member.displayName}
                   </span>
                   <select
-                    aria-label={`Access for ${member.email}`}
+                    aria-label={`Access for ${member.displayName}`}
                     value={member.role}
                     disabled={busy}
                     onChange={(event) =>
-                      void update(() => grant(member.email, event.target.value))
+                      void update(() =>
+                        grant(member.userId, event.target.value),
+                      )
                     }
                   >
                     {roles}
                   </select>
                   <button
                     className="text-button danger"
-                    aria-label={`Remove ${member.email}`}
+                    aria-label={`Remove ${member.displayName}`}
                     disabled={busy}
                     onClick={() =>
                       void update(() =>

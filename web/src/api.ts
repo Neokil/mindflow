@@ -42,6 +42,7 @@ export async function api<T = unknown>(
   return data as T;
 }
 export type User = {
+  displayName: string;
   avatarVersion?: string;
   id: string;
   email: string;
@@ -61,3 +62,5 @@ export type SMTP = {
 export type Settings = { publicURL: string; smtp: SMTP };
 
 export type ServerEvent = { type: string; id?: string; sequence: number };
+
+export type DirectoryUser = Pick<User, "id" | "displayName" | "avatarVersion">;

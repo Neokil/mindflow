@@ -205,9 +205,12 @@ export default function App() {
               <Avatar
                 id={user.id}
                 email={user.email}
+                name={user.displayName}
                 version={user.avatarVersion}
               />
-              <span className="account-email">{user.email}</span>
+              <span className="account-email" title={user.displayName}>
+                {user.displayName}
+              </span>
             </button>
             <button
               className="icon-button"

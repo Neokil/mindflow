@@ -6,6 +6,7 @@ export type ControlRequest = {
   avatarVersion?: string;
   id: string;
   requesterEmail: string;
+  requesterDisplayName: string;
   deadline: number;
   status: string;
   incoming: boolean;

@@ -122,7 +122,9 @@ label {
   flex: 1;
   min-width: 0;
 }
-input:not([type="checkbox"]):not([type="color"]):not([type="range"]),
+input:not([type="checkbox"], [type="radio"]):not([type="color"]):not(
+    [type="range"]
+  ),
 select,
 textarea {
   border: 1px solid var(--line);
@@ -426,6 +428,10 @@ select {
   gap: 7px;
 }
 .account-email {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 11px;
   color: var(--muted);
   margin-right: 15px;
@@ -1695,6 +1701,8 @@ button.private-badge {
   padding: 0;
 }
 .profile-identity {
+  min-width: 0;
+  overflow-wrap: anywhere;
   margin-bottom: 12px;
 }
 .sharing-member .profile-identity,
@@ -2055,4 +2063,49 @@ body {
   max-width: 100%;
   height: auto;
   margin: 0 auto;
+}
+
+.sharing-user-options {
+  border: 0;
+  padding: 0;
+  margin: 0 0 16px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.sharing-user-options legend {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.sharing-user-option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  margin: 0 0 6px;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.sharing-user-option:hover,
+.sharing-user-option:has(input:checked) {
+  background: var(--accent-soft);
+}
+.sharing-user-option input {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.sharing-user-option span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.user-info > small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }

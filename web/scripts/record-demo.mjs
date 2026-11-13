@@ -287,16 +287,13 @@ try {
   await page
     .getByRole("button", { name: "Workspace sharing", exact: true })
     .click();
-  await page
-    .getByLabel("Share with email", { exact: true })
-    .pressSequentially("sam@example.com", { delay: 80 });
+  await page.getByLabel("Search users", { exact: true }).fill("sam");
+  await page.getByRole("radio", { name: "sam", exact: true }).check();
   await page
     .getByLabel("Sharing access", { exact: true })
     .selectOption("comment");
   await page.getByRole("button", { name: "Add user", exact: true }).click();
-  await expect(page.getByLabel("Access for sam@example.com")).toHaveValue(
-    "comment",
-  );
+  await expect(page.getByLabel("Access for sam")).toHaveValue("comment");
   await delay(1200);
   await page.getByRole("button", { name: "Close dialog", exact: true }).click();
   await caption("5. Start a conversation right on the canvas");
@@ -309,7 +306,7 @@ try {
     });
   await page.getByRole("button", { name: "Post comment", exact: true }).click();
   const pin = page.getByRole("button", {
-    name: "Comment by alex@example.com",
+    name: "Comment by alex",
     exact: true,
   });
   await pin.hover();
