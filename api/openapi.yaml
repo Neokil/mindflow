@@ -3,7 +3,7 @@
   "info": {
     "title": "mindflow API",
     "version": "0.1.0",
-    "description": "Same-origin API. All content endpoints enforce ownership, including for administrators. Mutation requests use a session-bound X-CSRF-Token. See docs/CANVAS_AND_SYNC.md for revision and lease semantics."
+    "description": "Same-origin API. Content endpoints enforce current workspace permissions; administrators have no implicit private-content access. Mutation requests use a session-bound X-CSRF-Token. See docs/developer-docs/canvas-and-sync.md for revision and lease semantics."
   },
   "servers": [
     {

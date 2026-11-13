@@ -1,0 +1,86 @@
+# Data structures
+
+SQLite is the persistent store for documents, original/derived image BLOBs, accounts, configuration, and queued jobs. The connection enables foreign keys, WAL, full synchronization, and a busy timeout, with one serialized connection. Run one application instance per database.
+
+## Schema ownership
+
+| Domain | Tables/views | Purpose |
+| --- | --- | --- |
+| Account | `users`, `sessions`, `account_tokens`, `avatars` | Account roles/status/preferences, password hashes, revocable sessions, expiring invitation/reset tokens, and profile PNGs. |
+| Workspace | `workspaces`, `pages`, `workspace_members` | Ownership, titles/order, metadata revisions, page JSON, and explicit member roles. |
+| Workspace | `page_leases`, `editor_requests` | Current writer/session/client, fencing epoch/expiry, and pending/finished control requests. |
+| Workspace | `assets`, `asset_variants`, `page_assets` | Immutable originals, size-bucket variants, and retained page/image associations. |
+| Workspace | `save_receipts`, `image_jobs` | Idempotent save acknowledgments and deferred image processing. |
+| Workspace | `comment_threads`, `comment_messages` | Positioned discussions, authorship, replies, and resolution. |
+| Workspace | `workspace_access`, `asset_access` views | Workspace roles and authorized image visibility. |
+| Email | `mail_jobs` | Deduplicated credential email, attempts, next run, and delivery status. |
+| Installation | `app_settings` | Singleton initialization state, public URL, and SMTP configuration. |
+
+Each top-level domain owns its migrations and `goose_<domain>_version` history table. Subdomains share their parent's history. Account IDs in workspace/email records are opaque references; no query or foreign key reaches another domain's tables. Services coordinate lifecycle cleanup explicitly.
+
+Core relationships within schemas:
+
+```mermaid
+erDiagram
+    users ||--o{ sessions : authenticates
+    users ||--o{ account_tokens : redeems
+    users ||--o| avatars : displays
+    workspaces ||--o{ pages : contains
+    workspaces ||--o{ workspace_members : grants
+    pages ||--o| page_leases : fences
+    pages ||--o| editor_requests : coordinates
+    pages ||--o{ save_receipts : acknowledges
+    pages ||--o{ comment_threads : positions
+    comment_threads ||--o{ comment_messages : contains
+    pages ||--o{ page_assets : retains
+    assets ||--o{ page_assets : references
+    assets ||--o{ asset_variants : derives
+```
+
+## Canvas JSON
+
+A page's `document` is versioned JSON. `pages.revision` tracks saved document changes; `metadata_revision` is separate from content revision, and workspace revision protects workspace/page-order metadata.
+
+```json
+{
+  "schemaVersion": 1,
+  "elements": [
+    {
+      "id": "element-id",
+      "type": "shape",
+      "shape": "rectangle",
+      "x": 100,
+      "y": 80,
+      "width": 160,
+      "height": 120,
+      "rotation": 0,
+      "fill": "#e8e4fa",
+      "border": "#6c63d9",
+      "borderWidth": 2
+    }
+  ],
+  "settings": { "background": "dots", "gridSize": 20, "snap": false }
+}
+```
+
+The ordered element list defines stacking, back to front. Common fields are stable `id`, `type`, center `x/y` in world units, positive local `width/height`, rotation in radians, and optional `groupId`. Groups are flat memberships; transforms update the member elements.
+
+| Element type | Additional fields |
+| --- | --- |
+| `shape` | `shape` (`rectangle`, `circle`, `star`), fill, border, border width. |
+| `text` | Plain text, whole-number font size, bold/italic, color, horizontal and vertical alignment. Formatting applies to the whole element. |
+| `stroke` | Normalized local point pairs, color, and pen width. Resizing stretches the path. |
+| `image` | Asset ID and optional normalized `crop` rectangle (`x`, `y`, `width`, `height`). Cropping never modifies the original BLOB. |
+
+New text defaults to horizontal center/vertical middle. Legacy missing alignment fields retain the renderer's fallback behavior. Camera, selection, insertion preview, undo history, and recovery state are not document content. A page supports at most 10,000 elements; unsupported document schemas and invalid payloads are rejected.
+
+## Lifecycles and storage details
+
+- Image originals are immutable. Variants are keyed by asset and resolution bucket; a workspace can scope uploads to its owner. `page_assets` retains images for page history/recovery, and duplicate pages can share those originals. Removing an element does not immediately destroy its retained image.
+- Workspace deletion cascades through its pages, memberships, discussions, and related page records. Cross-domain account deletion removes owned content and related memberships/authored discussion/requests through service collaborators. Shared uploads belong to the workspace owner, so deleting their uploader does not remove retained shared content.
+- Comment threads/messages live outside the page JSON and its document revision. Authors and permissions are assigned/checked by the server.
+- Avatar uploads become metadata-free 128px square PNGs; `users.avatar_version` changes when the image changes.
+- Sessions store verifier hashes; invitation/reset records store token hashes. Pending email payloads and SMTP configuration are sensitive backup contents.
+- Save receipts include a request digest and resulting revision, expiring after 24 hours. Lease epochs prevent an old client from becoming a valid writer again after transfer or expiry.
+
+The authoritative definitions are the [account](../../internal/account/storage/migrations), [workspace](../../internal/workspace/storage/migrations), [email](../../internal/email/storage/migrations), and [installation](../../internal/installation/storage/migrations) migrations, plus the [frontend model](../../web/src/model.ts). HTTP payloads are in [OpenAPI](../../api/openapi.yaml).

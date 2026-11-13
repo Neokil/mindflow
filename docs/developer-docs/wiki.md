@@ -4,7 +4,9 @@
 
 The workflow clones the existing wiki, prepares the Markdown and assets, commits changed content, and pushes a normal commit. It does not force-push or rewrite history. Runs are serialized, and an unchanged publication makes no commit.
 
-`scripts/prepare-wiki.py` generates a home page and sidebar, rewrites documentation links to wiki pages, and sends links outside `docs/` back to files on the repository's main branch. Code fences are left unchanged. Nested Markdown filenames become hyphenated page names. Assets retain their directory structure. If `docs/Home.md` or `docs/_Sidebar.md` exists, its content is used instead of the generated page.
+`scripts/prepare-wiki.py` generates a home page and sidebar, rewrites documentation links to wiki pages, and sends links outside `docs/` back to files on the repository's main branch. Code fences are left unchanged. The [documentation home](../Home.md) and [sidebar](../_Sidebar.md) group pages into Product, User Docs, and Developer Docs. Nested Markdown filenames become hyphenated wiki page names, while their source files remain organized in directories. Assets retain their directory structure. If `docs/Home.md` or `docs/_Sidebar.md` exists, its content is used instead of the generated page.
+
+When adding or moving a guide, update `docs/Home.md` and `docs/_Sidebar.md`. Use relative Markdown links; the publisher converts them for the wiki.
 
 The hidden `.mindflow-docs.json` manifest records managed files. Renamed/deleted source files disappear from the next publication; unrelated manually created wiki pages are preserved. Direct wiki edits to managed pages are replaced on the next sync, so edit those pages in `docs/` instead.
 

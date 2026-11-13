@@ -45,6 +45,21 @@ class WikiTests(unittest.TestCase):
             self.assertFalse((target / 'Old.md').exists())
             self.assertEqual((target / 'Manual.md').read_text(), 'keep')
 
+    def test_authored_home_and_grouped_sidebar_use_nested_wiki_links(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            docs, target = root / 'docs', root / 'wiki'
+            (docs / 'product').mkdir(parents=True)
+            (docs / 'product/overview.md').write_text('# Product definition\n')
+            (docs / 'Home.md').write_text('# Documentation\n[Definition](product/overview.md)\n')
+            (docs / '_Sidebar.md').write_text('### Product\n[Definition](product/overview.md)\n')
+            wiki.prepare(docs, target, 'https://github.com/owner/repo')
+            self.assertTrue((target / 'Home.md').read_text().startswith('# Documentation'))
+            sidebar = (target / '_Sidebar.md').read_text()
+            self.assertIn('### Product', sidebar)
+            self.assertIn('(https://github.com/owner/repo/wiki/product-overview)', sidebar)
+            self.assertIn('wiki/product-overview', (target / 'Home.md').read_text())
+
     def test_manifest_cannot_delete_outside_wiki(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
