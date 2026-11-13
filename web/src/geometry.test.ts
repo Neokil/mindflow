@@ -1,3 +1,4 @@
+import { fitCamera } from "./geometry";
 import { describe, expect, it } from "vitest";
 import {
   fullyContained,
@@ -66,4 +67,25 @@ describe("canvas geometry", () => {
     expect(snap(-29, 20)).toBe(-20);
     expect(snap(-31, 20)).toBe(-40);
   });
+});
+
+it("fits imported off-origin content into the viewport", () => {
+  const view = fitCamera(
+    [
+      {
+        id: "far-image",
+        type: "image",
+        assetId: "image",
+        x: 1800,
+        y: 450,
+        width: 512,
+        height: 512,
+        rotation: 0,
+      },
+    ],
+    { width: 1200, height: 800 },
+  );
+  expect(view.x + 1800 * view.zoom).toBeCloseTo(600);
+  expect(view.y + 450 * view.zoom).toBeCloseTo(400);
+  expect(512 * view.zoom).toBeLessThanOrEqual(620);
 });

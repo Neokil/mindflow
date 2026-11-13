@@ -40,6 +40,38 @@ export default function CanvasSettings({
           <option value="plain">Plain</option>
         </select>
       </label>
+      <label className="check-label">
+        <input
+          type="checkbox"
+          checked={!!settings.backgroundColor}
+          disabled={!editable}
+          onChange={(event) =>
+            onSettings({
+              ...settings,
+              backgroundColor: event.target.checked ? "#ffffff" : undefined,
+            })
+          }
+        />
+        Custom background color
+      </label>
+      {settings.backgroundColor && (
+        <label>
+          Background color
+          <input
+            aria-label="Canvas background color"
+            type="color"
+            disabled={!editable}
+            value={
+              settings.backgroundColor.startsWith("#")
+                ? settings.backgroundColor.slice(0, 7)
+                : "#ffffff"
+            }
+            onChange={(event) =>
+              onSettings({ ...settings, backgroundColor: event.target.value })
+            }
+          />
+        </label>
+      )}
       <label>
         Grid spacing
         <input

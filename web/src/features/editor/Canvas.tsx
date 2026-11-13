@@ -3,7 +3,7 @@ import { Copy, SlidersHorizontal, Trash2, X } from "lucide-react";
 import type { CSSProperties, SetStateAction } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  footprint,
+  fitCamera,
   lassoSelection,
   selectedWithGroup,
   worldPoint,
@@ -36,7 +36,7 @@ export default function Canvas({
     stage = useRef<Konva.Stage>(null),
     preview = useRef<Konva.Line>(null),
     fileInput = useRef<HTMLInputElement>(null);
-  const [size, setSize] = useState({ width: 1000, height: 700 });
+  const [size, setSize] = useState({ width: 0, height: 0 });
   const [camera, setCamera] = useState<Camera>(
     session.camera || { x: 500, y: 350, zoom: 1 },
   );
@@ -86,13 +86,13 @@ export default function Canvas({
     observer.observe(host.current!);
     return () => observer.disconnect();
   }, []);
-  useEffect(() => {
-    setCamera((c) =>
-      c.x === 500 && c.y === 350
-        ? { ...c, x: size.width / 2, y: size.height / 2 }
-        : c,
-    );
-  }, [size.width, size.height]);
+  const cameraInitialized = useRef(Boolean(session.camera));
+  useLayoutEffect(() => {
+    if (!cameraInitialized.current && size.width > 0 && size.height > 0) {
+      cameraInitialized.current = true;
+      setCamera(fitCamera(doc.elements, size));
+    }
+  }, [size, doc.elements]);
   useEffect(() => {
     if (!session.editable) {
       setPending([]);
@@ -453,30 +453,7 @@ export default function Canvas({
     else if (!selection.includes(id)) setSelection(ids);
   }
   function fit() {
-    if (!doc.elements.length) {
-      setCamera({ x: size.width / 2, y: size.height / 2, zoom: 1 });
-      return;
-    }
-    const points = doc.elements.flatMap(footprint);
-    const minX = Math.min(...points.map((p) => p.x)),
-      maxX = Math.max(...points.map((p) => p.x)),
-      minY = Math.min(...points.map((p) => p.y)),
-      maxY = Math.max(...points.map((p) => p.y));
-    const zoom = Math.min(
-      2,
-      Math.max(
-        0.05,
-        Math.min(
-          (size.width - 200) / Math.max(1, maxX - minX),
-          (size.height - 180) / Math.max(1, maxY - minY),
-        ),
-      ),
-    );
-    setCamera({
-      x: size.width / 2 - ((minX + maxX) / 2) * zoom,
-      y: size.height / 2 - ((minY + maxY) / 2) * zoom,
-      zoom,
-    });
+    setCamera(fitCamera(doc.elements, size));
   }
   const rawGrid = doc.settings.gridSize * camera.zoom;
   const grid =
@@ -498,6 +475,7 @@ export default function Canvas({
         ref={host}
         style={{
           ...backgroundStyle,
+          backgroundColor: doc.settings.backgroundColor,
           cursor: pending.length
             ? "copy"
             : tool === "pen" || tool === "comment"

@@ -1716,3 +1716,16 @@ button.private-badge {
   font-size: 11px;
   padding: 8px;
 }
+
+.workspace-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.import-notes {
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}

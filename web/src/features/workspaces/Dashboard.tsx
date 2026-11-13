@@ -1,3 +1,4 @@
+import ImportWorkspaceDialog from "./ImportWorkspaceDialog";
 import {
   ArrowUpRight,
   Copy,
@@ -7,6 +8,7 @@ import {
   Pencil,
   Plus,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ServerEvent } from "../../api";
@@ -29,6 +31,7 @@ export default function Dashboard({
     initial?: string;
     action: (name: string) => Promise<void>;
   }>();
+  const [importing, setImporting] = useState(false);
   const [menu, setMenu] = useState<string>();
   async function load() {
     setItems(await api("/workspaces"));
@@ -74,10 +77,16 @@ export default function Dashboard({
             A home for every idea. A little room to let it grow.
           </p>
         </div>
-        <button className="primary" onClick={create}>
-          <Plus size={17} />
-          New workspace
-        </button>
+        <div className="workspace-actions">
+          <button className="secondary" onClick={() => setImporting(true)}>
+            <Upload size={17} />
+            Import workspace
+          </button>
+          <button className="primary" onClick={create}>
+            <Plus size={17} />
+            New workspace
+          </button>
+        </div>
       </div>
       <ErrorMessage message={error} />
       {loading ? (
@@ -222,6 +231,25 @@ export default function Dashboard({
         <LockKeyhole size={12} />
         Only you can see your workspaces.
       </div>
+      {importing && (
+        <ImportWorkspaceDialog
+          close={() => {
+            setImporting(false);
+            void load().catch((e) => setError(e.message));
+          }}
+          open={async (id) => {
+            const all = await api<Workspace[]>("/workspaces");
+            setItems(all);
+            const item = all.find((item) => item.id === id);
+            if (!item)
+              throw new Error(
+                "The imported workspace is unavailable. Refresh and retry.",
+              );
+            setImporting(false);
+            open(item);
+          }}
+        />
+      )}
       {dialog && <NameDialog {...dialog} close={() => setDialog(undefined)} />}
     </main>
   );

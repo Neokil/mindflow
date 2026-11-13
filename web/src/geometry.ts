@@ -153,3 +153,32 @@ export function selectedWithGroup(elements: CanvasElement[], id: string) {
         .map((item) => item.id)
     : [id];
 }
+
+// Fit saved content on first open while allowing an existing session camera to be restored.
+export function fitCamera(
+  elements: CanvasElement[],
+  size: { width: number; height: number },
+) {
+  if (!elements.length)
+    return { x: size.width / 2, y: size.height / 2, zoom: 1 };
+  const points = elements.flatMap(footprint);
+  const minX = Math.min(...points.map((point) => point.x)),
+    maxX = Math.max(...points.map((point) => point.x)),
+    minY = Math.min(...points.map((point) => point.y)),
+    maxY = Math.max(...points.map((point) => point.y));
+  const zoom = Math.min(
+    2,
+    Math.max(
+      0.05,
+      Math.min(
+        (size.width - 200) / Math.max(1, maxX - minX),
+        (size.height - 180) / Math.max(1, maxY - minY),
+      ),
+    ),
+  );
+  return {
+    x: size.width / 2 - ((minX + maxX) / 2) * zoom,
+    y: size.height / 2 - ((minY + maxY) / 2) * zoom,
+    zoom,
+  };
+}

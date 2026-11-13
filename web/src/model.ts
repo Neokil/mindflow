@@ -27,7 +27,12 @@ export type CanvasElement = {
 export type CanvasDocument = {
   schemaVersion: 1;
   elements: CanvasElement[];
-  settings: { background: "dots" | "plain"; gridSize: number; snap: boolean };
+  settings: {
+    background: "dots" | "plain";
+    backgroundColor?: string;
+    gridSize: number;
+    snap: boolean;
+  };
 };
 export type WorkspacePermission = "owner" | "read" | "comment" | "full";
 export type Workspace = {
