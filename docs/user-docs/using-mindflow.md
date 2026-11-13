@@ -45,7 +45,7 @@ The top-right button opens **Canvas settings**: background, an optional custom b
 
 To crop, select one image and choose **Crop image** in its properties. Draw/adjust the crop rectangle or use percentage trims, then Apply. Cancel discards the draft; Reset crop followed by Apply restores the original. Cropping supports undo/redo and does not alter the original file.
 
-Open **Your profile** beside your email to upload or remove an avatar. Avatars use PNG/JPEG/WebP up to 2 MiB, 8 megapixels, and 8,192 pixels per side, and are cropped to a square. Initials appear when no avatar is set. The appearance button cycles system/light/dark mode.
+Open **Your profile** beside your email to upload or remove an avatar. Avatars use PNG/JPEG/WebP up to 2 MiB, 8 megapixels, and 8,192 pixels per side, and are cropped to a square. Initials appear when no avatar is set. Appearance follows your system preference by default and updates when it changes. The appearance button cycles system/light/dark mode if you want an explicit override.
 
 ## Sharing and comments
 
