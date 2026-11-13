@@ -1,16 +1,54 @@
-# Replace the dataset path before installing this YAML.
+# Use the existing TrueNAS storage path, or replace it with your own dataset.
+# Grant UID/GID 10001:10001 read/write and traversal access before starting.
+# Both services must use the same image version and /data mount.
 # Use a published version tag for a stable deployment; edge follows main.
 services:
+  migrate:
+    image: neokil/mindflow:edge
+    command: ["migrate"]
+    volumes:
+      - bind:
+          create_host_path: false
+          propagation: rprivate
+        read_only: false
+        source: /mnt/.ix-apps/app_mounts/mindflow/storage_entry
+        target: /data
+        type: bind
+    environment:
+      MINDFLOW_DATA: /data
+    user: "10001:10001"
+    pull_policy: always
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    network_mode: none
+    healthcheck:
+      disable: true
   mindflow:
     image: neokil/mindflow:edge
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     ports:
-      - "8080:8080"
+      - "30098:8080"
     volumes:
-      - /mnt/POOL/apps/mindflow:/data
+      - bind:
+          create_host_path: false
+          propagation: rprivate
+        read_only: false
+        source: /mnt/.ix-apps/app_mounts/mindflow/storage_entry
+        target: /data
+        type: bind
     environment:
-      MINDFLOW_ADDR: "0.0.0.0:8080"
-      MINDFLOW_DATA: "/data"
+      MINDFLOW_ADDR: 0.0.0.0:8080
+      MINDFLOW_DATA: /data
     user: "10001:10001"
+    pull_policy: always
     restart: unless-stopped
     stop_grace_period: 30s
     read_only: true
@@ -20,3 +58,4 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+volumes: {}

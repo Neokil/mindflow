@@ -27,11 +27,13 @@ Protect backups as private data. They contain accounts, workspaces, images, SMTP
 
 ## Application upgrades
 
-Snapshot the data, stop the old container, deploy a pinned new image, and check readiness. For a prebuilt-image Compose deployment, pull the chosen tag before starting it. Startup applies pending domain migrations automatically; there is no separate Goose service.
+Snapshot the data, stop the old container, deploy a pinned new image, and check readiness. For a prebuilt-image Compose deployment, pull the chosen tag before starting it. Startup applies pending domain migrations automatically. The TrueNAS YAML additionally runs the same image as a one-shot `migrate` service and starts the server only after it exits successfully. Keep the image version, data mount, and UID/GID identical in both services; a completed migration container is expected to stay stopped. Stop the old server before applying an upgrade so migrations do not run alongside an older process.
 
 Each migration is transactional, but an upgrade across domains is not one transaction. A failed migration rolls back its own changes; earlier successful domains remain applied and retry resumes the remaining work. The app refuses newer unsupported schemas. Roll back with the old image **and its matching pre-upgrade snapshot**, rather than assuming an old binary can read the new database.
 
-To migrate explicitly with the supplied Compose file, stop the normal service first, then run:
+For a TrueNAS deployment, inspect both services' logs. If `migrate` fails, fix the reported path, permissions, or migration issue and redeploy the app. When applying a new image, recreate the migration service together with the server. The server still checks migrations when restarted directly.
+
+To migrate explicitly with the supplied source-checkout Compose file, stop the normal service first, then run:
 
 ```sh
 docker compose -f deploy/compose.yaml run --rm mindflow migrate
@@ -48,6 +50,7 @@ The `scratch` image has no shell. Invoke maintenance commands through its entryp
 | Login works only locally or cookies are missing | Public HTTPS URL, production mode, and reverse-proxy configuration. |
 | Email fails | Provider host/port, verified TLS mode, credentials, sender permission, and queued delivery status. |
 | Other tabs update slowly | SSE streaming and proxy buffering/caching. Polling is a fallback. |
+| Database cannot be opened or `migrate` fails before creating tables | Confirm the host dataset exists, both services mount it at `/data`, `MINDFLOW_DATA` is a directory, and UID/GID `10001:10001` can create/write the database and its sidecar files. Check free space and dataset read-only state. |
 | Save failed or disconnected | Network, available disk space, permissions, current editor control, and server logs. Preserve the tab until work is saved or recovered. |
 
 SMTP failure does not take the canvas offline. Logs exclude passwords, cookies, token URLs, image bytes, and document bodies, apart from the intentionally logged first-run setup credential.
