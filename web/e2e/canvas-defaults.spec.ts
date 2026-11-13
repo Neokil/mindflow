@@ -32,14 +32,14 @@ test("opaque object settings show real colors and canvas creation defaults persi
   const properties = page.locator(".object-inspector");
   await add("Rectangle", 450, 300);
   let document = await saved();
-  expect(document.elements[0].fill).toBe("#a4d65e");
+  expect(document.elements[0].fill).toBe("#1b5e3b");
   expect(document.elements[0].border).toBe("#d9a441");
   await page.mouse.click(box.x + 450, box.y + 300, { button: "right" });
   await expect(properties).toBeVisible();
   await expect(properties).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await expect(picker("Shape fill").locator(".color-picker-color")).toHaveCSS(
     "background-color",
-    "rgb(164, 214, 94)",
+    "rgb(27, 94, 59)",
   );
   await expect(
     picker("Element color").locator(".color-picker-color"),
@@ -58,7 +58,7 @@ test("opaque object settings show real colors and canvas creation defaults persi
   await add("Circle", 650, 300);
   await text("Golden text", 850, 300);
   document = await saved();
-  expect(document.elements[1].fill).toBe("#a4d65e");
+  expect(document.elements[1].fill).toBe("#1b5e3b");
   expect(document.elements[2].color).toBe("#d9a441");
   await page
     .getByRole("button", { name: "Canvas settings", exact: true })
@@ -81,7 +81,7 @@ test("opaque object settings show real colors and canvas creation defaults persi
     defaultTextColor: "#123abc",
   });
   expect(document.elements[0].fill).toBe("#112233");
-  expect(document.elements[1].fill).toBe("#a4d65e");
+  expect(document.elements[1].fill).toBe("#1b5e3b");
   expect(document.elements[2].color).toBe("#d9a441");
   expect(document.elements[3]).toMatchObject({
     fill: "#abcdef",
@@ -134,6 +134,13 @@ test("opaque object settings show real colors and canvas creation defaults persi
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto(`/#/workspaces/${workspaceID}/pages/${result.id}`);
   await expect(page.getByTestId("element-count")).toHaveText("1 element");
+  // Konva batches its visible and hit-canvas updates on the next frame.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   const alphaBox = (await page.getByTestId("canvas").boundingBox())!;
   await page.mouse.click(
     alphaBox.x + alphaBox.width / 2,

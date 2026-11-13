@@ -67,7 +67,7 @@ A page's `document` is versioned JSON. `pages.revision` tracks saved document ch
 }
 ```
 
-`settings.defaultFill`, `defaultBorder`, and `defaultTextColor` optionally store validated default colors for newly created shapes/text on that page. New pages explicitly use Sprout (`#a4d65e`), Gold (`#d9a441`), and Gold respectively. Missing/empty fields on legacy pages use frontend fallbacks without changing existing elements. Settings are saved in the normal document snapshot; no SQL migration or schema-version change is required.
+`settings.defaultFill`, `defaultBorder`, and `defaultTextColor` optionally store validated default colors for newly created shapes/text on that page. New pages explicitly use Forest (`#1b5e3b`), Gold (`#d9a441`), and Gold respectively. Missing/empty fields on legacy pages use frontend fallbacks without changing existing elements. Settings are saved in the normal document snapshot; no SQL migration or schema-version change is required.
 
 `settings.backgroundColor` optionally stores a validated CSS color, independent of the dot/plain background pattern. Omitting it keeps the normal theme background. Butterfly imports use it to preserve solid page colors; existing documents require no migration.
 

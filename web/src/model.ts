@@ -44,7 +44,7 @@ export type CanvasElementDefaults = {
   defaultTextColor: string;
 };
 export const DEFAULT_ELEMENT_COLORS: CanvasElementDefaults = {
-  defaultFill: "#a4d65e",
+  defaultFill: "#1b5e3b",
   defaultBorder: "#d9a441",
   defaultTextColor: "#d9a441",
 };

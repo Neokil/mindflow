@@ -82,7 +82,7 @@ const (
 func TestElementDefaultColorsAndLegacySettings(t *testing.T) {
 	t.Parallel()
 	document := canvas.NewDocument()
-	if document.Settings.DefaultFill != "#a4d65e" || document.Settings.DefaultBorder != "#d9a441" || document.Settings.DefaultTextColor != "#d9a441" {
+	if document.Settings.DefaultFill != "#1b5e3b" || document.Settings.DefaultBorder != "#d9a441" || document.Settings.DefaultTextColor != "#d9a441" {
 		t.Fatal("unexpected element defaults")
 	}
 	for _, field := range []string{"fill", "border", "text color"} {

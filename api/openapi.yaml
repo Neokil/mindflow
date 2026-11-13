@@ -3545,7 +3545,7 @@
           },
           "defaultFill": {
             "type": "string",
-            "default": "#a4d65e",
+            "default": "#1b5e3b",
             "description": "Default fill for newly created shapes. Omission or an empty value uses the default. Existing elements and template styles are unchanged.",
             "pattern": "^$|^transparent$|^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
           },

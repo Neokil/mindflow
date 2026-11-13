@@ -29,7 +29,7 @@ The old `logo.png` asset has been replaced by the new icon. The reusable `Brand`
 
 Konva canvas paint styles cannot resolve CSS variables. `useCanvasAccent` reads the computed `--accent` and subscribes to changes of the root `data-theme` attribute. Pass that resolved color to selection outlines, transform handles, and insertion/lasso previews.
 
-New shapes default to Sprout (`#A4D65E`) fills and Gold (`#D9A441`) borders; new text defaults to Gold. `settings.defaultFill`, `defaultBorder`, and `defaultTextColor` provide page-specific overrides in Canvas settings, independently of object properties. Legacy pages without these fields use the same defaults. The pen starts with the current theme accent and keeps its own tool color. User-chosen colors and stored document elements remain content: switching appearance does not recolor them. Imported colors and uploaded image pixels are preserved.
+New shapes default to Forest (`#1B5E3B`) fills and Gold (`#D9A441`) borders; new text defaults to Gold. `settings.defaultFill`, `defaultBorder`, and `defaultTextColor` provide page-specific overrides in Canvas settings, independently of object properties. Legacy pages without these fields use the same defaults. The pen starts with the current theme accent and keeps its own tool color. User-chosen colors and stored document elements remain content: switching appearance does not recolor them. Imported colors and uploaded image pixels are preserved.
 
 HTML emails use Forest for their heading, action button, and fallback link, with white button text. They retain escaped content, clickable links, and a plain-text alternative. Remote logo images are not required to read credential emails.
 

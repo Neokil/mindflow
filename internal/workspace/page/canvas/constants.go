@@ -2,7 +2,7 @@ package canvas
 
 const (
 	defaultGridSpacing = 20
-	defaultFillColor   = "#a4d65e"
+	defaultFillColor   = "#1b5e3b"
 	defaultGoldColor   = "#d9a441"
 	elementImage       = "image"
 
