@@ -1,4 +1,5 @@
 import UpdateBanner from "./UpdateBanner";
+import { useCanvasFullscreen } from "./useCanvasFullscreen";
 import { useWorkspaceRoute } from "./navigation";
 import {
   ChevronDown,
@@ -43,6 +44,9 @@ export default function App() {
   const [profile, setProfile] = useState(false);
   const [admin, setAdmin] = useState(false);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
+  const editorOpen =
+    !opening && workspace?.id === route.workspaceId && !!workspace;
+  const fullscreen = useCanvasFullscreen(editorOpen);
   useEffect(() => {
     (async () => {
       try {
@@ -179,8 +183,6 @@ export default function App() {
         />
       </>
     );
-  const editorOpen =
-    !opening && workspace?.id === route.workspaceId && !!workspace;
   return (
     <div
       className={`app${editorOpen ? " editor-open" : ""}${editorOpen && headerCollapsed ? " header-collapsed" : ""}`}
@@ -202,7 +204,11 @@ export default function App() {
             }
             aria-expanded={!headerCollapsed}
             aria-controls="app-header workspace-heading workspace-pages"
-            onClick={() => setHeaderCollapsed((value) => !value)}
+            onClick={() => {
+              if (headerCollapsed) void fullscreen.exit();
+              else void fullscreen.enter();
+              setHeaderCollapsed(!headerCollapsed);
+            }}
           >
             {headerCollapsed ? (
               <ChevronDown size={16} />

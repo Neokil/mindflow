@@ -48,6 +48,14 @@ test("collapse navigation into an arrow without losing the active canvas", async
     exact: true,
   });
   await expect(restore).toHaveAttribute("aria-expanded", "false");
+  if (info.project.name === "tablet-chromium")
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.fullscreenElement === document.documentElement,
+        ),
+      )
+      .toBe(true);
   await expect(page.locator(".app-header")).toBeHidden();
   await expect(
     page.getByRole("button", { name: "Back to workspaces", exact: true }),
@@ -95,6 +103,10 @@ test("collapse navigation into an arrow without losing the active canvas", async
     path: `../.cache/e2e/focus-${info.project.name}.png`,
   });
   await activate(restore);
+  if (info.project.name === "tablet-chromium")
+    await expect
+      .poll(() => page.evaluate(() => document.fullscreenElement === null))
+      .toBe(true);
   await expect(page.locator(".app-header")).toBeVisible();
   await expect(
     page.getByRole("tablist", { name: "Workspace pages", exact: true }),
@@ -115,3 +127,88 @@ test("collapse navigation into an arrow without losing the active canvas", async
   await expect(page.locator(".app-header")).toBeVisible();
   await expect(page.locator(".editor-header-toggle")).toHaveCount(0);
 });
+
+for (const mode of ["allowed", "denied", "unsupported", "delayed"] as const) {
+  test(`tablet fullscreen handles ${mode} requests`, async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, "Automatic fullscreen is for touch devices");
+    await login(page);
+    await page.evaluate((mode) => {
+      let current: Element | null = null;
+      Object.defineProperty(document, "fullscreenEnabled", {
+        get: () => mode !== "unsupported",
+      });
+      Object.defineProperty(document, "fullscreenElement", {
+        get: () => current,
+      });
+      document.documentElement.requestFullscreen = async () => {
+        document.documentElement.dataset.fullscreenRequests = "1";
+        if (mode === "denied") throw new Error("Fullscreen denied");
+        if (mode === "delayed")
+          await new Promise<void>((resolve) =>
+            document.addEventListener("complete-fullscreen", () => resolve(), {
+              once: true,
+            }),
+          );
+        current = document.documentElement;
+        document.dispatchEvent(new Event("fullscreenchange"));
+      };
+      document.exitFullscreen = async () => {
+        current = null;
+        document.documentElement.dataset.fullscreenExits = "1";
+        document.dispatchEvent(new Event("fullscreenchange"));
+      };
+    }, mode);
+    await create(page, `Fullscreen ${mode} ${Date.now()}`);
+    const canvas = page.getByTestId("canvas");
+    const original = await canvas.elementHandle();
+    await page
+      .getByRole("button", { name: "Hide app header and pages", exact: true })
+      .tap();
+    const restore = page.getByRole("button", {
+      name: "Show app header and pages",
+      exact: true,
+    });
+    await expect(restore).toBeVisible();
+    await expect(page.locator(".app-header")).toBeHidden();
+    if (mode !== "unsupported")
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-fullscreen-requests",
+        "1",
+      );
+    if (mode === "allowed")
+      await expect
+        .poll(() => page.evaluate(() => !!document.fullscreenElement))
+        .toBe(true);
+    else
+      expect(await page.evaluate(() => !!document.fullscreenElement)).toBe(
+        false,
+      );
+    await restore.tap();
+    if (mode === "delayed")
+      await page.evaluate(() =>
+        document.dispatchEvent(new Event("complete-fullscreen")),
+      );
+    await expect(page.locator(".app-header")).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => !!document.fullscreenElement))
+      .toBe(false);
+    if (mode === "allowed" || mode === "delayed")
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-fullscreen-exits",
+        "1",
+      );
+    if (mode === "unsupported")
+      await expect(page.locator("html")).not.toHaveAttribute(
+        "data-fullscreen-requests",
+      );
+    expect(
+      await canvas.evaluate(
+        (element, original) => element === original,
+        original,
+      ),
+    ).toBe(true);
+  });
+}
