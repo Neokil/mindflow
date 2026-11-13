@@ -8,7 +8,6 @@ import (
 	"io"
 	"mindflow/internal/email/storage"
 	"net"
-	"net/mail"
 	"net/smtp"
 	"strconv"
 	"strings"
@@ -35,6 +34,12 @@ type mailJob struct {
 
 // Send delivers a message using the configured TLS mode.
 func Send(ctx context.Context, config Config, toValue, subject, body string) error {
+	if config.Mode != "tls" && config.Mode != "starttls" {
+		return errTLSRequired
+	}
+	if strings.ContainsAny(toValue+subject+config.From+config.Name, "\r\n") {
+		return errMailHeader
+	}
 	addr := net.JoinHostPort(config.Host, strconv.Itoa(config.Port))
 	dialer := &net.Dialer{Timeout: smtpConnectSeconds * time.Second}
 	conn, err := dialer.DialContext(ctx, "tcp", addr)
@@ -84,8 +89,10 @@ func Send(ctx context.Context, config Config, toValue, subject, body string) err
 	if err != nil {
 		return wrap("mail_worker.go", err)
 	}
-	from := (&mail.Address{Name: config.Name, Address: config.From}).String()
-	message := "From: " + from + "\r\nTo: " + toValue + "\r\nSubject: " + subject + "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n" + strings.ReplaceAll(body, "\n", "\r\n")
+	message, err := FormatMessage(config, toValue, subject, body)
+	if err != nil {
+		return err
+	}
 	_, err = io.WriteString(writer, message)
 	if err != nil {
 		return wrap("mail_worker.go", err)
@@ -144,3 +151,8 @@ func (a *Service) runMail(ctx context.Context) {
 }
 
 var errSTARTTLSRequired = errors.New("SMTP server does not support STARTTLS")
+
+var (
+	errTLSRequired = errors.New("SMTP TLS or STARTTLS is required")
+	errMailHeader  = errors.New("invalid email header")
+)

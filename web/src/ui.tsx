@@ -1,11 +1,25 @@
-import { LoaderCircle, Orbit, X } from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
 export function Brand({ small = false }: { small?: boolean }) {
   return (
     <span className={`brand ${small ? "small" : ""}`}>
       <span className="brand-mark">
-        <Orbit size={small ? 18 : 25} strokeWidth={1.6} />
+        <svg
+          width={small ? 20 : 28}
+          height={small ? 20 : 28}
+          viewBox="0 0 32 32"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M16 16C12 9 9 8 6 10s-3 8 0 11 7 1 10-5 7-8 10-6 3 8 0 11-7 1-10-5Z"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </span>
       mindflow<span className="brand-dot">.</span>
     </span>

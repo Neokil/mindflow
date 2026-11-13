@@ -48,7 +48,8 @@ class SMTP(socketserver.StreamRequestHandler):
                 message = BytesParser(policy=email.policy.default).parsebytes(bytes(data))
                 with lock:
                     messages.append({'to': str(message['To']), 'subject': str(message['Subject']),
-                                     'body': message.get_content(), 'tls': isinstance(self.connection, ssl.SSLSocket),
+                                     'body': message.get_body(preferencelist=('plain',)).get_content(),
+                                     'html': message.get_body(preferencelist=('html',)).get_content(), 'tls': isinstance(self.connection, ssl.SSLSocket),
                                      'port': self.server.server_address[1]})
                 self.respond('250 Accepted')
             elif command == 'QUIT':
