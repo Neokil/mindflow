@@ -305,6 +305,11 @@ test("read-only status and control actions stay attached to the toolbox", async 
   expect(footer.y).toBeGreaterThanOrEqual(tools.y + tools.height);
   await press(
     viewer,
+    viewer.getByRole("button", { name: "Pan (H)", exact: true }),
+  );
+  await expect(viewer.locator(".tool-hint")).toBeHidden();
+  await press(
+    viewer,
     viewer.getByRole("button", {
       name: "Hide app header and pages",
       exact: true,

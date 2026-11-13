@@ -1055,6 +1055,9 @@ select {
 .page-control-status .compact {
   min-height: 32px;
 }
+.canvas-toolbar:has(.page-control-status) ~ .tool-hint {
+  display: none;
+}
 .tool {
   flex-shrink: 0;
   height: 37px;
@@ -1865,6 +1868,9 @@ body {
   z-index: 5;
 }
 @media (any-pointer: coarse) {
+  .page-control-status .compact {
+    min-height: 44px;
+  }
   .icon-button,
   .tool,
   .inspector-head .icon-button,
