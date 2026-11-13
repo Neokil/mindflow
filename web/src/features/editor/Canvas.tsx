@@ -1,3 +1,4 @@
+import { StrokeHold } from "./strokeHold";
 import PageControlStatus from "./PageControlStatus";
 import type { CanvasFullscreen } from "../../useCanvasFullscreen";
 import PDFImportDialog from "../pdf/PDFImportDialog";
@@ -72,6 +73,8 @@ export default function Canvas({
   const [viewingPDF, setViewingPDF] = useState<string>();
   const accent = useCanvasAccent();
   const interaction = useRef<CanvasInteraction>(null);
+  const [strokeHold] = useState(() => new StrokeHold());
+  useEffect(() => () => strokeHold.cancel(), [strokeHold]);
   const host = useRef<HTMLDivElement>(null),
     stage = useRef<Konva.Stage>(null),
     preview = useRef<Konva.Line>(null),
@@ -111,6 +114,7 @@ export default function Canvas({
         kind: "pan" | "lasso" | "pen" | "create" | "comment" | "template";
         element?: CanvasElement;
         highlight?: boolean;
+        straight?: boolean;
         start: Point;
         camera: Camera;
         points: Point[];
@@ -144,6 +148,7 @@ export default function Canvas({
   }, [size, doc.elements]);
   useEffect(() => {
     if (!session.editable) {
+      strokeHold.cancel();
       setTool("select");
       setPending([]);
       setTemplatePlacement([]);
@@ -153,7 +158,7 @@ export default function Canvas({
       gesture.current = undefined;
       preview.current?.points([]);
     }
-  }, [session.editable]);
+  }, [session.editable, strokeHold]);
 
   const editElements = (elements: CanvasElement[]) =>
     session.edit({ ...session.doc, elements });
@@ -353,6 +358,7 @@ export default function Canvas({
     ungroup,
     remove,
     cancel: () => {
+      strokeHold.cancel();
       setPending([]);
       setTemplatePlacement([]);
       setTemplatesOpen(undefined);
@@ -366,6 +372,7 @@ export default function Canvas({
 
   function pointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
     if (e.evt.button !== 0 && e.evt.button !== 1) return;
+    strokeHold.cancel();
     const p = pointer();
     const world = worldPoint(p, camera);
     const target = e.target;
@@ -466,15 +473,38 @@ export default function Canvas({
       return;
     }
     if (g.kind === "comment" || g.kind === "template") return;
+    if (g.kind === "pen" && g.straight) {
+      g.points = [g.start, world];
+      preview.current?.points(g.points.flatMap((p) => [p.x, p.y]));
+      preview.current?.getLayer()?.batchDraw();
+      return;
+    }
     const last = g.points[g.points.length - 1];
     if (Math.hypot(world.x - last.x, world.y - last.y) * camera.zoom < 2)
       return;
     if (g.points.length >= 20000) return;
     g.points.push(world);
+    if (g.kind === "pen") {
+      strokeHold.move(world, g.camera.zoom, () => {
+        if (gesture.current !== g || !session.editable) return;
+        const end = g.points[g.points.length - 1];
+        // Keep dots and nearly closed strokes intact instead of making a zero-length line.
+        if (
+          Math.hypot(end.x - g.start.x, end.y - g.start.y) * g.camera.zoom <
+          12
+        )
+          return;
+        g.straight = true;
+        g.points = [g.start, end];
+        preview.current?.points(g.points.flatMap((p) => [p.x, p.y]));
+        preview.current?.getLayer()?.batchDraw();
+      });
+    }
     preview.current?.points(g.points.flatMap((p) => [p.x, p.y]));
     preview.current?.getLayer()?.batchDraw();
   }
   function pointerUp(event: PointerEvent) {
+    strokeHold.cancel();
     const g = gesture.current;
     gesture.current = undefined;
     if (!g) return;
@@ -528,7 +558,12 @@ export default function Canvas({
       if (element.type === "text") startText(element);
       return;
     }
-    if ((g.kind === "lasso" || g.kind === "pen") && g.points.length < 20000) {
+    if (g.kind === "pen" && g.straight) {
+      g.points = [g.start, worldPoint(pointer(), camera)];
+    } else if (
+      (g.kind === "lasso" || g.kind === "pen") &&
+      g.points.length < 20000
+    ) {
       const last = g.points[g.points.length - 1];
       const release = worldPoint(pointer(), camera);
       if (last.x !== release.x || last.y !== release.y) g.points.push(release);
@@ -569,13 +604,14 @@ export default function Canvas({
     }
   }
   const cancelGesture = useCallback(() => {
+    strokeHold.cancel();
     gesture.current = undefined;
     setCreation(undefined);
     preview.current?.points([]);
     stage.current?.position({ x: camera.x, y: camera.y });
     if (host.current)
       host.current.style.backgroundPosition = `${camera.x}px ${camera.y}px`;
-  }, [camera]);
+  }, [camera, strokeHold]);
   const input = useCanvasInput({
     stage,
     scene: interaction,
@@ -797,7 +833,7 @@ export default function Canvas({
               : tool === "pan"
                 ? "Drag to pan. Use two fingers to pan and pinch to zoom."
                 : tool === "pen" || tool === "highlighter"
-                  ? "Draw freely. Select a stroke to move or delete it."
+                  ? "Draw freely. Hold at the end to straighten. Select a stroke to move or delete it."
                   : tool === "text"
                     ? "Drag to size a text box."
                     : tool === "comment"
