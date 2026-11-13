@@ -218,6 +218,16 @@ export class PageSession {
     }
     return result;
   }
+  async saveForExport() {
+    const deadline = Date.now() + 30000;
+    while (this.busy && Date.now() < deadline)
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    if (!this.busy && this.dirty) await this.flush();
+    if (this.unsaved || this.busy)
+      throw new Error(
+        "Save or recover your unsaved changes before exporting. Check your connection and editor control.",
+      );
+  }
   async flush() {
     if (this.busy || !this.dirty || !this.editable || this.disposed) return;
     this.busy = true;

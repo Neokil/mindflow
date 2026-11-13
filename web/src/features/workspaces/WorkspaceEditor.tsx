@@ -1,7 +1,11 @@
+import ExportDialog from "../transfer/ExportDialog";
+import ImportWorkspaceDialog from "./ImportWorkspaceDialog";
 import type { CanvasFullscreen } from "../../useCanvasFullscreen";
 import ControlRequestDialog from "../editor/ControlRequestDialog";
 import {
   ArrowLeft,
+  Download,
+  Upload,
   Check,
   ChevronDown,
   ChevronUp,
@@ -58,6 +62,8 @@ export default function WorkspaceEditor({
       action: (name: string) => Promise<void>;
     }>(),
     [menu, setMenu] = useState<string>();
+  const [exporting, setExporting] = useState<{ pageId?: string }>();
+  const [importing, setImporting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const canManage = !workspace.role || workspace.role === "owner";
   const canWrite = canManage || workspace.role === "full";
@@ -309,6 +315,26 @@ export default function WorkspaceEditor({
               {workspace.shared ? "Shared" : "Private"}
             </button>
           </div>
+          <div className="workspace-transfer-actions">
+            {canWrite && (
+              <button
+                className="icon-button"
+                aria-label="Import pages"
+                title="Import pages"
+                onClick={() => setImporting(true)}
+              >
+                <Upload size={17} />
+              </button>
+            )}
+            <button
+              className="icon-button"
+              aria-label="Export workspace"
+              title="Export workspace"
+              onClick={() => setExporting({})}
+            >
+              <Download size={17} />
+            </button>
+          </div>
           <div
             className={`save-status ${["Disconnected", "Save failed", "Control lost"].includes(saveStatus) ? "warning" : ""}`}
             aria-live="polite"
@@ -364,7 +390,6 @@ export default function WorkspaceEditor({
                 <button
                   className="tab-menu icon-button"
                   aria-label={`Page options for ${p.name}`}
-                  disabled={!canWrite}
                   onClick={() => setMenu(menu === p.id ? undefined : p.id)}
                 >
                   <MoreHorizontal size={14} />
@@ -377,16 +402,32 @@ export default function WorkspaceEditor({
                       onClick={() => setMenu(undefined)}
                     />
                     <div className="dropdown">
-                      <button onClick={() => pageAction(p, "rename")}>
+                      <button
+                        onClick={() => {
+                          setMenu(undefined);
+                          setExporting({ pageId: p.id });
+                        }}
+                      >
+                        <Download size={14} />
+                        Export page
+                      </button>
+                      <button
+                        disabled={!canWrite}
+                        onClick={() => pageAction(p, "rename")}
+                      >
                         <Pencil size={14} />
                         Rename
                       </button>
-                      <button onClick={() => pageAction(p, "duplicate")}>
+                      <button
+                        disabled={!canWrite}
+                        onClick={() => pageAction(p, "duplicate")}
+                      >
                         <Copy size={14} />
                         Duplicate
                       </button>
                       <button
                         className="danger"
+                        disabled={!canWrite}
                         onClick={() => pageAction(p, "delete")}
                       >
                         <Trash2 size={14} />
@@ -529,6 +570,33 @@ export default function WorkspaceEditor({
             </button>
           )}
         </div>
+      )}
+      {exporting && (
+        <ExportDialog
+          workspace={workspace}
+          pages={pages}
+          pageId={exporting.pageId}
+          close={() => setExporting(undefined)}
+          beforeExport={async (ids) => {
+            for (const [id, current] of sessions.current)
+              if (!ids.length || ids.includes(id))
+                await current.saveForExport();
+          }}
+        />
+      )}
+      {importing && (
+        <ImportWorkspaceDialog
+          workspaceId={workspaceId}
+          close={() => {
+            setImporting(false);
+            void load().catch((e) => setError(e.message));
+          }}
+          open={async (_id, importedPage) => {
+            await load();
+            setImporting(false);
+            if (importedPage) setPageId(importedPage);
+          }}
+        />
       )}
       {sharing && (
         <SharingDialog

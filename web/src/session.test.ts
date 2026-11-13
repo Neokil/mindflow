@@ -189,3 +189,29 @@ it("uploads pending recovery images into the chosen workspace", async () => {
     localImages.delete("recovered-asset");
   }
 });
+it("export waits for an in-flight save and refuses an unsaved offline draft", async () => {
+  let resolve!: (value: unknown) => void;
+  const transport = vi.fn(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+  ) as unknown as Transport;
+  const session = make(transport);
+  session.edit({
+    ...emptyDocument(),
+    settings: { ...emptyDocument().settings, gridSize: 33 },
+  });
+  const saving = session.flush();
+  await Promise.resolve();
+  await Promise.resolve();
+  const exporting = session.saveForExport();
+  await vi.waitFor(() => expect(resolve).toBeTypeOf("function"));
+  resolve({ revision: 1 });
+  await saving;
+  await exporting;
+  expect(session.unsaved).toBe(false);
+  session.edit(emptyDocument());
+  session.editable = false;
+  await expect(session.saveForExport()).rejects.toThrow("unsaved changes");
+});

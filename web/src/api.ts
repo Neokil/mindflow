@@ -11,11 +11,11 @@ let csrf = "";
 export const setCSRF = (value: string) => {
   csrf = value;
 };
-export async function api<T = unknown>(
+async function request(
   path: string,
   method = "GET",
   body?: unknown,
-): Promise<T> {
+): Promise<Response> {
   const response = await fetch(`/api/v1${path}`, {
     method,
     credentials: "same-origin",
@@ -32,14 +32,25 @@ export async function api<T = unknown>(
           ? body
           : JSON.stringify(body),
   });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok)
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
     throw new APIError(
       response.status,
       data.code || "request_failed",
       data.message || "The request failed. Please retry.",
     );
-  return data as T;
+  }
+  return response;
+}
+export async function api<T = unknown>(
+  path: string,
+  method = "GET",
+  body?: unknown,
+): Promise<T> {
+  return (await request(path, method, body)).json().catch(() => ({}));
+}
+export async function apiFile(path: string, body: unknown): Promise<Blob> {
+  return (await request(path, "POST", body)).blob();
 }
 export type User = {
   displayName: string;

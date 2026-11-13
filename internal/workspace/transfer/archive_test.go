@@ -25,6 +25,7 @@ func TestArchiveRejectsInvalidManifests(t *testing.T) {
 		"invalid geometry": func(b *Bundle) {
 			b.Pages[0].Document.Elements = []canvas.Element{{ID: "invalid", Type: "shape", Shape: "rectangle", Width: -1, Height: 100}}
 		},
+		"too many pages":  func(b *Bundle) { b.Pages = make([]Page, maxPages+1) },
 		"empty selection": func(b *Bundle) { b.Kind = kindPages; b.Pages = nil },
 	}
 	for name, mutate := range cases {

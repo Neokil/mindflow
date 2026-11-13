@@ -1,7 +1,9 @@
+import ExportDialog from "../transfer/ExportDialog";
 import ImportWorkspaceDialog from "./ImportWorkspaceDialog";
 import {
   ArrowUpRight,
   Copy,
+  Download,
   Layers3,
   LockKeyhole,
   MoreHorizontal,
@@ -31,6 +33,7 @@ export default function Dashboard({
     initial?: string;
     action: (name: string) => Promise<void>;
   }>();
+  const [exporting, setExporting] = useState<Workspace>();
   const [importing, setImporting] = useState(false);
   const [menu, setMenu] = useState<string>();
   async function load() {
@@ -148,7 +151,6 @@ export default function Dashboard({
                     <button
                       className="icon-button"
                       aria-label={`Options for ${w.name}`}
-                      hidden={!!w.role && w.role !== "owner"}
                       onClick={() => setMenu(menu === w.id ? undefined : w.id)}
                     >
                       <MoreHorizontal size={19} />
@@ -162,6 +164,16 @@ export default function Dashboard({
                         />
                         <div className="dropdown">
                           <button
+                            onClick={() => {
+                              setMenu(undefined);
+                              setExporting(w);
+                            }}
+                          >
+                            <Download size={14} />
+                            Export
+                          </button>
+                          <button
+                            disabled={!!w.role && w.role !== "owner"}
                             onClick={() => {
                               setMenu(undefined);
                               setDialog({
@@ -181,6 +193,7 @@ export default function Dashboard({
                             Rename
                           </button>
                           <button
+                            disabled={!!w.role && w.role !== "owner"}
                             onClick={() =>
                               mutate(() =>
                                 api(
@@ -196,6 +209,7 @@ export default function Dashboard({
                           </button>
                           <button
                             className="danger"
+                            disabled={!!w.role && w.role !== "owner"}
                             onClick={() => {
                               if (
                                 confirm(`Delete “${w.name}” and all its pages?`)
@@ -231,6 +245,12 @@ export default function Dashboard({
         <LockKeyhole size={12} />
         Only you can see your workspaces.
       </div>
+      {exporting && (
+        <ExportDialog
+          workspace={exporting}
+          close={() => setExporting(undefined)}
+        />
+      )}
       {importing && (
         <ImportWorkspaceDialog
           close={() => {

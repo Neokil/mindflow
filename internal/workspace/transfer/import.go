@@ -35,7 +35,7 @@ func (a *Service) Import(ctx context.Context, actor session.Principal, reader io
 	if err != nil {
 		return Result{}, err
 	}
-	if strings.TrimSpace(name) == "" {
+	if targetID != "" || strings.TrimSpace(name) == "" {
 		name = bundle.Name
 	}
 	name = portableName(name)

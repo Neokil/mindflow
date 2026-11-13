@@ -14,8 +14,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "fflate": "0.8.3",
     "konva": "10.3.0",
     "lucide-react": "0.577.0",
+    "pdf-lib": "1.17.1",
     "pdfjs-dist": "6.5.438",
     "react": "19.3.1",
     "react-dom": "19.3.1",

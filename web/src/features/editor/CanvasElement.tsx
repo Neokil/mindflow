@@ -14,10 +14,12 @@ function ImageContent({
   element: e,
   zoom,
   refresh,
+  loadedImage,
 }: {
   element: CanvasElement;
   zoom: number;
   refresh: number;
+  loadedImage?: HTMLImageElement;
 }) {
   const [image, setImage] = useState<HTMLImageElement>();
   const [failed, setFailed] = useState(false);
@@ -32,6 +34,7 @@ function ImageContent({
         64,
     ) * 64;
   useEffect(() => {
+    if (loadedImage) return;
     let canceled = false;
     let retry: ReturnType<typeof setTimeout>;
     const local = localImages.get(assetID);
@@ -90,17 +93,18 @@ function ImageContent({
       clearTimeout(retry);
     };
     // Re-evaluate image resolution only when the actual display requirement changes.
-  }, [assetID, renderWidth, renderHeight, refresh, e.type]);
-  return image ? (
+  }, [assetID, renderWidth, renderHeight, refresh, e.type, loadedImage]);
+  const displayed = loadedImage || image;
+  return displayed ? (
     <KImage
-      image={image}
+      image={displayed}
       crop={
         e.crop
           ? {
-              x: e.crop.x * image.naturalWidth,
-              y: e.crop.y * image.naturalHeight,
-              width: e.crop.width * image.naturalWidth,
-              height: e.crop.height * image.naturalHeight,
+              x: e.crop.x * displayed.naturalWidth,
+              y: e.crop.y * displayed.naturalHeight,
+              width: e.crop.width * displayed.naturalWidth,
+              height: e.crop.height * displayed.naturalHeight,
             }
           : undefined
       }
@@ -136,17 +140,26 @@ const ElementContent = memo(function ElementContent({
   zoom,
   refresh,
   onToggleCheck,
+  loadedImage,
+  exporting = false,
 }: {
   e: CanvasElement;
   zoom: number;
   refresh: number;
+  loadedImage?: HTMLImageElement;
+  exporting?: boolean;
   onToggleCheck?: (index: number) => void;
 }) {
   if (e.type === "image" || e.type === "pdf")
     return (
       <>
-        <ImageContent element={e} zoom={zoom} refresh={refresh} />
-        {e.type === "pdf" && (
+        <ImageContent
+          element={e}
+          zoom={zoom}
+          refresh={refresh}
+          loadedImage={loadedImage}
+        />
+        {e.type === "pdf" && !exporting && (
           <Text
             text="PDF · Open viewer in properties"
             x={-e.width / 2}

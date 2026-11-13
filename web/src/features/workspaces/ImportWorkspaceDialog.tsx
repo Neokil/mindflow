@@ -12,9 +12,11 @@ type Imported = {
 export default function ImportWorkspaceDialog({
   close,
   open,
+  workspaceId,
 }: {
   close: () => void;
-  open: (id: string) => Promise<void>;
+  open: (id: string, pageId?: string) => Promise<void>;
+  workspaceId?: string;
 }) {
   const [file, setFile] = useState<File>(),
     [name, setName] = useState(""),
@@ -30,7 +32,13 @@ export default function ImportWorkspaceDialog({
       form.append("file", file);
       form.append("name", name);
       setResult(
-        await api<Imported>("/workspaces/import/butterfly", "POST", form),
+        await api<Imported>(
+          workspaceId
+            ? `/workspaces/${workspaceId}/import/mindflow`
+            : `/workspaces/import/${file.name.toLowerCase().endsWith(".bfly") ? "butterfly" : "mindflow"}`,
+          "POST",
+          form,
+        ),
       );
     } catch (err) {
       setError((err as Error).message);
@@ -40,7 +48,7 @@ export default function ImportWorkspaceDialog({
   }
   return (
     <Modal
-      title="Import workspace"
+      title={workspaceId ? "Import pages" : "Import workspace"}
       close={() => {
         if (!busy) close();
       }}
@@ -48,8 +56,8 @@ export default function ImportWorkspaceDialog({
       {result ? (
         <>
           <p role="status">
-            Imported {result.pageCount} pages and {result.elementCount} elements
-            into a private workspace.
+            Imported {result.pageCount} pages and {result.elementCount} elements{" "}
+            {workspaceId ? "into this workspace." : "into a private workspace."}
           </p>
           {result.warnings.length > 0 && (
             <>
@@ -71,7 +79,7 @@ export default function ImportWorkspaceDialog({
               onClick={async () => {
                 setBusy(true);
                 try {
-                  await open(result.id);
+                  await open(result.id, result.pageId);
                 } catch (err) {
                   setError((err as Error).message);
                 } finally {
@@ -79,7 +87,7 @@ export default function ImportWorkspaceDialog({
                 }
               }}
             >
-              Open workspace
+              {workspaceId ? "Open imported page" : "Open workspace"}
             </button>
           </div>
         </>
@@ -91,15 +99,18 @@ export default function ImportWorkspaceDialog({
           }}
         >
           <p className="muted">
-            Import a Butterfly .bfly export as a new private workspace. The
-            original file stays unchanged.
+            {workspaceId
+              ? "Append pages from a .mindflow file. Existing pages stay unchanged."
+              : "Import a mindflow .mindflow or Butterfly .bfly export as a new private workspace."}
           </p>
           <label>
-            Butterfly export (.bfly)
+            {workspaceId
+              ? "mindflow export (.mindflow)"
+              : "Workspace export (.mindflow or .bfly)"}
             <input
-              aria-label="Butterfly export"
+              aria-label="Workspace export"
               type="file"
-              accept=".bfly,application/zip"
+              accept={workspaceId ? ".mindflow" : ".mindflow,.bfly"}
               required
               disabled={busy}
               onChange={(event) => {
@@ -111,21 +122,24 @@ export default function ImportWorkspaceDialog({
                 }
                 setError("");
                 setFile(selected);
-                if (selected) setName(selected.name.replace(/\.bfly$/i, ""));
+                if (selected)
+                  setName(selected.name.replace(/\.(bfly|mindflow)$/i, ""));
               }}
             />
           </label>
-          <label>
-            Workspace name
-            <input
-              aria-label="Imported workspace name"
-              value={name}
-              maxLength={200}
-              required
-              disabled={busy}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </label>
+          {!workspaceId && (
+            <label>
+              Workspace name
+              <input
+                aria-label="Imported workspace name"
+                value={name}
+                maxLength={200}
+                required
+                disabled={busy}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </label>
+          )}
           <div className="form-actions">
             <button
               className="secondary"

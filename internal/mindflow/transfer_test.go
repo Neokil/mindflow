@@ -196,6 +196,12 @@ func TestNativeImportRollsBackAndRejectsMalformedFiles(t *testing.T) {
 	if len(after) != len(before) {
 		t.Fatal("failed import left partial workspace")
 	}
+	var assetCount int
+	err = owner.db.QueryRowContext(t.Context(), "SELECT count(*) FROM assets").Scan(&assetCount)
+	if err != nil || assetCount != 1 {
+		t.Fatal("failed import left orphan media", assetCount, err)
+	}
+
 	if importNative(owner, []byte("not a ZIP"), "", owner.csrf).Code != 400 {
 		t.Fatal("malformed file accepted")
 	}

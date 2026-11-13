@@ -13,7 +13,7 @@ test("imports Butterfly pages, embedded image, pen, shapes and white text", asyn
     .getByRole("button", { name: "Import workspace", exact: true })
     .click();
   await page
-    .getByLabel("Butterfly export", { exact: true })
+    .getByLabel("Workspace export", { exact: true })
     .setInputFiles(
       process.env.MINDFLOW_IMPORT_SAMPLE ||
         resolve("../internal/workspace/butterfly/testdata/two-pages.bfly"),

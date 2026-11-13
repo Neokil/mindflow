@@ -138,6 +138,7 @@ func (a *Service) snapshotWithin(ctx context.Context, transaction *storage.Trans
 		return Snapshot{}, err
 	}
 	result := Snapshot{Name: name, Pages: []Page{}}
+	documentBytes, elementCount := 0, 0
 	for _, row := range rows {
 		if len(selected) > 0 && !selected[row.ID] {
 			continue
@@ -153,6 +154,11 @@ func (a *Service) snapshotWithin(ctx context.Context, transaction *storage.Trans
 		err = canvas.ValidateDocument(document)
 		if err != nil {
 			return Snapshot{}, err
+		}
+		documentBytes += len(row.Document)
+		elementCount += len(document.Elements)
+		if documentBytes > maxManifestBytes || elementCount > maxElements || len(result.Pages) >= maxPages {
+			return Snapshot{}, invalid("This export exceeds the page or document limits. Select fewer pages.")
 		}
 		result.Pages = append(result.Pages, Page{Name: row.Name, Document: document})
 	}
