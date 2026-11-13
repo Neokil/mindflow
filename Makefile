@@ -1,9 +1,11 @@
 SQLC_VERSION := v1.31.1
 GOLANGCI_VERSION := v2.15.0
+GOVULNCHECK_VERSION := v1.9.0
 SQLC := $(CURDIR)/.cache/tools/sqlc/$(SQLC_VERSION)/sqlc
+GOVULNCHECK := $(CURDIR)/.cache/tools/govulncheck/$(GOVULNCHECK_VERSION)/govulncheck
 GOLANGCI := $(CURDIR)/.cache/tools/golangci-lint/$(GOLANGCI_VERSION)/golangci-lint
 
-.PHONY: dev frontend frontend-build build lint lint-go lint-web test test-e2e verify-container tools generate check-generated
+.PHONY: dev frontend frontend-build build lint lint-go lint-web test test-e2e verify-container tools generate check-generated audit upgrade
 
 dev:
 	MINDFLOW_DEV=1 go run ./cmd/mindflow
@@ -18,7 +20,7 @@ build: frontend-build
 	go build -trimpath -o mindflow ./cmd/mindflow
 
 lint: lint-go lint-web
-	python3 -m py_compile scripts/verify-container.py tests/container/server.py
+	python3 -m py_compile scripts/*.py tests/container/server.py
 
 lint-go: $(GOLANGCI) check-generated
 	GOLANGCI="$(GOLANGCI)" bash scripts/check-go.sh
@@ -29,6 +31,7 @@ lint-web:
 test: frontend-build
 	go test -race ./cmd/... ./internal/...
 	cd web && npm test
+	python3 -m unittest discover -s scripts/tests
 
 test-e2e: frontend-build
 	mkdir -p .cache/e2e
@@ -57,3 +60,15 @@ generate: $(SQLC)
 check-generated: $(SQLC)
 	go run ./cmd/genmigrations -check
 	$(SQLC) diff
+
+$(GOVULNCHECK):
+	mkdir -p "$(@D)"
+	GOBIN="$(@D)" go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+
+audit: $(GOVULNCHECK)
+	go mod verify
+	$(GOVULNCHECK) ./cmd/... ./internal/...
+	cd web && npm audit --audit-level=low
+
+upgrade:
+	python3 scripts/upgrade.py $(UPGRADE_FLAGS)

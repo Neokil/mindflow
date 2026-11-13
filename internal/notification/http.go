@@ -24,6 +24,10 @@ func (a *Service) RegisterHTTP(routes HTTP) {
 }
 
 func (a *httpHandler) events(writer http.ResponseWriter, request *http.Request) (any, error) {
+	controller := http.NewResponseController(writer)
+	// Refresh this bound for each event so slow readers cannot block a worker forever.
+	setDeadline := func() { _ = controller.SetWriteDeadline(time.Now().Add(streamWriteTimeout)) }
+	setDeadline()
 	flusher, ok := writer.(http.Flusher)
 	if !ok {
 		return nil, failure("stream_unavailable", "Event stream unavailable.")
@@ -49,6 +53,7 @@ func (a *httpHandler) events(writer http.ResponseWriter, request *http.Request) 
 		case <-request.Context().Done():
 			return responseWritten{}, nil
 		case data := <-sub.events:
+			setDeadline()
 			authenticateErr := a.service.authenticate(request)
 			if authenticateErr != nil {
 				_, _ = fmt.Fprint(writer, "event: expired\ndata: {}\n\n")
@@ -62,6 +67,7 @@ func (a *httpHandler) events(writer http.ResponseWriter, request *http.Request) 
 			}
 			flusher.Flush()
 		case <-tick.C:
+			setDeadline()
 			authenticateErr2 := a.service.authenticate(request)
 			if authenticateErr2 != nil {
 				_, _ = fmt.Fprint(writer, "event: expired\ndata: {}\n\n")
@@ -77,6 +83,8 @@ func (a *httpHandler) events(writer http.ResponseWriter, request *http.Request) 
 		}
 	}
 }
+
+const streamWriteTimeout = 10 * time.Second
 
 type responseWritten struct{}
 

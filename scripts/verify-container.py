@@ -160,8 +160,8 @@ try:
         call('/admin/settings', 'PUT', settings)
         call('/admin/settings/test-email', 'POST', {})
         assert mail_to('owner@example.invalid', 'test email')['port'] == 1025
-        assert docker('exec', app, 'id', '-u') == '10001'
-        docker('exec', app, 'mindflow', 'healthcheck')
+        assert docker('inspect', '-f', '{{.Config.User}}', app) == '10001:10001'
+        docker('exec', app, '/usr/local/bin/mindflow', 'healthcheck')
         docker('restart', app)
         wait_for(lambda: request('/health/ready')[0] == {'ok': True})
         assert call(f'/pages/{page}/document')['document'] == document

@@ -30,8 +30,7 @@ jobs:
       - run: make tools
       - run: make lint
       - run: make test
-      - run: npm audit --audit-level=high
-        working-directory: web
+      - run: make audit
   browsers:
     name: Chrome and Firefox acceptance
     runs-on: ubuntu-24.04
@@ -99,6 +98,8 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
+          provenance: mode=max
+          sbom: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha

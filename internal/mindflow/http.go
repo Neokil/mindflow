@@ -164,19 +164,23 @@ func (a *App) limited(r *http.Request, key string) bool {
 	key += ":" + host
 	a.limitMu.Lock()
 	defer a.limitMu.Unlock()
+	if _, exists := a.limits[key]; !exists && len(a.limits) >= maxRateWindows {
+		for entry, window := range a.limits {
+			if time.Since(window.Start) > time.Minute {
+				delete(a.limits, entry)
+			}
+		}
+		// Fail closed under a flood of fresh client addresses instead of growing memory.
+		if len(a.limits) >= maxRateWindows {
+			return true
+		}
+	}
 	value := a.limits[key]
 	if time.Since(value.Start) > time.Minute {
 		value = rateWindow{Start: time.Now()}
 	}
 	value.Count++
 	a.limits[key] = value
-	if len(a.limits) > maxRateWindows {
-		for k, v := range a.limits {
-			if time.Since(v.Start) > time.Minute {
-				delete(a.limits, k)
-			}
-		}
-	}
 
 	return value.Count > maxRequestsPerMinute
 }

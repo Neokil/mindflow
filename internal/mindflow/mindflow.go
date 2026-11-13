@@ -151,12 +151,23 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 
 // ServeHTTP sets common security headers before routing the request.
 func (a *App) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	// Network writers support deadlines; in-memory test writers may not.
+	_ = http.NewResponseController(writer).SetWriteDeadline(time.Now().Add(time.Minute))
 	request.Header.Set("X-Request-ID", randomID()[:eventQueueCapacity])
 	writer.Header().Set("X-Request-ID", request.Header.Get("X-Request-ID"))
 	writer.Header().Set("X-Content-Type-Options", "nosniff")
 	writer.Header().Set("Referrer-Policy", "no-referrer")
 	writer.Header().Set("X-Frame-Options", "DENY")
-	writer.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+	writer.Header().Set("Content-Security-Policy", "object-src 'none'; default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; connect-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+	writer.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+	writer.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
+	writer.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+	if !a.Config.Dev {
+		writer.Header().Set("Strict-Transport-Security", "max-age=31536000")
+	}
+	if request.URL.Path == "/" || request.URL.Path == "/index.html" {
+		writer.Header().Set("Cache-Control", "no-cache")
+	}
 	if strings.HasPrefix(request.URL.Path, "/api/") {
 		writer.Header().Set("Cache-Control", "no-store")
 	}

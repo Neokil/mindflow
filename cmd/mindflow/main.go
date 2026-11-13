@@ -34,6 +34,8 @@ const (
 
 var errHealth = errors.New("application is not ready")
 
+const maxHeaderBytes = 64 << 10
+
 func main() { os.Exit(runMain()) }
 
 func runMain() int {
@@ -121,7 +123,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	server := &http.Server{Addr: address, Handler: service, ReadHeaderTimeout: headerTimeout, ReadTimeout: readTimeout, IdleTimeout: idleTimeout}
+	server := &http.Server{Addr: address, Handler: service, MaxHeaderBytes: maxHeaderBytes, ReadHeaderTimeout: headerTimeout, ReadTimeout: readTimeout, IdleTimeout: idleTimeout}
 	go service.RunWorkers(ctx)
 	go func() {
 		<-ctx.Done()
