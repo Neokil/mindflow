@@ -1904,10 +1904,13 @@ body {
 .editor-header-toggle.icon-button {
   position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: calc(50% - 22px);
   width: 44px;
   height: var(--header-toggle-height);
+  transform: none;
+  transition:
+    background 0.15s,
+    color 0.15s;
   z-index: 10;
   border: 1px solid var(--line);
   border-top: 0;
@@ -1935,4 +1938,8 @@ body {
   .app.editor-open {
     --header-toggle-height: 44px;
   }
+}
+
+.editor-header-toggle.icon-button:active {
+  transform: none;
 }

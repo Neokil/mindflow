@@ -27,12 +27,22 @@ test("collapse navigation into an arrow without losing the active canvas", async
   await expect(page.getByTestId("element-count")).toHaveText("1 element");
   await activate(page.getByRole("button", { name: "Zoom in", exact: true }));
   const zoom = await page.locator(".zoom-value").innerText();
-  await activate(
-    page.getByRole("button", {
-      name: "Hide app header and pages",
-      exact: true,
-    }),
-  );
+  const hide = page.getByRole("button", {
+    name: "Hide app header and pages",
+    exact: true,
+  });
+  if (isMobile) await hide.tap();
+  else {
+    const handle = (await hide.boundingBox())!;
+    await page.mouse.move(
+      handle.x + handle.width / 2,
+      handle.y + handle.height / 2,
+    );
+    await page.mouse.down();
+    await expect(hide).toHaveCSS("transform", "none");
+    expect((await hide.boundingBox())!.x).toBeCloseTo(handle.x);
+    await page.mouse.up();
+  }
   const restore = page.getByRole("button", {
     name: "Show app header and pages",
     exact: true,
