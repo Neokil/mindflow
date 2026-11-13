@@ -28,8 +28,8 @@ func (q *Queries) EditorCancelRequests(ctx context.Context) error {
 }
 
 const editorCreateRequest = `-- name: EditorCreateRequest :exec
-INSERT INTO editor_requests(page_id,id,requester_id,requester_email,requester_avatar_version,requester_session,requester_client,holder_session,holder_client,holder_epoch,deadline,status)
-VALUES(?,?,?,?,?,?,?,?,?,?,?,'pending') ON CONFLICT(page_id) DO UPDATE SET id=excluded.id,requester_id=excluded.requester_id,requester_email=excluded.requester_email,requester_avatar_version=excluded.requester_avatar_version,requester_session=excluded.requester_session,requester_client=excluded.requester_client,holder_session=excluded.holder_session,holder_client=excluded.holder_client,holder_epoch=excluded.holder_epoch,deadline=excluded.deadline,status='pending'
+INSERT INTO editor_requests(page_id,id,requester_id,requester_email,requester_display_name,requester_avatar_version,requester_session,requester_client,holder_session,holder_client,holder_epoch,deadline,status)
+VALUES(?,?,?,?,?,?,?,?,?,?,?,?,'pending') ON CONFLICT(page_id) DO UPDATE SET id=excluded.id,requester_id=excluded.requester_id,requester_email=excluded.requester_email,requester_display_name=excluded.requester_display_name,requester_avatar_version=excluded.requester_avatar_version,requester_session=excluded.requester_session,requester_client=excluded.requester_client,holder_session=excluded.holder_session,holder_client=excluded.holder_client,holder_epoch=excluded.holder_epoch,deadline=excluded.deadline,status='pending'
 `
 
 type EditorCreateRequestParams struct {
@@ -37,6 +37,7 @@ type EditorCreateRequestParams struct {
 	ID                     string
 	RequesterID            string
 	RequesterEmail         string
+	RequesterDisplayName   string
 	RequesterAvatarVersion string
 	RequesterSession       string
 	RequesterClient        string
@@ -52,6 +53,7 @@ func (q *Queries) EditorCreateRequest(ctx context.Context, arg EditorCreateReque
 		arg.ID,
 		arg.RequesterID,
 		arg.RequesterEmail,
+		arg.RequesterDisplayName,
 		arg.RequesterAvatarVersion,
 		arg.RequesterSession,
 		arg.RequesterClient,
@@ -78,7 +80,7 @@ func (q *Queries) EditorDeleteUserRequests(ctx context.Context, arg EditorDelete
 }
 
 const editorRequest = `-- name: EditorRequest :one
-SELECT page_id, id, requester_id, requester_email, requester_avatar_version, requester_session, requester_client, holder_session, holder_client, holder_epoch, deadline, status FROM editor_requests WHERE page_id=?
+SELECT page_id, id, requester_id, requester_email, requester_avatar_version, requester_session, requester_client, holder_session, holder_client, holder_epoch, deadline, status, requester_display_name FROM editor_requests WHERE page_id=?
 `
 
 func (q *Queries) EditorRequest(ctx context.Context, pageID string) (EditorRequest, error) {
@@ -97,6 +99,7 @@ func (q *Queries) EditorRequest(ctx context.Context, pageID string) (EditorReque
 		&i.HolderEpoch,
 		&i.Deadline,
 		&i.Status,
+		&i.RequesterDisplayName,
 	)
 	return i, err
 }

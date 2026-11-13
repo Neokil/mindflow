@@ -37,4 +37,5 @@ type EditorRequest struct {
 	HolderEpoch            int64
 	Deadline               int64
 	Status                 string
+	RequesterDisplayName   string
 }

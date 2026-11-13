@@ -14,3 +14,5 @@ See [installation](user-docs/installation.md) for HTTPS/container configuration 
 
 
 PDF originals are opaque protected workspace assets served as attachments. PDF.js renders them locally with bounded file/page/image sizes; the in-app reader has no interactive PDF forms, script actions, or external links. Converted pages are ordinary image assets. PDF parsing remains a browser-side attack surface, so keep PDF.js current with the other dependencies. Passwords accept 8–128 characters; the optional suggester uses two or three randomly selected EFF words and random punctuation from Web Crypto, entirely locally, with suggestions constrained to 10–15 characters.
+
+Authenticated registered users can discover other active profiles through the sharing directory. It exposes display names, account IDs, and avatar references, but no email addresses, account roles, statuses, or credentials. Invited, inactive, and deleted accounts are omitted. Display names are not unique identifiers; sharing remains owner-authorized and keyed by account ID. Profile updates are CSRF-protected and only update the authenticated caller.

@@ -71,8 +71,17 @@ func (a *Service) ActiveIDByEmail(ctx context.Context, address string) (string, 
 }
 
 // CreateAdministratorWithin creates the first active administrator during installation.
-func (a *Service) CreateAdministratorWithin(ctx context.Context, transaction *storage.Transaction, address, hash string) error {
-	_, err := a.repository.Within(transaction).AccountCreateAdministrator(ctx, storage.AccountCreateAdministratorParams{ID: newID(), Email: address, PasswordHash: hash, CreatedAt: time.Now().Unix()})
+func (a *Service) CreateAdministratorWithin(ctx context.Context, transaction *storage.Transaction, address, displayName, hash string) error {
+	if displayName == "" {
+		displayName = defaultDisplayName(address)
+	}
+	name, err := NormalizeDisplayName(displayName)
+	if err != nil {
+		return err
+	}
+	displayName = name
+
+	_, err = a.repository.Within(transaction).AccountCreateAdministrator(ctx, storage.AccountCreateAdministratorParams{ID: newID(), Email: address, PasswordHash: hash, CreatedAt: time.Now().Unix(), DisplayName: displayName})
 
 	return err
 }
@@ -96,8 +105,8 @@ func (a *Service) CreateInvitedWithin(ctx context.Context, transaction *storage.
 	if count > 0 {
 		return User{}, failure("email_exists", "That email already has an account.")
 	}
-	user := User{ID: newID(), Email: normalized, Role: role, Status: StatusInvited, Appearance: "system"}
-	_, err = a.repository.Within(transaction).AccountCreateInvitedUser(ctx, storage.AccountCreateInvitedUserParams{ID: user.ID, Email: user.Email, Role: user.Role, CreatedAt: time.Now().Unix()})
+	user := User{ID: newID(), Email: normalized, Role: role, Status: StatusInvited, Appearance: "system", DisplayName: defaultDisplayName(normalized)}
+	_, err = a.repository.Within(transaction).AccountCreateInvitedUser(ctx, storage.AccountCreateInvitedUserParams{ID: user.ID, Email: user.Email, Role: user.Role, CreatedAt: time.Now().Unix(), DisplayName: user.DisplayName})
 
 	return user, err
 }

@@ -107,6 +107,12 @@
                   },
                   "settings": {
                     "$ref": "#/components/schemas/Settings"
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 0,
+                    "maxLength": 80,
+                    "description": "Public single-line display name. Names need not be unique."
                   }
                 },
                 "required": [
@@ -119,7 +125,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Configure the application and administrator, including an optional displayName."
       }
     },
     "/setup/test-email": {
@@ -640,6 +647,12 @@
                   },
                   "password": {
                     "type": "string"
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 0,
+                    "maxLength": 80,
+                    "description": "Public single-line display name. Names need not be unique."
                   }
                 },
                 "required": [
@@ -650,7 +663,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Accept an invitation with a password and optional displayName. An omitted/empty name retains the initial name."
       }
     },
     "/admin/users": {
@@ -3045,6 +3059,12 @@
                     },
                     "role": {
                       "type": "string"
+                    },
+                    "displayName": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80,
+                      "description": "Public single-line display name. Names need not be unique."
                     }
                   }
                 }
@@ -3682,6 +3702,292 @@
           }
         }
       }
+    },
+    "/auth/profile": {
+      "patch": {
+        "summary": "Update the current user\u2019s display name",
+        "operationId": "update_profile",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated account profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "displayName"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "description": "Public single-line display name. Names need not be unique."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/directory": {
+      "get": {
+        "summary": "List active user display names and avatars for sharing",
+        "operationId": "list_account_directory",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active registered users ordered by name and ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DirectoryUser"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/members": {
+      "get": {
+        "summary": "List workspace members (owner only)",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workspace member identities and roles, including displayName"
+          },
+          "401": {
+            "description": "Sign-in required"
+          },
+          "403": {
+            "description": "CSRF, origin or workspace permission denied"
+          },
+          "404": {
+            "description": "Unavailable"
+          }
+        },
+        "operationId": "list_workspace_members"
+      },
+      "put": {
+        "summary": "Grant or change workspace access (owner only)",
+        "operationId": "set_workspace_member",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Membership updated"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "role"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "description": "Account selected from the authenticated directory."
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "deprecated": true,
+                    "description": "Legacy alternative to userId. Supply exactly one identity."
+                  },
+                  "role": {
+                    "enum": [
+                      "read",
+                      "comment",
+                      "full"
+                    ]
+                  }
+                },
+                "oneOf": [
+                  {
+                    "required": [
+                      "userId"
+                    ],
+                    "not": {
+                      "required": [
+                        "email"
+                      ]
+                    }
+                  },
+                  {
+                    "required": [
+                      "email"
+                    ],
+                    "not": {
+                      "required": [
+                        "userId"
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4047,6 +4353,12 @@
           "avatarVersion": {
             "type": "string",
             "description": "Changes when the profile PNG is replaced; empty means initials."
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Public single-line display name. Names need not be unique."
           }
         }
       },
@@ -4142,6 +4454,9 @@
           },
           "avatarVersion": {
             "type": "string"
+          },
+          "requesterDisplayName": {
+            "type": "string"
           }
         }
       },
@@ -4232,6 +4547,30 @@
             }
           }
         }
+      },
+      "DirectoryUser": {
+        "type": "object",
+        "required": [
+          "id",
+          "displayName",
+          "avatarVersion"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Public single-line display name. Names need not be unique."
+          },
+          "avatarVersion": {
+            "type": "string"
+          }
+        },
+        "description": "Active public profile. No email addresses, roles, statuses, or credentials."
       }
     }
   }

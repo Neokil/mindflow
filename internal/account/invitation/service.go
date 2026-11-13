@@ -23,8 +23,9 @@ type Service struct {
 
 // RedeemCommand supplies a one-time credential link and the new password.
 type RedeemCommand struct {
-	Token    string `json:"token"`
-	Password string `json:"password"`
+	Token       string `json:"token"`
+	DisplayName string `json:"displayName"`
+	Password    string `json:"password"`
 }
 
 const tokenLifetimeSeconds = 7 * 86400
@@ -68,6 +69,13 @@ func (a *Service) Redeem(ctx context.Context, command RedeemCommand) (Completed,
 	err = a.accounts.SetPasswordWithin(ctx, transaction, user.ID, hash)
 	if err != nil {
 		return Completed{}, err
+	}
+
+	if command.DisplayName != "" {
+		err = a.accounts.SetDisplayNameWithin(ctx, transaction, user.ID, command.DisplayName)
+		if err != nil {
+			return Completed{}, err
+		}
 	}
 
 	return Completed{OK: true}, wrap("commit invite redemption", transaction.Commit())

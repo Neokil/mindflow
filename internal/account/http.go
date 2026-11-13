@@ -22,6 +22,8 @@ func (a *Service) RegisterHTTP(routes HTTP) {
 	routes.Endpoint("PATCH /api/v1/admin/users/{id}", true, true, handler.updateUser)
 	routes.Endpoint("DELETE /api/v1/admin/users/{id}", true, true, handler.deleteUser)
 	routes.Endpoint("PATCH /api/v1/auth/preferences", true, false, handler.preferences)
+	routes.Endpoint("PATCH /api/v1/auth/profile", true, false, handler.profile)
+	routes.Endpoint("GET /api/v1/accounts/directory", true, false, handler.directory)
 }
 
 func (a *httpHandler) listUsers(_ http.ResponseWriter, r *http.Request) (any, error) {
@@ -59,4 +61,18 @@ func (a *httpHandler) preferences(writer http.ResponseWriter, request *http.Requ
 	err = a.service.SetAppearance(request.Context(), a.routes.CurrentUser(request), value.Appearance)
 
 	return map[string]bool{"ok": true}, err
+}
+
+func (a *httpHandler) profile(writer http.ResponseWriter, request *http.Request) (any, error) {
+	var command ProfileCommand
+	err := a.routes.Decode(writer, request, &command)
+	if err != nil {
+		return nil, err
+	}
+
+	return a.service.UpdateProfile(request.Context(), a.routes.CurrentUser(request), command)
+}
+
+func (a *httpHandler) directory(_ http.ResponseWriter, request *http.Request) (any, error) {
+	return a.service.Directory(request.Context())
 }

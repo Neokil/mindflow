@@ -22,6 +22,7 @@ type User struct {
 	Status        string `json:"status"`
 	Appearance    string `json:"appearance"`
 	AvatarVersion string `json:"avatarVersion"`
+	DisplayName   string `json:"displayName"`
 }
 
 // NormalizeEmail validates and normalizes a plain email address.
@@ -160,7 +161,7 @@ func (a *Service) ListUsers(ctx context.Context, actor User) (_ []UserDelivery, 
 		if deliveryErr != nil {
 			return nil, deliveryErr
 		}
-		users = append(users, UserDelivery{User: User{ID: row.ID, Email: row.Email, Role: row.Role, Status: row.Status, Appearance: row.Appearance, AvatarVersion: row.AvatarVersion}, MailError: mailError})
+		users = append(users, UserDelivery{User: User{ID: row.ID, Email: row.Email, Role: row.Role, Status: row.Status, Appearance: row.Appearance, AvatarVersion: row.AvatarVersion, DisplayName: row.DisplayName}, MailError: mailError})
 	}
 
 	return users, nil

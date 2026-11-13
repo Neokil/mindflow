@@ -1,17 +1,17 @@
 -- name: AccountCreateAdministrator :execresult
-INSERT INTO users(id,email,password_hash,role,status,created_at) VALUES(?,?,?,'admin','active',?);
+INSERT INTO users(id,email,password_hash,role,status,created_at,display_name) VALUES(?,?,?,'admin','active',?,?);
 
 -- name: AccountUserByEmail :one
-SELECT id,email,role,status,appearance,avatar_version,password_hash FROM users WHERE email=?;
+SELECT id,email,role,status,appearance,avatar_version,display_name,password_hash FROM users WHERE email=?;
 
 -- name: AccountListUsers :many
-SELECT u.id,u.email,u.role,u.status,u.appearance,u.avatar_version FROM users u ORDER BY created_at;
+SELECT u.id,u.email,u.role,u.status,u.appearance,u.avatar_version,u.display_name FROM users u ORDER BY created_at;
 
 -- name: AccountCountEmail :one
 SELECT count(*) FROM users WHERE email=?;
 
 -- name: AccountCreateInvitedUser :execresult
-INSERT INTO users(id,email,role,status,created_at) VALUES(?,?,?,'invited',?);
+INSERT INTO users(id,email,role,status,created_at,display_name) VALUES(?,?,?,'invited',?,?);
 
 -- name: AccountActiveUserByEmail :one
 SELECT id FROM users WHERE email=? AND status='active';
@@ -38,7 +38,7 @@ SELECT count(*) FROM users WHERE role='admin' AND status='active';
 UPDATE users SET appearance=? WHERE id=?;
 
 -- name: AccountFindUser :one
-SELECT id,email,role,status,appearance,avatar_version FROM users WHERE id=?;
+SELECT id,email,role,status,appearance,avatar_version,display_name FROM users WHERE id=?;
 
 -- name: SessionCreateSession :execresult
 INSERT INTO sessions(id,user_id,verifier_hash,csrf,expires_at) VALUES(?,?,?,?,?);
@@ -95,3 +95,9 @@ UPDATE users SET avatar_version=? WHERE id=?;
 
 -- name: SessionActiveWithin :one
 SELECT count(*) FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.user_id=? AND s.expires_at>unixepoch() AND u.status='active';
+
+-- name: AccountSetDisplayName :exec
+UPDATE users SET display_name=? WHERE id=?;
+
+-- name: AccountDirectory :many
+SELECT id,display_name,avatar_version FROM users WHERE status='active' ORDER BY display_name COLLATE NOCASE,id;

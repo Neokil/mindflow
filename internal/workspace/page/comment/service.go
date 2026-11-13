@@ -31,25 +31,27 @@ func NewService(repository *storage.Repository, accounts Accounts, publish func(
 // Message is an attributed plain-text discussion entry.
 type (
 	Message struct {
-		ID            string `json:"id"`
-		AvatarVersion string `json:"avatarVersion"`
-		AuthorID      string `json:"authorId"`
-		AuthorEmail   string `json:"authorEmail"`
-		Body          string `json:"body"`
-		CreatedAt     int64  `json:"createdAt"`
+		ID                string `json:"id"`
+		AvatarVersion     string `json:"avatarVersion"`
+		AuthorID          string `json:"authorId"`
+		AuthorEmail       string `json:"authorEmail"`
+		AuthorDisplayName string `json:"authorDisplayName"`
+		Body              string `json:"body"`
+		CreatedAt         int64  `json:"createdAt"`
 	}
 	// Thread is a positioned discussion with its caller-specific management permission.
 	Thread struct {
-		ID            string    `json:"id"`
-		AvatarVersion string    `json:"avatarVersion"`
-		AuthorID      string    `json:"authorId"`
-		AuthorEmail   string    `json:"authorEmail"`
-		Initials      string    `json:"initials"`
-		X             float64   `json:"x"`
-		Y             float64   `json:"y"`
-		Resolved      bool      `json:"resolved"`
-		CanManage     bool      `json:"canManage"`
-		Messages      []Message `json:"messages"`
+		ID                string    `json:"id"`
+		AvatarVersion     string    `json:"avatarVersion"`
+		AuthorID          string    `json:"authorId"`
+		AuthorEmail       string    `json:"authorEmail"`
+		AuthorDisplayName string    `json:"authorDisplayName"`
+		Initials          string    `json:"initials"`
+		X                 float64   `json:"x"`
+		Y                 float64   `json:"y"`
+		Resolved          bool      `json:"resolved"`
+		CanManage         bool      `json:"canManage"`
+		Messages          []Message `json:"messages"`
 	}
 	// CreateCommand starts a comment at a canvas point.
 	CreateCommand struct {
@@ -71,9 +73,8 @@ type (
 	}
 )
 
-func initials(email string) string {
-	local, _, _ := strings.Cut(email, "@")
-	words := strings.FieldsFunc(local, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })
+func initials(name string) string {
+	words := strings.FieldsFunc(name, func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) })
 	value := []rune{}
 	for _, word := range words {
 		value = append(value, []rune(word)[0])
@@ -136,35 +137,35 @@ func (a *Service) List(ctx context.Context, actor session.Principal, pageID stri
 		return nil, err
 	}
 	out := make([]Thread, 0, len(rows))
-	profiles := make(map[string]string)
-	profile := func(resourceID string) (string, error) {
-		if version, ok := profiles[resourceID]; ok {
-			return version, nil
+	profiles := make(map[string]account.User)
+	profile := func(resourceID string) (account.User, error) {
+		if user, ok := profiles[resourceID]; ok {
+			return user, nil
 		}
 		user, readErr := a.accounts.FindWithin(ctx, transaction, resourceID)
 		if readErr != nil {
-			return "", readErr
+			return account.User{}, readErr
 		}
-		profiles[resourceID] = user.AvatarVersion
+		profiles[resourceID] = user
 
-		return user.AvatarVersion, nil
+		return user, nil
 	}
 	for _, row := range rows {
 		messages, readErr := queries.CommentMessages(ctx, row.ID)
 		if readErr != nil {
 			return nil, readErr
 		}
-		version, readErr := profile(row.AuthorID)
+		user, readErr := profile(row.AuthorID)
 		if readErr != nil {
 			return nil, readErr
 		}
-		thread := Thread{AvatarVersion: version, ID: row.ID, AuthorID: row.AuthorID, AuthorEmail: row.AuthorEmail, Initials: initials(row.AuthorEmail), X: row.X, Y: row.Y, Resolved: row.Resolved != 0, CanManage: actor.ID == row.AuthorID || access.Role == "owner", Messages: make([]Message, 0, len(messages))}
+		thread := Thread{AvatarVersion: user.AvatarVersion, AuthorDisplayName: user.DisplayName, ID: row.ID, AuthorID: row.AuthorID, AuthorEmail: row.AuthorEmail, Initials: initials(user.DisplayName), X: row.X, Y: row.Y, Resolved: row.Resolved != 0, CanManage: actor.ID == row.AuthorID || access.Role == "owner", Messages: make([]Message, 0, len(messages))}
 		for _, entry := range messages {
-			version, readErr := profile(entry.AuthorID)
+			user, readErr := profile(entry.AuthorID)
 			if readErr != nil {
 				return nil, readErr
 			}
-			thread.Messages = append(thread.Messages, Message{AvatarVersion: version, ID: entry.ID, AuthorID: entry.AuthorID, AuthorEmail: entry.AuthorEmail, Body: entry.Body, CreatedAt: entry.CreatedAt})
+			thread.Messages = append(thread.Messages, Message{AvatarVersion: user.AvatarVersion, AuthorDisplayName: user.DisplayName, ID: entry.ID, AuthorID: entry.AuthorID, AuthorEmail: entry.AuthorEmail, Body: entry.Body, CreatedAt: entry.CreatedAt})
 		}
 		out = append(out, thread)
 	}

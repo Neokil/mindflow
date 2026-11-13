@@ -57,7 +57,7 @@ func (q *Queries) AccountCountEmail(ctx context.Context, email string) (int64, e
 }
 
 const accountCreateAdministrator = `-- name: AccountCreateAdministrator :execresult
-INSERT INTO users(id,email,password_hash,role,status,created_at) VALUES(?,?,?,'admin','active',?)
+INSERT INTO users(id,email,password_hash,role,status,created_at,display_name) VALUES(?,?,?,'admin','active',?,?)
 `
 
 type AccountCreateAdministratorParams struct {
@@ -65,6 +65,7 @@ type AccountCreateAdministratorParams struct {
 	Email        string
 	PasswordHash string
 	CreatedAt    int64
+	DisplayName  string
 }
 
 func (q *Queries) AccountCreateAdministrator(ctx context.Context, arg AccountCreateAdministratorParams) (sql.Result, error) {
@@ -73,18 +74,20 @@ func (q *Queries) AccountCreateAdministrator(ctx context.Context, arg AccountCre
 		arg.Email,
 		arg.PasswordHash,
 		arg.CreatedAt,
+		arg.DisplayName,
 	)
 }
 
 const accountCreateInvitedUser = `-- name: AccountCreateInvitedUser :execresult
-INSERT INTO users(id,email,role,status,created_at) VALUES(?,?,?,'invited',?)
+INSERT INTO users(id,email,role,status,created_at,display_name) VALUES(?,?,?,'invited',?,?)
 `
 
 type AccountCreateInvitedUserParams struct {
-	ID        string
-	Email     string
-	Role      string
-	CreatedAt int64
+	ID          string
+	Email       string
+	Role        string
+	CreatedAt   int64
+	DisplayName string
 }
 
 func (q *Queries) AccountCreateInvitedUser(ctx context.Context, arg AccountCreateInvitedUserParams) (sql.Result, error) {
@@ -93,6 +96,7 @@ func (q *Queries) AccountCreateInvitedUser(ctx context.Context, arg AccountCreat
 		arg.Email,
 		arg.Role,
 		arg.CreatedAt,
+		arg.DisplayName,
 	)
 }
 
@@ -104,8 +108,41 @@ func (q *Queries) AccountDeleteUser(ctx context.Context, id string) (sql.Result,
 	return q.db.ExecContext(ctx, accountDeleteUser, id)
 }
 
+const accountDirectory = `-- name: AccountDirectory :many
+SELECT id,display_name,avatar_version FROM users WHERE status='active' ORDER BY display_name COLLATE NOCASE,id
+`
+
+type AccountDirectoryRow struct {
+	ID            string
+	DisplayName   string
+	AvatarVersion string
+}
+
+func (q *Queries) AccountDirectory(ctx context.Context) ([]AccountDirectoryRow, error) {
+	rows, err := q.db.QueryContext(ctx, accountDirectory)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AccountDirectoryRow{}
+	for rows.Next() {
+		var i AccountDirectoryRow
+		if err := rows.Scan(&i.ID, &i.DisplayName, &i.AvatarVersion); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const accountFindUser = `-- name: AccountFindUser :one
-SELECT id,email,role,status,appearance,avatar_version FROM users WHERE id=?
+SELECT id,email,role,status,appearance,avatar_version,display_name FROM users WHERE id=?
 `
 
 type AccountFindUserRow struct {
@@ -115,6 +152,7 @@ type AccountFindUserRow struct {
 	Status        string
 	Appearance    string
 	AvatarVersion string
+	DisplayName   string
 }
 
 func (q *Queries) AccountFindUser(ctx context.Context, id string) (AccountFindUserRow, error) {
@@ -127,12 +165,13 @@ func (q *Queries) AccountFindUser(ctx context.Context, id string) (AccountFindUs
 		&i.Status,
 		&i.Appearance,
 		&i.AvatarVersion,
+		&i.DisplayName,
 	)
 	return i, err
 }
 
 const accountListUsers = `-- name: AccountListUsers :many
-SELECT u.id,u.email,u.role,u.status,u.appearance,u.avatar_version FROM users u ORDER BY created_at
+SELECT u.id,u.email,u.role,u.status,u.appearance,u.avatar_version,u.display_name FROM users u ORDER BY created_at
 `
 
 type AccountListUsersRow struct {
@@ -142,6 +181,7 @@ type AccountListUsersRow struct {
 	Status        string
 	Appearance    string
 	AvatarVersion string
+	DisplayName   string
 }
 
 func (q *Queries) AccountListUsers(ctx context.Context) ([]AccountListUsersRow, error) {
@@ -160,6 +200,7 @@ func (q *Queries) AccountListUsers(ctx context.Context) ([]AccountListUsersRow, 
 			&i.Status,
 			&i.Appearance,
 			&i.AvatarVersion,
+			&i.DisplayName,
 		); err != nil {
 			return nil, err
 		}
@@ -187,6 +228,20 @@ func (q *Queries) AccountSetAppearance(ctx context.Context, arg AccountSetAppear
 	return q.db.ExecContext(ctx, accountSetAppearance, arg.Appearance, arg.ID)
 }
 
+const accountSetDisplayName = `-- name: AccountSetDisplayName :exec
+UPDATE users SET display_name=? WHERE id=?
+`
+
+type AccountSetDisplayNameParams struct {
+	DisplayName string
+	ID          string
+}
+
+func (q *Queries) AccountSetDisplayName(ctx context.Context, arg AccountSetDisplayNameParams) error {
+	_, err := q.db.ExecContext(ctx, accountSetDisplayName, arg.DisplayName, arg.ID)
+	return err
+}
+
 const accountUpdateUser = `-- name: AccountUpdateUser :execresult
 UPDATE users SET role=?,status=? WHERE id=?
 `
@@ -202,7 +257,7 @@ func (q *Queries) AccountUpdateUser(ctx context.Context, arg AccountUpdateUserPa
 }
 
 const accountUserByEmail = `-- name: AccountUserByEmail :one
-SELECT id,email,role,status,appearance,avatar_version,password_hash FROM users WHERE email=?
+SELECT id,email,role,status,appearance,avatar_version,display_name,password_hash FROM users WHERE email=?
 `
 
 type AccountUserByEmailRow struct {
@@ -212,6 +267,7 @@ type AccountUserByEmailRow struct {
 	Status        string
 	Appearance    string
 	AvatarVersion string
+	DisplayName   string
 	PasswordHash  string
 }
 
@@ -225,6 +281,7 @@ func (q *Queries) AccountUserByEmail(ctx context.Context, email string) (Account
 		&i.Status,
 		&i.Appearance,
 		&i.AvatarVersion,
+		&i.DisplayName,
 		&i.PasswordHash,
 	)
 	return i, err

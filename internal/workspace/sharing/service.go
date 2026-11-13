@@ -31,12 +31,14 @@ type (
 		UserID        string `json:"userId"`
 		AvatarVersion string `json:"avatarVersion"`
 		Email         string `json:"email"`
+		DisplayName   string `json:"displayName"`
 		Role          string `json:"role"`
 	}
 	// Command grants or changes a member's role.
 	Command struct {
-		Email string `json:"email"`
-		Role  string `json:"role"`
+		Email  string `json:"email,omitempty"`
+		UserID string `json:"userId,omitempty"`
+		Role   string `json:"role"`
 	}
 )
 
@@ -77,7 +79,7 @@ func (a *Service) List(ctx context.Context, actor session.Principal, resourceID 
 		if readErr != nil {
 			return nil, readErr
 		}
-		out = append(out, Member{UserID: row.UserID, Email: row.Email, Role: row.Role, AvatarVersion: user.AvatarVersion})
+		out = append(out, Member{UserID: row.UserID, Email: row.Email, DisplayName: user.DisplayName, Role: row.Role, AvatarVersion: user.AvatarVersion})
 	}
 
 	return out, nil
@@ -88,21 +90,29 @@ func (a *Service) Set(ctx context.Context, actor session.Principal, resourceID s
 	if command.Role != "read" && command.Role != "comment" && command.Role != "full" {
 		return Completed{}, invalid("Choose read-only, comment or full access.")
 	}
-	address, err := account.NormalizeEmail(command.Email)
+	// Authorize before resolving an account identity.
+	err := owned(ctx, a.repository.Queries, resourceID, actor.ID)
 	if err != nil {
 		return Completed{}, err
 	}
-	// Check ownership before resolving any account address.
-	err = owned(ctx, a.repository.Queries, resourceID, actor.ID)
-	if err != nil {
-		return Completed{}, err
+	if command.UserID != "" && command.Email != "" {
+		return Completed{}, invalid("Choose one account identity.")
 	}
-	userID, exists, err := a.accounts.ActiveIDByEmail(ctx, address)
-	if err != nil {
-		return Completed{}, err
-	}
-	if !exists {
-		return Completed{}, invalid("An active mindflow account with that email is required.")
+	userID := command.UserID
+	// Preserve exact-email grants for existing API clients; the UI uses account IDs.
+	if userID == "" {
+		address, normalizeErr := account.NormalizeEmail(command.Email)
+		if normalizeErr != nil {
+			return Completed{}, normalizeErr
+		}
+		var exists bool
+		userID, exists, err = a.accounts.ActiveIDByEmail(ctx, address)
+		if err != nil {
+			return Completed{}, err
+		}
+		if !exists {
+			return Completed{}, invalid("An active mindflow account is required.")
+		}
 	}
 	if userID == actor.ID {
 		return Completed{}, invalid("The workspace owner already has full access.")
@@ -192,5 +202,5 @@ func (a *Service) Info(ctx context.Context, actor session.Principal, resourceID 
 		return Member{}, err
 	}
 
-	return Member{UserID: user.ID, Email: user.Email, AvatarVersion: user.AvatarVersion, Role: "owner"}, nil
+	return Member{UserID: user.ID, Email: user.Email, DisplayName: user.DisplayName, AvatarVersion: user.AvatarVersion, Role: "owner"}, nil
 }

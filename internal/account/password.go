@@ -20,6 +20,7 @@ func (a *Service) VerifyCredentials(ctx context.Context, address, password strin
 	user.Status = userByEmailRow.Status
 	user.Appearance = userByEmailRow.Appearance
 	user.AvatarVersion = userByEmailRow.AvatarVersion
+	user.DisplayName = userByEmailRow.DisplayName
 	hash = userByEmailRow.PasswordHash
 
 	if err != nil && !storage.IsNotFound(err) {

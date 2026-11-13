@@ -11,14 +11,15 @@ import (
 
 // ControlRequest is visible only to its requester and the current holder.
 type ControlRequest struct {
-	ID             string `json:"id"`
-	RequesterID    string `json:"requesterId"`
-	AvatarVersion  string `json:"avatarVersion"`
-	RequesterEmail string `json:"requesterEmail"`
-	Deadline       int64  `json:"deadline"`
-	Status         string `json:"status"`
-	Incoming       bool   `json:"incoming"`
-	ServerNow      int64  `json:"serverNow"`
+	ID                   string `json:"id"`
+	RequesterID          string `json:"requesterId"`
+	AvatarVersion        string `json:"avatarVersion"`
+	RequesterEmail       string `json:"requesterEmail"`
+	RequesterDisplayName string `json:"requesterDisplayName"`
+	Deadline             int64  `json:"deadline"`
+	Status               string `json:"status"`
+	Incoming             bool   `json:"incoming"`
+	ServerNow            int64  `json:"serverNow"`
 }
 
 func (a *Service) resolveRequest(ctx context.Context, actor session.Principal, pageID, clientID, action, requestID string) error {
@@ -112,7 +113,7 @@ func (a *Service) requestControl(ctx context.Context, transaction *storage.Trans
 	token := make([]byte, requestIdentifierBytes)
 	_, _ = rand.Read(token)
 
-	return queries.EditorCreateRequest(ctx, storage.EditorCreateRequestParams{PageID: pageID, ID: hex.EncodeToString(token), RequesterID: actor.ID, RequesterEmail: actor.Email, RequesterAvatarVersion: actor.AvatarVersion, RequesterSession: actor.SessionID, RequesterClient: clientID, HolderSession: lease.SessionID, HolderClient: lease.ClientID, HolderEpoch: lease.Epoch, Deadline: a.now().Add(controlWait).UnixMilli()})
+	return queries.EditorCreateRequest(ctx, storage.EditorCreateRequestParams{PageID: pageID, ID: hex.EncodeToString(token), RequesterID: actor.ID, RequesterEmail: actor.Email, RequesterDisplayName: actor.DisplayName, RequesterAvatarVersion: actor.AvatarVersion, RequesterSession: actor.SessionID, RequesterClient: clientID, HolderSession: lease.SessionID, HolderClient: lease.ClientID, HolderEpoch: lease.Epoch, Deadline: a.now().Add(controlWait).UnixMilli()})
 }
 
 // Absence of a request is a valid optional result.
@@ -132,7 +133,7 @@ func (a *Service) requestInfo(ctx context.Context, actor session.Principal, page
 		return nil, nil
 	}
 
-	return &ControlRequest{ID: request.ID, RequesterEmail: request.RequesterEmail, RequesterID: request.RequesterID, AvatarVersion: request.RequesterAvatarVersion, Deadline: request.Deadline, Status: request.Status, Incoming: incoming, ServerNow: a.now().UnixMilli()}, nil
+	return &ControlRequest{ID: request.ID, RequesterEmail: request.RequesterEmail, RequesterDisplayName: request.RequesterDisplayName, RequesterID: request.RequesterID, AvatarVersion: request.RequesterAvatarVersion, Deadline: request.Deadline, Status: request.Status, Incoming: incoming, ServerNow: a.now().UnixMilli()}, nil
 }
 
 // Decide accepts or denies a holder's pending request, or lets its requester cancel.
