@@ -7,6 +7,12 @@ test("display names persist and sharing searches names without exposing emails",
 }, info) => {
   await login(page);
   const initial = await (await page.request.get("/api/v1/auth/me")).json();
+  const directory = await (
+    await page.request.get("/api/v1/accounts/directory")
+  ).json();
+  const otherUsers = directory.filter(
+    (user: { id: string }) => user.id !== initial.user.id,
+  ).length;
   try {
     await activate(
       page,
@@ -56,7 +62,7 @@ test("display names persist and sharing searches names without exposing emails",
     await expect(dialog).toContainText("River Stone");
     await expect(dialog).not.toContainText("@test.invalid");
     const search = dialog.getByLabel("Search users", { exact: true });
-    await expect(dialog.getByRole("radio")).toHaveCount(3);
+    await expect(dialog.getByRole("radio")).toHaveCount(otherUsers + 3);
     const firstOption = dialog.locator(".sharing-user-option").first();
     const firstName = firstOption.locator(":scope > span").last();
     await expect(firstName).toBeInViewport();
@@ -111,7 +117,7 @@ test("display names persist and sharing searches names without exposing emails",
     ).toBeVisible();
     await expect(add).toBeDisabled();
     await search.fill("");
-    await expect(dialog.getByRole("radio")).toHaveCount(2);
+    await expect(dialog.getByRole("radio")).toHaveCount(otherUsers + 2);
     await page.screenshot({
       path: `../.cache/e2e/display-names-${info.project.name}.png`,
     });
