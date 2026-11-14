@@ -11,6 +11,8 @@ mindflow is one Go process serving an embedded React/TypeScript frontend, a same
 | `internal/account`                            | Accounts, password policy, avatars, authentication, sessions, invitations, and resets.                                                           |
 | `internal/workspace`                          | Workspaces, sharing, pages, canvas documents, editor control, comments, images, imports, and workspace templates.                                |
 | `internal/email`                              | SMTP delivery and retry queue.                                                                                                                   |
+| `internal/feedback`                           | Private reports, discussion, lifecycle decisions, unread activity, search, and closed-report retention.                                          |
+| `internal/release`                            | Highest observed release version and upgrade announcements.                                                                                      |
 | `internal/installation`                       | Initial setup and instance configuration.                                                                                                        |
 | `internal/mindflow`                           | Compose domain services and provide common HTTP mechanics. Its storage package owns connection/migration infrastructure, not all domain queries. |
 | `internal/notification`                       | Authenticated SSE invalidations.                                                                                                                 |
@@ -22,7 +24,7 @@ mindflow is one Go process serving an embedded React/TypeScript frontend, a same
 
 ## Backend domains
 
-Behavior belongs to the domain that owns it. Account subdomains include `authentication`, `session`, `invitation`, `passwordreset`, and `avatar`. Workspace subdomains include `sharing`, `image`, `template`, `transfer`, `butterfly`, `page`, and the page's `canvas`, `editor`, and `comment` packages.
+Behavior belongs to the domain that owns it. Account subdomains include `authentication`, `session`, `invitation`, `passwordreset`, and `avatar`. Workspace subdomains include `sharing`, `ownership`, `trash`, `image`, `pdf`, `template`, `transfer`, `butterfly`, `page`, and the page's `canvas`, `editor`, and `comment` packages.
 
 Only the topmost domain defines its database structure. Its `storage/` contains repository adapters, sqlc queries/generated bindings, and Goose migrations. Nested domains share that parent storage. The account, workspace, email, installation, release, and feedback schemas are independent: no cross-domain foreign keys or table access. References into another domain are opaque IDs.
 

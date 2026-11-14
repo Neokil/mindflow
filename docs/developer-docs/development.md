@@ -1,6 +1,6 @@
 # Development workflow
 
-Use Go matching [go.mod](../../go.mod), Node.js 22.12+ with npm, and Python 3 for repository scripts. Tool/dependency versions are pinned in the manifests, Makefile, and container build rather than repeated here.
+Use Go matching [go.mod](../../go.mod), Node.js 22.13+ with npm, and Python 3 for repository scripts. Tool/dependency versions are pinned in the manifests, Makefile, and container build rather than repeated here.
 
 ## Local setup
 

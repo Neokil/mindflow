@@ -60,8 +60,8 @@ A page's `document` is versioned JSON. `pages.revision` tracks saved document ch
       "width": 160,
       "height": 120,
       "rotation": 0,
-      "fill": "#edf5df",
-      "border": "#1b5e3b",
+      "fill": "#1b5e3b",
+      "border": "#d9a441",
       "borderWidth": 2
     }
   ],
@@ -73,32 +73,37 @@ A page's `document` is versioned JSON. `pages.revision` tracks saved document ch
 
 `settings.backgroundColor` optionally stores a validated CSS color, independent of the dot/plain background pattern. Omitting it keeps the normal theme background. Butterfly imports use it to preserve solid page colors; existing documents require no migration.
 
-The ordered element list defines stacking, back to front. Common fields are stable `id`, `type`, center `x/y` in world units, positive local `width/height`, rotation in radians, and optional `groupId`. Groups are flat memberships; transforms update the member elements. Optional `locked: true` marks group members as fixed in the editor. Every member of a group must have the same lock state; ungrouped elements cannot be locked. Missing `locked` means false. No document-schema bump is required.
+The ordered element list defines stacking, back to front. Common fields are stable `id`, `type`, center `x/y` in world units, positive local `width/height`, rotation in radians, optional `groupId`, and an optional element `link`. Groups are flat memberships; transforms update the member elements. Optional `locked: true` marks group members as fixed in the editor. Every member of a group must have the same lock state; ungrouped elements cannot be locked. Missing `locked` means false. No document-schema bump is required.
 
-| Element type | Additional fields                                                                                                                   |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `shape`      | `shape` (`rectangle`, `circle`, `star`), fill, border, border width.                                                                |
-| `text`       | Plain text, whole-number font size, bold/italic, color, horizontal and vertical alignment. Formatting applies to the whole element. |
-| `stroke`     | Normalized local point pairs, color, and pen width. Resizing stretches the path.                                                    |
-| `image`      | Asset ID and optional normalized `crop` rectangle (`x`, `y`, `width`, `height`). Cropping never modifies the original BLOB.         |
+| Element type | Additional fields                                                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `shape`      | `shape` (`rectangle`, `circle`, `star`), fill, border, border width.                                                                   |
+| `text`       | Plain text, whole-number font size, bold/italic, color, horizontal and vertical alignment. Formatting applies to the whole element.    |
+| `stroke`     | Normalized local point pairs, color, pen width, optional pressure samples, and optional highlighter mode. Resizing stretches the path. |
+| `pdf`        | Asset ID for the retained PDF; dimensions position its first-page preview.                                                             |
+| `image`      | Asset ID and optional normalized `crop` rectangle (`x`, `y`, `width`, `height`). Cropping never modifies the original BLOB.            |
 
 New text defaults to horizontal center/vertical middle. Legacy missing alignment fields retain the renderer's fallback behavior. Camera, selection, insertion preview, undo history, and recovery state are not document content. A page supports at most 10,000 elements; unsupported document schemas and invalid payloads are rejected.
 
 ## Lifecycles and storage details
 
 - Image originals are immutable. Variants are keyed by asset and resolution bucket; a workspace can scope uploads to its owner. `page_assets` and `template_assets` retain images for page history/recovery and reusable snapshots, and duplicate pages can share those originals. Removing an element does not immediately destroy its retained image.
-- Workspace deletion cascades through its pages, memberships, discussions, and related page records. Cross-domain account deletion removes owned content and related memberships/authored discussion/requests through service collaborators. Shared uploads belong to the workspace owner, so deleting their uploader does not remove retained shared content.
+- Workspace deletion first moves its content into Trash. Permanent purge after 30 days cascades through its pages, memberships, discussions, and related page records. Cross-domain account deletion removes owned content and related memberships/authored discussion/requests through service collaborators. Shared uploads belong to the workspace owner, so deleting their uploader does not remove retained shared content.
 - Workspace templates store validated element JSON separately from pages, with bounded counts and size. They have no dependency on source element IDs or page lifetimes. Insertions assign fresh IDs, remove grouping/locks, and retain immutable image references. Workspace copies retain template assets across deletion of the source workspace.
 - Comment threads/messages live outside the page JSON and its document revision. Authors and permissions are assigned/checked by the server.
 - Avatar uploads become metadata-free 128px square PNGs; `users.avatar_version` changes when the image changes.
 - Sessions store verifier hashes; invitation/reset records store token hashes. Pending email payloads and SMTP configuration are sensitive backup contents.
 - Save receipts include a request digest and resulting revision, expiring after 24 hours. Lease epochs prevent an old client from becoming a valid writer again after transfer or expiry.
 
-The authoritative definitions are the [account](../../internal/account/storage/migrations), [workspace](../../internal/workspace/storage/migrations), [email](../../internal/email/storage/migrations), and [installation](../../internal/installation/storage/migrations) migrations, plus the [frontend model](../../web/src/model.ts). HTTP payloads are in [OpenAPI](../../api/openapi.yaml).
+The authoritative definitions are the [account](../../internal/account/storage/migrations), [workspace](../../internal/workspace/storage/migrations), [email](../../internal/email/storage/migrations), [installation](../../internal/installation/storage/migrations), [release](../../internal/release/storage/migrations), and [feedback](../../internal/feedback/storage/migrations) migrations, plus the [frontend model](../../web/src/model.ts). HTTP payloads are in [OpenAPI](../../api/openapi.yaml).
+
+## Lists, highlights, and PDF elements
 
 List text adds optional `listStyle` (`bullet`, `number`, `check`) and `checked` line indices; a text element still stores newline-separated `text`. Highlights are ordinary strokes with optional `highlight: true`, rendered at 35% opacity with multiply blending. These fields are additive to schema version 1.
 
 PDF elements use `type: "pdf"` and an `assetId`. The parent workspace's existing `assets` table stores the original with MIME `application/pdf`; `asset_variants` stores a first-page PNG under bucket 1024. Width/height describe the thumbnail. Page/template asset links retain the original and preview through copies and lifecycle operations, using the existing workspace asset permissions. No separate PDF database or cross-domain schema is introduced. Image-mode imports use normal PNG assets and image elements.
+
+## Display names
 
 Account migration 3 adds `users.display_name` and backfills existing accounts from the email local part (up to 80 characters). New account writes store a normalized name. The authenticated directory exposes only active account IDs, display names, and avatar versions. Sharing uses stable account IDs; duplicate or changed names do not change access. Legacy exact-email API grants remain supported. Workspace migration 5 adds the requester-name snapshot to the existing editor-control request record. Comment author and membership names resolve through the account service without cross-domain table queries.
 
@@ -118,11 +123,15 @@ Workspace migration `00006_trash.sql` adds non-null Unix-second `deleted_at` col
 
 Every canvas element may have `link: { "pageId": "...", "elementId": "..." }`. Newly assigned targets must exist on an active page in the same workspace; unchanged links may retain missing targets to support Trash restoration. No SQL foreign key couples embedded element identities to page lifecycle. Coordinated copies remap page/element/group identities before writing; links outside a portable selection are removed. The format remains schema version 1 because the field is optional.
 
+## Account notifications and activity
+
 Welcome jobs use a per-account deduplication key, queue atomically with initial setup or invitation redemption, and verify current account eligibility before delivery. The outbox is independent from SMTP configuration; it can queue within setup's transaction without reading uncommitted settings through another database connection.
 
 Account activity migration gives existing accounts a fresh activity baseline at upgrade. Newly activated accounts start their baseline at activation. Inactivity deadlines begin at successful delivery, and a delayed final notice extends deletion until at least seven days after delivery. Deactivated and unactivated accounts are excluded because they cannot sign in; active administrators are exempt. Account removal deletes its update capabilities and preferences, owned feedback, authored report comments and owned workspaces immediately. Email removes account-linked queued messages and delivery receipts through its own storage boundary.
 
 Unsubscribe tokens are random capabilities stored only as SHA-256 digests in `account_tokens` with purpose `updates_unsubscribe`. They cannot create sessions or reset passwords. All links issued during a consent cycle remain usable; withdrawing consent removes them. They are independent of invitation/reset expiry cleanup.
+
+## Feedback lifecycle, unread activity, and retention
 
 Feedback states are `created`, `accepted`, and `closed`; deny is a transition to closed with a mandatory comment. Accept/reopen also record discussion entries, and release closure derives a validated version tag from its comment. State changes and comments/events commit in one transaction. The lifecycle migration maps existing submitted reports to created and denied reports to closed while retaining media and discussions.
 

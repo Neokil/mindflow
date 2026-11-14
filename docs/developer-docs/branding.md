@@ -35,5 +35,4 @@ HTML emails use Forest for their heading, action button, and fallback link, with
 
 Validate branding in light and dark system appearance. The appearance browser test checks the loaded icon, favicon, button contrast pairings, and live theme switching in Chrome and Firefox. Review the README banner and refreshed demo GIF visually.
 
-
 Email branding embeds `internal/email/assets/icon.png` as a CID attachment beside the mindflow name and GitHub link. Keep that PNG synchronized with `web/public/icon.png` when changing the icon. Invitation mail has one headline, a **Join mindflow** button, a raw-link fallback, and the “Your place for thoughts.” footer.

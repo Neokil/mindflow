@@ -1,6 +1,6 @@
 # Recording the README demo
 
-Run `make demo` from the repository root after installing frontend dependencies (`cd web && npm ci`). You need Go, Node.js 22.12+, Python 3.11+, and network access for the first browser/encoder installation.
+Run `make demo` from the repository root after installing frontend dependencies (`cd web && npm ci`). You need Go, Node.js 22.13+, Python 3.11+, and network access for the first browser/encoder installation.
 
 The command builds the frontend and backend, ensures Chromium is installed, and runs `web/scripts/record-demo.mjs`. It creates a temporary SQLite database and binds a development instance only to `127.0.0.1:8089`. That port must be free. The temporary users are `alex@example.com` and `sam@example.com`; the SMTP target is a closed local port, so no real email is sent. The script consumes the invitation from that fixture's email queue and activates the demo collaborator before recording.
 

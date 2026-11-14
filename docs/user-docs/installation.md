@@ -11,7 +11,7 @@ docker compose -f deploy/compose.yaml up --build -d
 docker compose -f deploy/compose.yaml logs mindflow
 ```
 
-The image defaults to UID/GID `10001:10001` in `scratch`, with a read-only root filesystem, a writable data volume, and temporary `/tmp`. The TrueNAS configuration overrides the user to `568:568` (`apps`). Its health check is built into the application. Use a version tag or digest for stable deployments; `neokil/mindflow:latest` follows the main branch. Availability of a tag depends on a successful image publishing run.
+The image defaults to UID/GID `10001:10001` in `scratch`, with a read-only root filesystem, a writable data volume, and temporary `/tmp`. The TrueNAS configuration overrides the user to `568:568` (`apps`). Its health check is built into the application. Use a version tag or digest for stable deployments; `neokil/mindflow:latest` follows stable GitHub releases. Images are published after release verification succeeds, not on branch or tag pushes. A release tag such as `v1.2.0` publishes the image tag `1.2.0`; prereleases do not move `latest`.
 
 ## HTTPS and network configuration
 
@@ -39,7 +39,7 @@ The TrueNAS YAML uses a one-shot `migrate` service with `depends_on: condition: 
 
 The YAML also defines a top-level `x-portals` entry for **Web UI** at `http://<TrueNAS-address>:30098/`. TrueNAS replaces the `0.0.0.0` placeholder with its address. This is portal metadata, separate from Docker's port mapping. Keep its port synchronized with the published host port.
 
-Existing YAML apps may not gain the button simply by saving an edit: the current [TrueNAS custom-app update path](https://github.com/truenas/middleware/blob/master/src/middlewared/middlewared/plugins/apps/crud.py) skips refreshing portal metadata, although initial creation reads it. Avoid recreating an app just to add a shortcut without first protecting its data. You can continue using a browser bookmark for the existing installation. The TrueNAS user documentation still [describes YAML apps as lacking the Web UI button](https://apps.truenas.com/managing-apps/managing-installed-apps/), so behavior depends on the installed release and metadata state.
+Portal support and refresh behavior depend on your TrueNAS release. An existing YAML app may not gain the button when its configuration is edited. If it is absent, use a browser bookmark; do not recreate the app solely to add a shortcut without first protecting its data.
 
 The direct portal uses HTTP to match the mapped service. For normal production sign-in through your reverse proxy or Cloudflare Tunnel, use the configured public HTTPS origin instead; you can set that hostname, scheme, and port in `x-portals`.
 
@@ -57,6 +57,6 @@ SMTP requires certificate-verified implicit TLS or STARTTLS. Common provider por
 
 Administrators invite accounts by email; there is no public registration. They can resend invitations, send password resets, change roles, deactivate/reactivate users, and delete accounts. At least one active administrator must remain. Administration does not grant access to other users' workspaces. Deleting an account permanently removes its owned workspaces and related account data.
 
-Passwords contain 15–128 characters. Invitations expire after seven days, reset links after one hour, and sessions after 30 days unless revoked earlier. Resending a link supersedes the old one. Email is queued and retried; user management shows delivery failures. Fix SMTP settings and resend if delivery has failed permanently. A blank SMTP password during settings updates retains the stored secret.
+Passwords contain 8–128 characters. Setup, invitation acceptance, and reset screens offer a locally generated 10–15-character password suggestion made from two or three random words and punctuation. Invitations expire after seven days, reset links after one hour, and sessions after 30 days unless revoked earlier. Resending a link supersedes the old one. Email is queued and retried; user management shows delivery failures. Fix SMTP settings and resend if delivery has failed permanently. A blank SMTP password during settings updates retains the stored secret.
 
 Continue with [Using mindflow](using-mindflow.md), [Operations](operations.md), and the [security policy](../SECURITY.md).
