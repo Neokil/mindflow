@@ -25,17 +25,21 @@ export function Modal({
   children,
   close,
   wide = false,
+  closeLabel = "Close dialog",
 }: {
   title: ReactNode;
   children: ReactNode;
   close: () => void;
   wide?: boolean;
+  closeLabel?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     const el = dialog.current!;
     el.showModal();
+    heading.current?.focus({ preventScroll: true });
     return () => {
       el.close();
     };
@@ -47,6 +51,7 @@ export function Modal({
       className={wide ? "modal wide" : "modal"}
       onCancel={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         close();
       }}
       onClick={(e) => {
@@ -54,12 +59,14 @@ export function Modal({
       }}
     >
       <div className="modal-head">
-        <h2 id={titleId}>{title}</h2>
+        <h2 id={titleId} ref={heading} tabIndex={-1}>
+          {title}
+        </h2>
         <button
           className="icon-button"
-          aria-label="Close dialog"
+          aria-label={closeLabel}
           onClick={close}
-          data-tooltip="Close dialog"
+          data-tooltip={closeLabel}
         >
           <X size={19} />
         </button>

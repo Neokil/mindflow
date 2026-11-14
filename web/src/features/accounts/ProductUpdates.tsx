@@ -35,9 +35,6 @@ export default function ProductUpdates() {
         />
         Email me when a new mindflow version is available.
       </label>
-      <p className="muted">
-        Off by default. Every update email includes an unsubscribe button.
-      </p>
       <ErrorMessage message={error} />
     </section>
   );

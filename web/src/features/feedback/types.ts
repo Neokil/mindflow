@@ -5,7 +5,10 @@ export type Report = {
   kind: "bug" | "feature";
   title: string;
   body?: string;
-  status: "submitted" | "accepted" | "denied" | "closed";
+  status: "created" | "accepted" | "closed";
+  unread: number;
+  readThrough: number;
+  actions: ReviewAction[];
   release: string;
   releaseURL?: string;
   hasScreenshot: boolean;
@@ -19,3 +22,20 @@ export type Report = {
     createdAt: number;
   }[];
 };
+
+export type ReviewAction =
+  "accept" | "deny" | "close_release" | "close_comment" | "reopen";
+export const actionLabels: Record<ReviewAction, string> = {
+  accept: "Accept",
+  deny: "Deny",
+  close_release: "Close with release",
+  close_comment: "Close with comment",
+  reopen: "Reopen",
+};
+export function statusLabel(status: Report["status"]) {
+  return status === "accepted"
+    ? "Accepted, to do"
+    : status === "created"
+      ? "Created"
+      : "Closed";
+}

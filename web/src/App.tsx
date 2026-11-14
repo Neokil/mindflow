@@ -2,11 +2,12 @@ import BuildVersion from "./BuildVersion";
 import UpdateBanner from "./UpdateBanner";
 import { useCanvasFullscreen } from "./useCanvasFullscreen";
 import { useWorkspaceRoute } from "./navigation";
-import { Github, LogOut, MessageSquare, Settings, SunMoon } from "lucide-react";
+import { Github, LogOut, Bug, Settings, SunMoon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ServerEvent, User } from "./api";
 import { api, APIError, setCSRF } from "./api";
 import Feedback from "./features/feedback/Reports";
+import useFeedbackUnread from "./features/feedback/useFeedbackUnread";
 import Profile from "./features/accounts/Profile";
 import Avatar from "./features/accounts/Avatar";
 import Admin from "./features/accounts/Admin";
@@ -33,6 +34,7 @@ export default function App() {
   const [opening, setOpening] = useState(false);
   const [reauth, setReauth] = useState(false);
   const [user, setUser] = useState<User>();
+  const unreadFeedback = useFeedbackUnread(user?.id);
   const [initialized, setInitialized] = useState<boolean>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -204,14 +206,6 @@ export default function App() {
           </div>
           <div className="header-actions">
             <button
-              className="icon-button"
-              aria-label="Feedback & Bugreport"
-              data-tooltip="Feedback & Bugreport"
-              onClick={() => setFeedback(true)}
-            >
-              <MessageSquare size={18} />
-            </button>
-            <button
               className="account-profile"
               aria-label="Your profile"
               onClick={() => setProfile(true)}
@@ -237,14 +231,50 @@ export default function App() {
             </button>
             {user.role === "admin" && (
               <button
-                className="icon-button"
+                className="icon-button notification-button"
                 aria-label="Administration"
+                aria-description={
+                  unreadFeedback.reports > 0
+                    ? `${unreadFeedback.reports} unread reports and comments`
+                    : undefined
+                }
                 onClick={() => setAdmin(true)}
                 data-tooltip="Administration"
               >
                 <Settings size={18} />
+                {unreadFeedback.reports > 0 && (
+                  <span
+                    className="notification-badge"
+                    data-testid="admin-feedback-unread"
+                    aria-label={`${unreadFeedback.reports} unread reports and comments`}
+                  >
+                    {unreadFeedback.reports}
+                  </span>
+                )}
               </button>
             )}
+            <button
+              className="icon-button notification-button"
+              aria-label="Feedback & Bugreport"
+              aria-description={
+                unreadFeedback.replies > 0
+                  ? `${unreadFeedback.replies} unread replies`
+                  : undefined
+              }
+              data-tooltip="Feedback & Bugreport"
+              onClick={() => setFeedback(true)}
+            >
+              <Bug size={18} />
+              {unreadFeedback.replies > 0 && (
+                <span
+                  className="notification-badge"
+                  data-testid="feedback-unread"
+                  aria-label={`${unreadFeedback.replies} unread replies`}
+                >
+                  {unreadFeedback.replies}
+                </span>
+              )}
+            </button>
             <button
               className="icon-button"
               aria-label="Sign out"
@@ -312,7 +342,13 @@ export default function App() {
           close={() => setProfile(false)}
         />
       )}
-      {admin && <Admin close={() => setAdmin(false)} self={user} />}
+      {admin && (
+        <Admin
+          close={() => setAdmin(false)}
+          self={user}
+          unread={unreadFeedback.reports}
+        />
+      )}
       {reauth && (
         <Auth
           overlay

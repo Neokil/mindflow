@@ -2281,6 +2281,7 @@ body {
 
 .consent-option {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 10px;
   font-size: 13px;
@@ -2347,4 +2348,51 @@ body {
 }
 .feedback-reports .form-actions {
   align-items: end;
+}
+
+.modal-head h2 {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.modal-head h2:focus {
+  outline: none;
+}
+.feedback-list-actions,
+.feedback-comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.feedback-comment-actions {
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.feedback-message .feedback-body {
+  margin-bottom: 0;
+}
+.feedback-list-item.has-unread strong {
+  color: var(--accent);
+}
+.notification-button {
+  position: relative;
+}
+.notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: var(--gold);
+  color: #18191d;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+.notification-button > .notification-badge {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  border: 2px solid var(--panel);
 }

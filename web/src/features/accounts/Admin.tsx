@@ -16,9 +16,11 @@ import SMTPFields from "./SMTPFields";
 export default function Admin({
   close,
   self,
+  unread = 0,
 }: {
   close: () => void;
   self: User;
+  unread?: number;
 }) {
   const [tab, setTab] = useState("users");
   const [users, setUsers] = useState<{ user: User; mailError: string }[]>([]);
@@ -80,7 +82,8 @@ export default function Admin({
           className={tab === "feedback" ? "active" : ""}
           onClick={() => setTab("feedback")}
         >
-          Feedback & bugs
+          Feedback & bugs{" "}
+          {unread > 0 && <span className="notification-badge">{unread}</span>}
         </button>
       </div>
       <ErrorMessage message={error} />
