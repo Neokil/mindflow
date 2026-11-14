@@ -7,13 +7,15 @@ import (
 
 // Workspace is an owned collection of ordered pages.
 type Workspace struct {
-	Role      string `json:"role"`
-	Shared    bool   `json:"shared"`
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Revision  int    `json:"revision"`
-	UpdatedAt int64  `json:"updatedAt"`
-	PageCount int    `json:"pageCount"`
+	FirstPageID     string `json:"firstPageId"`
+	PreviewRevision int    `json:"previewRevision"`
+	Role            string `json:"role"`
+	Shared          bool   `json:"shared"`
+	ID              string `json:"id"`
+	Name            string `json:"name"`
+	Revision        int    `json:"revision"`
+	UpdatedAt       int64  `json:"updatedAt"`
+	PageCount       int    `json:"pageCount"`
 }
 
 // CreateWorkspaceCommand names a new private workspace.

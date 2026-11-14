@@ -4634,6 +4634,15 @@
           },
           "pageCount": {
             "type": "integer"
+          },
+          "firstPageId": {
+            "type": "string",
+            "description": "First page in current tab order, or an empty string when the workspace has no pages. Used for an authorized first-page thumbnail."
+          },
+          "previewRevision": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Saved document revision of firstPageId; changes invalidate the workspace thumbnail."
           }
         }
       },

@@ -1,3 +1,4 @@
+import WorkspacePreview from "./WorkspacePreview";
 import ExportDialog from "../transfer/ExportDialog";
 import ImportWorkspaceDialog from "./ImportWorkspaceDialog";
 import {
@@ -25,6 +26,7 @@ export default function Dashboard({
   open: (w: Workspace) => void;
   serverEvent: ServerEvent;
 }) {
+  const [previewBackground, setPreviewBackground] = useState("");
   const [items, setItems] = useState<Workspace[]>([]),
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
@@ -36,6 +38,20 @@ export default function Dashboard({
   const [exporting, setExporting] = useState<Workspace>();
   const [importing, setImporting] = useState(false);
   const [menu, setMenu] = useState<string>();
+  useEffect(() => {
+    const root = document.documentElement;
+    const update = () =>
+      setPreviewBackground(
+        getComputedStyle(root).getPropertyValue("--bg").trim(),
+      );
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    return () => observer.disconnect();
+  }, []);
   async function load() {
     setItems(await api("/workspaces"));
   }
@@ -45,7 +61,11 @@ export default function Dashboard({
       .finally(() => setLoading(false));
   }, []);
   useEffect(() => {
-    if (serverEvent.type === "workspace" || serverEvent.type === "connected")
+    if (
+      serverEvent.type === "workspace" ||
+      serverEvent.type === "page" ||
+      serverEvent.type === "connected"
+    )
       void load().catch(() => {});
   }, [serverEvent]);
   function create() {
@@ -118,18 +138,18 @@ export default function Dashboard({
             ALL WORKSPACES <span>{items.length}</span>
           </div>
           <div className="workspace-grid">
-            {items.map((w, i) => (
+            {items.map((w) => (
               <article className="workspace-card" key={w.id}>
                 <button
-                  className={`workspace-preview preview-${i % 4}`}
+                  className="workspace-preview"
                   onClick={() => open(w)}
                   aria-label={`Open ${w.name}`}
                 >
-                  <div className="preview-stack">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
+                  <WorkspacePreview
+                    key={`${w.firstPageId}:${w.previewRevision}:${previewBackground}`}
+                    workspace={w}
+                    background={previewBackground}
+                  />
                   <span className="preview-open">
                     <ArrowUpRight size={18} />
                   </span>

@@ -64,6 +64,8 @@ export function canvasElementDefaults(
 }
 export type WorkspacePermission = "owner" | "read" | "comment" | "full";
 export type Workspace = {
+  firstPageId: string;
+  previewRevision: number;
   role?: WorkspacePermission;
   shared?: boolean;
   id: string;

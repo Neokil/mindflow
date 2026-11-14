@@ -2,6 +2,10 @@
 
 Sign in to see your own and shared workspaces. Create a workspace, open it, and use the page tabs to organize separate canvases. Workspaces and pages can be renamed, duplicated, or deleted; page tabs can be reordered. Workspace lifecycle and sharing management belong to the owner.
 
+## Workspace previews
+
+Workspace cards show a small preview of the first page in tab order, fitted to its saved content. Multipage workspaces show stacked sheets and a page-count badge. Saving changes to the first page, changing page order, or deleting the first page refreshes the preview. Blank pages and workspaces with no pages have explicit labels. Previews follow the canvas background and your light/dark appearance, and load as cards come into view. Viewing a preview does not acquire editor control.
+
 ## Passwords
 
 Account passwords must contain 8–128 characters. Setup, invitation acceptance, and password reset offer **Suggest good password**: two or three randomly selected English words with special characters between them, totaling 10–15 characters, generated locally in your browser. The suggested value is shown so you can save it; **Hide password** masks it again. Random word choices add unpredictability while remaining easier to remember than random character strings. Use a unique password for mindflow.

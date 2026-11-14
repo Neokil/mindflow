@@ -1405,17 +1405,26 @@ func (q *Queries) WorkspaceIncrementWorkspaceRevision(ctx context.Context, id st
 }
 
 const workspaceListWorkspaces = `-- name: WorkspaceListWorkspaces :many
-SELECT w.id,w.name,w.revision,w.updated_at,wa.role,EXISTS(SELECT 1 FROM workspace_members m WHERE m.workspace_id=w.id) AS shared,(SELECT count(*) FROM pages p WHERE p.workspace_id=w.id) AS page_count FROM workspaces w JOIN workspace_access wa ON wa.workspace_id=w.id WHERE wa.user_id=? ORDER BY w.updated_at DESC,w.id
+SELECT w.id,w.name,w.revision,w.updated_at,wa.role,
+ EXISTS(SELECT 1 FROM workspace_members m WHERE m.workspace_id=w.id) AS shared,
+ (SELECT count(*) FROM pages p WHERE p.workspace_id=w.id) AS page_count,
+ CAST(COALESCE(first_page.id,'') AS TEXT) AS first_page_id,
+ CAST(COALESCE(first_page.revision,0) AS INTEGER) AS preview_revision
+FROM workspaces w JOIN workspace_access wa ON wa.workspace_id=w.id
+LEFT JOIN pages first_page ON first_page.id=(SELECT p.id FROM pages p WHERE p.workspace_id=w.id ORDER BY p.position,p.id LIMIT 1)
+WHERE wa.user_id=? ORDER BY w.updated_at DESC,w.id
 `
 
 type WorkspaceListWorkspacesRow struct {
-	ID        string
-	Name      string
-	Revision  int
-	UpdatedAt int64
-	Role      string
-	Shared    bool
-	PageCount int64
+	ID              string
+	Name            string
+	Revision        int
+	UpdatedAt       int64
+	Role            string
+	Shared          bool
+	PageCount       int64
+	FirstPageID     string
+	PreviewRevision int64
 }
 
 func (q *Queries) WorkspaceListWorkspaces(ctx context.Context, userID string) ([]WorkspaceListWorkspacesRow, error) {
@@ -1435,6 +1444,8 @@ func (q *Queries) WorkspaceListWorkspaces(ctx context.Context, userID string) ([
 			&i.Role,
 			&i.Shared,
 			&i.PageCount,
+			&i.FirstPageID,
+			&i.PreviewRevision,
 		); err != nil {
 			return nil, err
 		}

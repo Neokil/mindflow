@@ -41,3 +41,5 @@ Workspace/page hash URLs are handled by `navigation.ts`; `UpdateBanner` checks t
 Read [data structures](data-model.md), [canvas and synchronization](canvas-and-sync.md), and the [development workflow](development.md) before changing these boundaries.
 
 Native transfer lives in `workspace/transfer`; its storage stays in the parent domain. Frontend `features/transfer` owns portable-file UI and visual exports, sharing the editor element renderer. See [native import and export](native-transfer.md).
+
+`WorkspacePreview` lazily renders the first saved page on each workspace card using the shared canvas export renderer. The workspace list returns `firstPageId` and its `previewRevision` from the authorized workspace query; no thumbnail tables or new migrations are needed. Page invalidations refresh that metadata. Only one thumbnail renders at a time, and generated object URLs are revoked when a card changes or unmounts.

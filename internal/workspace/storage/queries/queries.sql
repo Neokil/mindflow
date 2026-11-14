@@ -1,5 +1,12 @@
 -- name: WorkspaceListWorkspaces :many
-SELECT w.id,w.name,w.revision,w.updated_at,wa.role,EXISTS(SELECT 1 FROM workspace_members m WHERE m.workspace_id=w.id) AS shared,(SELECT count(*) FROM pages p WHERE p.workspace_id=w.id) AS page_count FROM workspaces w JOIN workspace_access wa ON wa.workspace_id=w.id WHERE wa.user_id=? ORDER BY w.updated_at DESC,w.id;
+SELECT w.id,w.name,w.revision,w.updated_at,wa.role,
+ EXISTS(SELECT 1 FROM workspace_members m WHERE m.workspace_id=w.id) AS shared,
+ (SELECT count(*) FROM pages p WHERE p.workspace_id=w.id) AS page_count,
+ CAST(COALESCE(first_page.id,'') AS TEXT) AS first_page_id,
+ CAST(COALESCE(first_page.revision,0) AS INTEGER) AS preview_revision
+FROM workspaces w JOIN workspace_access wa ON wa.workspace_id=w.id
+LEFT JOIN pages first_page ON first_page.id=(SELECT p.id FROM pages p WHERE p.workspace_id=w.id ORDER BY p.position,p.id LIMIT 1)
+WHERE wa.user_id=? ORDER BY w.updated_at DESC,w.id;
 
 -- name: WorkspaceCreateWorkspace :execresult
 INSERT INTO workspaces(id,owner_id,name,created_at,updated_at) VALUES(?,?,?,?,?);
