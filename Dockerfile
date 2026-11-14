@@ -22,6 +22,7 @@ FROM scratch
 COPY --from=certificates /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=certificates /runtime/ /
 COPY --from=backend /mindflow /usr/local/bin/mindflow
+COPY LICENSE /usr/share/licenses/mindflow/LICENSE
 COPY THIRD_PARTY_NOTICES.md /usr/share/licenses/mindflow/THIRD_PARTY_NOTICES.md
 ENV MINDFLOW_DATA=/data MINDFLOW_ADDR=0.0.0.0:8080
 USER 10001:10001

@@ -71,6 +71,10 @@ Scroll to zoom. Cmd/Ctrl + drag or hold the middle mouse button to pan. Hold Shi
 
 Choose **Import workspace** on the workspace list to import a Butterfly version-13 export. See the [user guide](docs/user-docs/using-mindflow.md#import-from-butterfly) for supported content and conversion limits. Canvas export is planned for later.
 
+## License
+
+mindflow is licensed under the [MIT License](LICENSE). Copyright © 2026 Simon Schulte. Third-party components retain their respective licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
+
 ## Development
 
 Requires Go matching [go.mod](go.mod), Node.js **22.12+**, and npm. The container build pins its toolchain versions.
