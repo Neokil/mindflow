@@ -2,6 +2,8 @@
 
 `docs/` is the source of truth. The **Publish documentation to wiki** workflow is reusable and runs from the release workflow after the Docker image has been published successfully. It publishes docs from the release commit, so the wiki matches the shipped version. Branch and tag pushes do not publish the wiki. You can also start the wiki workflow manually from the Actions tab and select the branch or tag to publish.
 
+The published Home page shows the documentation version near the top, with a link to the exact source commit. Release runs display the release tag (for example `v1.2.0`); manual runs display the selected branch or tag. Local previews can supply `--version`; otherwise the revision is shown. This notice is generated during publication, so it does not need to be maintained in `docs/Home.md`.
+
 The workflow clones the existing wiki, prepares the Markdown and assets, commits changed content, and pushes a normal commit. It does not force-push or rewrite history. Runs are serialized, and an unchanged publication makes no commit.
 
 `scripts/prepare-wiki.py` generates a home page and sidebar, rewrites documentation links to wiki pages, and sends links outside `docs/` back to files at the checked-out commit. The workflow supplies `--revision` with the commit SHA; local previews default to `main`. Code fences are left unchanged. The [documentation home](../Home.md) and [sidebar](../_Sidebar.md) group pages into Product, User Docs, and Developer Docs. Nested Markdown filenames become hyphenated wiki page names, while their source files remain organized in directories. Assets retain their directory structure. If `docs/Home.md` or `docs/_Sidebar.md` exists, its content is used instead of the generated page.

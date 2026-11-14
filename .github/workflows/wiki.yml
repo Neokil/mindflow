@@ -21,6 +21,7 @@ jobs:
           WIKI_TOKEN: ${{ github.token }}
           GIT_TERMINAL_PROMPT: "0"
           DOCS_REVISION: ${{ github.sha }}
+          DOCS_VERSION: ${{ github.event.release.tag_name || github.ref_name }}
         shell: bash
         run: |
           set -euo pipefail
@@ -44,7 +45,8 @@ jobs:
             --source docs \
             --destination "$wiki" \
             --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
-            --revision "$DOCS_REVISION"
+            --revision "$DOCS_REVISION" \
+            --version "$DOCS_VERSION"
           git -C "$wiki" add --all
           if git -C "$wiki" diff --cached --quiet; then
             echo 'Wiki already matches docs/.'

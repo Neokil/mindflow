@@ -55,7 +55,7 @@ def safe_target(destination, name):
     return target
 
 
-def prepare(source, destination, repository, revision='main'):
+def prepare(source, destination, repository, revision='main', version=None):
     source, destination = source.resolve(), destination.resolve()
     if source == destination or destination.is_relative_to(source) or source.is_relative_to(destination):
         raise ValueError('Source and wiki destination must be separate directories')
@@ -87,6 +87,13 @@ def prepare(source, destination, repository, revision='main'):
         (destination / 'Home.md').write_text(f'# mindflow documentation\n\nPublished from [`docs/`]({repository}/tree/{quote(revision, safe="")}/docs). Edit the source files in the main repository; wiki copies are updated automatically.\n\n{navigation}\n')
     if '_Sidebar.md' not in generated.values():
         (destination / '_Sidebar.md').write_text(f'[Home]({repository}/wiki/Home)\n\n{navigation}\n')
+    home = destination / 'Home.md'
+    text = home.read_text()
+    label = re.sub(r'([\\`*_[\]<>])', r'\\\1', ' '.join((version or revision).split()))
+    notice = f'> Documentation version: **{label}** · [View source]({repository}/tree/{quote(revision, safe="")}/docs).\n\n'
+    heading = re.match(r'\A#[ \t]+[^\n]*(?:\n|$)\n*', text)
+    position = heading.end() if heading else 0
+    home.write_text(text[:position].rstrip('\n') + ('\n\n' if position else '') + notice + text[position:])
     (destination / MANIFEST).write_text(json.dumps(sorted(names), indent=2) + '\n')
 
 
@@ -96,8 +103,9 @@ def main():
     parser.add_argument('--destination', type=Path, required=True)
     parser.add_argument('--repository', required=True, help='Repository web URL')
     parser.add_argument('--revision', default='main', help='Repository revision used for source-file links')
+    parser.add_argument('--version', help='Human-readable documentation version; defaults to the revision')
     options = parser.parse_args()
-    prepare(options.source, options.destination, options.repository.rstrip('/'), options.revision)
+    prepare(options.source, options.destination, options.repository.rstrip('/'), options.revision, options.version)
 
 
 if __name__ == '__main__':

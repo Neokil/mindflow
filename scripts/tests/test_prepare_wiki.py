@@ -75,6 +75,31 @@ class WikiTests(unittest.TestCase):
             self.assertIn('(https://github.com/owner/repo/wiki/product-overview)', sidebar)
             self.assertIn('wiki/product-overview', (target / 'Home.md').read_text())
 
+    def test_home_version_notice_tracks_publication_without_changing_sources(self):
+        for authored in (False, True):
+            with self.subTest(authored_home=authored), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                docs, target = root / 'docs', root / 'wiki'
+                docs.mkdir()
+                original = '# Documentation\n\nWelcome to the guide.\n'
+                if authored:
+                    (docs / 'Home.md').write_text(original)
+                repository = 'https://github.com/owner/repo'
+                revision = 'a' * 40
+                wiki.prepare(docs, target, repository, revision, 'v1.2.0')
+                text = (target / 'Home.md').read_text()
+                self.assertEqual(text.splitlines()[2], f'> Documentation version: **v1.2.0** · [View source]({repository}/tree/{revision}/docs).')
+                wiki.prepare(docs, target, repository, revision, 'v1.3.0')
+                text = (target / 'Home.md').read_text()
+                self.assertEqual(text.count('Documentation version:'), 1)
+                self.assertIn('**v1.3.0**', text)
+                self.assertNotIn('v1.2.0', text)
+                if authored:
+                    self.assertIn('Welcome to the guide.', text)
+                    self.assertEqual((docs / 'Home.md').read_text(), original)
+                wiki.prepare(docs, target, repository, 'main')
+                self.assertIn('Documentation version: **main**', (target / 'Home.md').read_text())
+
     def test_manifest_cannot_delete_outside_wiki(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
