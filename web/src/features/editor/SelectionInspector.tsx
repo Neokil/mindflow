@@ -1,3 +1,6 @@
+import { AlignmentButtons } from "./AlignmentMenu";
+import { canAlign } from "./alignment";
+import type { Alignment } from "./alignment";
 import ColorInput from "../../ColorInput";
 import {
   ArrowDown,
@@ -23,6 +26,7 @@ type Props = {
   onSaveTemplate: () => void;
   canSaveTemplate: boolean;
   defaults: CanvasElementDefaults;
+  onAlign: (alignment: Alignment) => void;
   onPatch: (values: Partial<CanvasElement>) => void;
   onDuplicate: () => void;
   onGroup: () => void;
@@ -44,6 +48,7 @@ export default function SelectionInspector({
   canSaveTemplate,
   defaults,
   onPatch,
+  onAlign,
   onDuplicate,
   onGroup,
   onUngroup,
@@ -345,6 +350,15 @@ export default function SelectionInspector({
           >
             Save as template
           </button>
+          {selected.length > 1 && (
+            <fieldset>
+              <legend>Align selection</legend>
+              <AlignmentButtons
+                disabled={!editable || !canAlign(selected)}
+                onAlign={onAlign}
+              />
+            </fieldset>
+          )}
           <div className="selection-actions">
             <button
               className="secondary"

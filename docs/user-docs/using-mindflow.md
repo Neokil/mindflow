@@ -155,3 +155,7 @@ Autosave sends completed edits to the server. Check the save status before leavi
 Copy the current workspace/page URL to send an authorized user directly to that page. It keeps its destination through sign-in but grants no access. Browser Back/Forward navigates pages and workspaces; leaving with unsaved work asks for confirmation.
 
 After a new server build is deployed, existing tabs show a reload banner. Reload is explicit and warns about unsaved work. Tabs predating this notification feature need one initial reload to install it.
+
+## Align selected elements
+
+Select two or more objects, then choose **Align selection** in the bottom selection bar or object properties. Align their left/right edges, top/bottom edges, horizontal centers, or vertical centers to the combined selection bounds. Rotated objects use their visible bounds; each group moves as a unit. Locked groups must be unlocked first. Alignment is one undoable edit.

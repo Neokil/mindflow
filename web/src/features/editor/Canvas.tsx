@@ -1,3 +1,6 @@
+import AlignmentMenu from "./AlignmentMenu";
+import { alignElements, canAlign } from "./alignment";
+import type { Alignment } from "./alignment";
 import PenOptions from "./PenOptions";
 import { InkStroke } from "./InkStroke";
 import type { Stabilization } from "./InkStroke";
@@ -182,6 +185,10 @@ export default function Canvas({
         selection.includes(e.id) ? { ...e, ...values } : e,
       ),
     );
+  }
+  function align(alignment: Alignment) {
+    if (session.editable && !selectionLocked)
+      editElements(alignElements(session.doc.elements, selection, alignment));
   }
   function remove() {
     if (selectionLocked) return;
@@ -932,6 +939,7 @@ export default function Canvas({
           canSaveTemplate={session.canWrite}
           defaults={defaults}
           onPatch={patch}
+          onAlign={align}
           onDuplicate={duplicate}
           onGroup={group}
           onUngroup={ungroup}
@@ -977,6 +985,12 @@ export default function Canvas({
       {selected.length > 0 && !editing && (
         <div className="selection-bar">
           <span>{selected.length} selected</span>
+          {selected.length > 1 && (
+            <AlignmentMenu
+              disabled={!session.editable || !canAlign(selected)}
+              onAlign={align}
+            />
+          )}
           <button
             className="icon-button"
             aria-label="Selection properties"
