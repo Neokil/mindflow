@@ -15,7 +15,12 @@ import {
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { CanvasElement, CanvasElementDefaults, Point } from "../../model";
+import type {
+  CanvasElement,
+  CanvasElementDefaults,
+  ElementLink,
+  Point,
+} from "../../model";
 import { wholeFontSize } from "../../model";
 type Props = {
   anchor: Point;
@@ -26,6 +31,8 @@ type Props = {
   onSaveTemplate: () => void;
   canSaveTemplate: boolean;
   defaults: CanvasElementDefaults;
+  onLink: () => void;
+  onFollowLink: (link: ElementLink) => void;
   onAlign: (alignment: Alignment) => void;
   onPatch: (values: Partial<CanvasElement>) => void;
   onDuplicate: () => void;
@@ -49,6 +56,8 @@ export default function SelectionInspector({
   defaults,
   onPatch,
   onAlign,
+  onLink,
+  onFollowLink,
   onDuplicate,
   onGroup,
   onUngroup,
@@ -111,6 +120,35 @@ export default function SelectionInspector({
       </div>
       {selected.length ? (
         <>
+          <fieldset>
+            <legend>Element link</legend>
+            <button
+              className="secondary full"
+              disabled={!editable}
+              onClick={onLink}
+            >
+              {selected.some((element) => element.link)
+                ? "Change element link"
+                : "Add element link"}
+            </button>
+            {first.link && (
+              <button
+                className="secondary full"
+                onClick={() => onFollowLink(first.link!)}
+              >
+                Go to linked element
+              </button>
+            )}
+            {selected.some((element) => element.link) && (
+              <button
+                className="secondary full"
+                disabled={!editable}
+                onClick={() => onPatch({ link: undefined })}
+              >
+                Remove element link
+              </button>
+            )}
+          </fieldset>
           {selected.some((element) => element.groupId) && (
             <button
               className="secondary full"

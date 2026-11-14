@@ -4,21 +4,21 @@ mindflow is one Go process serving an embedded React/TypeScript frontend, a same
 
 ## Repository map
 
-| Location | Responsibility |
-| --- | --- |
-| `cmd/mindflow` | Server entrypoint, health check, migrations, data checks, and credential revocation commands. |
-| `cmd/genmigrations` | Generate/check the embedded domain migration catalog. |
-| `internal/account` | Accounts, password policy, avatars, authentication, sessions, invitations, and resets. |
-| `internal/workspace` | Workspaces, sharing, pages, canvas documents, editor control, comments, images, imports, and workspace templates. |
-| `internal/email` | SMTP delivery and retry queue. |
-| `internal/installation` | Initial setup and instance configuration. |
-| `internal/mindflow` | Compose domain services and provide common HTTP mechanics. Its storage package owns connection/migration infrastructure, not all domain queries. |
-| `internal/notification` | Authenticated SSE invalidations. |
-| `web/src/features` | Account, workspace, and editor UI components. |
-| `web/src/session.ts` | Per-page loading, save generations, lease checks, reconnection, and recovery. |
-| `web/src/model.ts`, `geometry.ts`, `media.ts` | Canvas types, coordinate/selection math, and image loading. |
-| `api/openapi.yaml` | HTTP contract. |
-| `deploy`, `.github/workflows`, `scripts` | Deployment examples, CI/publishing, and maintenance tools. |
+| Location                                      | Responsibility                                                                                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `cmd/mindflow`                                | Server entrypoint, health check, migrations, data checks, and credential revocation commands.                                                    |
+| `cmd/genmigrations`                           | Generate/check the embedded domain migration catalog.                                                                                            |
+| `internal/account`                            | Accounts, password policy, avatars, authentication, sessions, invitations, and resets.                                                           |
+| `internal/workspace`                          | Workspaces, sharing, pages, canvas documents, editor control, comments, images, imports, and workspace templates.                                |
+| `internal/email`                              | SMTP delivery and retry queue.                                                                                                                   |
+| `internal/installation`                       | Initial setup and instance configuration.                                                                                                        |
+| `internal/mindflow`                           | Compose domain services and provide common HTTP mechanics. Its storage package owns connection/migration infrastructure, not all domain queries. |
+| `internal/notification`                       | Authenticated SSE invalidations.                                                                                                                 |
+| `web/src/features`                            | Account, workspace, and editor UI components.                                                                                                    |
+| `web/src/session.ts`                          | Per-page loading, save generations, lease checks, reconnection, and recovery.                                                                    |
+| `web/src/model.ts`, `geometry.ts`, `media.ts` | Canvas types, coordinate/selection math, and image loading.                                                                                      |
+| `api/openapi.yaml`                            | HTTP contract.                                                                                                                                   |
+| `deploy`, `.github/workflows`, `scripts`      | Deployment examples, CI/publishing, and maintenance tools.                                                                                       |
 
 ## Backend domains
 
@@ -43,3 +43,5 @@ Read [data structures](data-model.md), [canvas and synchronization](canvas-and-s
 Native transfer lives in `workspace/transfer`; its storage stays in the parent domain. Frontend `features/transfer` owns portable-file UI and visual exports, sharing the editor element renderer. See [native import and export](native-transfer.md).
 
 `WorkspacePreview` lazily renders the first saved page on each workspace card using the shared canvas export renderer. The workspace list returns `firstPageId` and its `previewRevision` from the authorized workspace query; no thumbnail tables or new migrations are needed. Page invalidations refresh that metadata. Only one thumbnail renders at a time, and generated object URLs are revoked when a card changes or unmounts.
+
+`workspace/trash` owns soft deletion recovery and expiry; `workspace/ownership` owns ownership transfer. Their SQL, migrations, and generated sqlc bindings live in `workspace/storage`. Canvas links are validated by `workspace/page/canvas` and stored in page JSON; the frontend link picker and navigation remain separate from shape rendering. Alignment is a pure editor operation shared by the selection toolbar and object inspector. Transactional welcome notifications use the email outbox without introducing an account-to-email storage dependency.

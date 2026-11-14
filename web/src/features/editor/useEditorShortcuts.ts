@@ -69,7 +69,13 @@ export default function useEditorShortcuts({
             parsed.mindflow === 1 &&
             validClipboardElements(parsed.elements)
           ) {
-            const copied = duplicateElements(parsed.elements);
+            const copied = duplicateElements(
+              parsed.elements,
+              20,
+              parsed.pageId,
+              session.id,
+              parsed.workspaceId === session.workspaceId,
+            );
             editElements([...session.doc.elements, ...copied]);
             setSelection(copied.map((e) => e.id));
             event.preventDefault();
@@ -107,7 +113,12 @@ export default function useEditorShortcuts({
       )
         return;
       event.preventDefault();
-      const value = JSON.stringify({ mindflow: 1, elements: selected });
+      const value = JSON.stringify({
+        mindflow: 1,
+        elements: selected,
+        pageId: session.id,
+        workspaceId: session.workspaceId,
+      });
       event.clipboardData?.setData("application/x-mindflow", value);
       event.clipboardData?.setData("text/plain", value);
     };

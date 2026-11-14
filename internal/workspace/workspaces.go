@@ -160,11 +160,11 @@ func (a *Service) DuplicateWorkspace(ctx context.Context, actor session.Principa
 	if err != nil {
 		return Duplicated{}, err
 	}
-	err = a.pages.CopyWorkspaceWithin(ctx, transaction, source, resourceID)
-	if err != nil {
-		return Duplicated{}, err
+	targets, copyErr := a.pages.CopyWorkspaceWithin(ctx, transaction, source, resourceID)
+	if copyErr != nil {
+		return Duplicated{}, copyErr
 	}
-	err = a.templates.CopyWithin(ctx, transaction, source, resourceID)
+	err = a.templates.CopyWithin(ctx, transaction, source, resourceID, targets)
 	if err != nil {
 		return Duplicated{}, err
 	}

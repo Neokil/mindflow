@@ -103,7 +103,12 @@ func validateBundle(bundle Bundle) error {
 	}
 	used := make(map[string]bool)
 	elements := 0
+	pageIDs := map[string]bool{}
 	for _, entry := range bundle.Pages {
+		if len(entry.ID) > 128 || (entry.ID != "" && pageIDs[entry.ID]) {
+			return invalid("Invalid or duplicate portable page identity.")
+		}
+		pageIDs[entry.ID] = true
 		if workspace.ValidateName(entry.Name) != nil {
 			return invalid("Invalid imported page name.")
 		}

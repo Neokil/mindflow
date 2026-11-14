@@ -34,8 +34,9 @@ const (
 	mediaPDF            = "application/pdf"
 )
 
-// Page is an ordered, editable canvas without identity or collaboration metadata.
+// Page is an ordered canvas with a bundle-local identity for element links.
 type Page struct {
+	ID       string          `json:"id,omitempty"`
 	Name     string          `json:"name"`
 	Document canvas.Document `json:"document"`
 }

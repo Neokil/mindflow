@@ -20,6 +20,7 @@ No paths are extracted. Portable asset keys use 1–80 ASCII letters, digits, un
   "name": "Ideas",
   "pages": [
     {
+      "id": "p1",
       "name": "Page 1",
       "document": {
         "schemaVersion": 1,
@@ -41,12 +42,12 @@ Permissions, accounts, comments, editor leases, viewport positions, revisions, a
 
 All routes require authentication and CSRF protection:
 
-| Route | Result |
-| --- | --- |
-| `POST /workspaces/{id}/export` | Binary ZIP attachment (`application/vnd.mindflow+zip`). |
-| `POST /workspaces/{id}/export/snapshot` | Authorized saved pages for browser PDF/PNG rendering. |
-| `POST /workspaces/import/mindflow` | Multipart `file`, optional `name`; new private workspace. |
-| `POST /workspaces/{id}/import/mindflow` | Multipart `file`; append pages and optional templates. |
+| Route                                   | Result                                                    |
+| --------------------------------------- | --------------------------------------------------------- |
+| `POST /workspaces/{id}/export`          | Binary ZIP attachment (`application/vnd.mindflow+zip`).   |
+| `POST /workspaces/{id}/export/snapshot` | Authorized saved pages for browser PDF/PNG rendering.     |
+| `POST /workspaces/import/mindflow`      | Multipart `file`, optional `name`; new private workspace. |
+| `POST /workspaces/{id}/import/mindflow` | Multipart `file`; append pages and optional templates.    |
 
 Export/snapshot bodies contain `pageIds` (empty means all, otherwise validated against this workspace) and `includeTemplates`. Selected pages always follow workspace order. Templates are optional, independently of the page selection.
 
@@ -54,17 +55,17 @@ Every current reader can export. Appending requires owner/full access, checked a
 
 ## Limits
 
-| Resource | Limit |
-| --- | --- |
-| Native compressed archive | 64 MiB |
-| Expanded archive, including manifest | 128 MiB |
-| Manifest | 32 MiB |
-| Pages | 100 per transfer; complete empty workspaces allowed |
-| Page document | 16 MiB; normal 10,000-element limit |
-| Elements across pages/templates | 100,000 |
-| Assets | 1,000 |
-| Templates | 100; 500 elements and 1 MiB per template |
-| Media | Existing image/PDF upload limits apply |
+| Resource                             | Limit                                               |
+| ------------------------------------ | --------------------------------------------------- |
+| Native compressed archive            | 64 MiB                                              |
+| Expanded archive, including manifest | 128 MiB                                             |
+| Manifest                             | 32 MiB                                              |
+| Pages                                | 100 per transfer; complete empty workspaces allowed |
+| Page document                        | 16 MiB; normal 10,000-element limit                 |
+| Elements across pages/templates      | 100,000                                             |
+| Assets                               | 1,000                                               |
+| Templates                            | 100; 500 elements and 1 MiB per template            |
+| Media                                | Existing image/PDF upload limits apply              |
 
 Counts and actual decompressed bytes are bounded; ZIP metadata alone is not trusted. Native imports do not resolve URLs or execute embedded content.
 
@@ -75,3 +76,7 @@ Counts and actual decompressed bytes are bounded; ZIP metadata alone is not trus
 Bounds include all elements, rotation, border/stroke thickness and a 32-unit margin. Empty pages use a 1,000 × 700-unit rectangle. The camera does not influence exports. Each output uses the selected 1,024/2,048/4,096-pixel longest edge. Workspace PDFs contain one raster page per canvas; PNG exports produce one PNG, or an ordered ZIP when multiple pages are selected. PDF page proportions follow canvas bounds, with a maximum 14,400-point edge. These are visual exports, not editable backups or selectable vector-text PDFs. Retained PDFs render their first-page preview. Comments are omitted.
 
 Background and dot-grid inclusion are independent options; the current appearance supplies the fallback background color. Grids finer than four output pixels are omitted. Per-page decoded media is bounded to 64 megapixels; existing display variants are used when sufficient for the chosen resolution. Total output pixels are limited to 128 megapixels and rendered PNG bytes to 128 MiB. Processing is sequential between pages. Keep the tab open until completion. Current-tab drafts must save successfully before an export starts; offline/recovery drafts block export rather than silently producing stale content.
+
+## Portable element links
+
+Pages may have an optional bundle-local `id` (up to 128 characters, unique when present). New exports use `p1`, `p2`, etc.; older files without page IDs remain supported. An element's optional `link` names another page/element in the bundle. Export strips missing or unselected targets, including template links to omitted pages. Import allocates every destination page and element identity first, then remaps all included links, including template targets, before creating content. Duplicate page identities are rejected. No link can grant access to another workspace or trigger a URL fetch. Visual PDF/PNG exports remain flattened and do not contain interactive canvas links.

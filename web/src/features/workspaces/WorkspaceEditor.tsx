@@ -24,7 +24,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ServerEvent } from "../../api";
 import { api } from "../../api";
-import type { Page, Workspace } from "../../model";
+import type { ElementLink, Page, Workspace } from "../../model";
 import { PageSession } from "../../session";
 import { Empty, ErrorMessage, Modal, Spinner } from "../../ui";
 import SharingDialog from "./SharingDialog";
@@ -64,6 +64,8 @@ export default function WorkspaceEditor({
     }>(),
     [menu, setMenu] = useState<string>();
   const [exporting, setExporting] = useState<{ pageId?: string }>();
+  const [focusTarget, setFocusTarget] = useState<ElementLink>();
+  const focusHandled = useCallback(() => setFocusTarget(undefined), []);
   const [trashOpen, setTrashOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -553,6 +555,18 @@ export default function WorkspaceEditor({
           session={session}
           fullscreen={fullscreen}
           refresh={refresh}
+          focusTarget={focusTarget}
+          onFocusHandled={focusHandled}
+          onFollowLink={(link) => {
+            if (!pages.some((page) => page.id === link.pageId)) {
+              setError(
+                "The linked page is unavailable. It may have been deleted.",
+              );
+              return;
+            }
+            setFocusTarget({ ...link });
+            setPageId(link.pageId);
+          }}
           onImportedPages={(id) => {
             void load()
               .then(() => setPageId(id))

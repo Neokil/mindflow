@@ -1,3 +1,4 @@
+import ElementLinkDialog from "./ElementLinkDialog";
 import AlignmentMenu from "./AlignmentMenu";
 import { alignElements, canAlign } from "./alignment";
 import type { Alignment } from "./alignment";
@@ -18,6 +19,7 @@ import TemplateLibrary from "./TemplateLibrary";
 import { instantiateTemplate } from "./templates";
 import Konva from "konva";
 import {
+  Link as LinkIcon,
   Copy,
   BookmarkPlus,
   LockKeyhole,
@@ -41,7 +43,7 @@ import {
   worldPoint,
   zoomAt,
 } from "../../geometry";
-import type { CanvasElement, Point } from "../../model";
+import type { CanvasElement, ElementLink, Point } from "../../model";
 import {
   canvasElementDefaults,
   clone,
@@ -68,12 +70,19 @@ export default function Canvas({
   fullscreen,
   refresh = 0,
   onImportedPages,
+  onFollowLink,
+  focusTarget,
+  onFocusHandled,
 }: {
+  onFollowLink: (link: ElementLink) => void;
+  focusTarget?: ElementLink;
+  onFocusHandled: () => void;
   session: PageSession;
   fullscreen: CanvasFullscreen;
   refresh?: number;
   onImportedPages: (id: string) => void;
 }) {
+  const [linkOpen, setLinkOpen] = useState(false);
   const [pdfImport, setPDFImport] = useState(false);
   const [viewingPDF, setViewingPDF] = useState<string>();
   const accent = useCanvasAccent();
@@ -163,6 +172,25 @@ export default function Canvas({
     }
   }, [size, doc.elements]);
   useEffect(() => {
+    if (
+      !focusTarget ||
+      focusTarget.pageId !== session.id ||
+      !size.width ||
+      !size.height
+    )
+      return;
+    const target = session.doc.elements.find(
+      (element) => element.id === focusTarget.elementId,
+    );
+    if (target) {
+      setCamera(fitCamera([target], size));
+      updateSelection([]);
+      setObjectSettingsAnchor(undefined);
+    } else
+      setError("The linked element is unavailable. It may have been deleted.");
+    onFocusHandled();
+  }, [focusTarget, onFocusHandled, session, size]);
+  useEffect(() => {
     if (!session.editable) {
       strokeHold.cancel();
       setTool("select");
@@ -196,7 +224,7 @@ export default function Canvas({
     setSelection([]);
   }
   function duplicate() {
-    const copies = duplicateElements(selected);
+    const copies = duplicateElements(selected, 20, session.id);
     editElements([...session.doc.elements, ...copies]);
     setSelection(copies.map((e) => e.id));
   }
@@ -722,6 +750,7 @@ export default function Canvas({
           onPointerDown={input.down}
           onPointerMove={input.move}
           onSelectElement={selectElement}
+          onFollowLink={onFollowLink}
           onSelectionChange={setSelection}
           onObjectSettings={(id, position) => {
             setSelection(selectedWithGroup(session.doc.elements, id));
@@ -940,6 +969,8 @@ export default function Canvas({
           defaults={defaults}
           onPatch={patch}
           onAlign={align}
+          onLink={() => setLinkOpen(true)}
+          onFollowLink={onFollowLink}
           onDuplicate={duplicate}
           onGroup={group}
           onUngroup={ungroup}
@@ -949,6 +980,19 @@ export default function Canvas({
           onCrop={setCropping}
           onPDFOpen={(element) => setViewingPDF(element.assetId)}
           onClose={() => setObjectSettingsAnchor(undefined)}
+        />
+      )}
+      {linkOpen && (
+        <ElementLinkDialog
+          workspaceId={session.workspaceId}
+          pageId={session.id}
+          document={session.doc}
+          selected={selected}
+          close={() => setLinkOpen(false)}
+          apply={(link) => {
+            patch({ link });
+            setLinkOpen(false);
+          }}
         />
       )}
       {templatesOpen && (
@@ -985,6 +1029,15 @@ export default function Canvas({
       {selected.length > 0 && !editing && (
         <div className="selection-bar">
           <span>{selected.length} selected</span>
+          <button
+            className="icon-button"
+            aria-label="Link selection"
+            title="Link to an element"
+            disabled={!session.editable || selectionLocked}
+            onClick={() => setLinkOpen(true)}
+          >
+            <LinkIcon size={16} />
+          </button>
           {selected.length > 1 && (
             <AlignmentMenu
               disabled={!session.editable || !canAlign(selected)}

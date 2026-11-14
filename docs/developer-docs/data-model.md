@@ -4,18 +4,18 @@ SQLite is the persistent store for documents, original/derived image BLOBs, acco
 
 ## Schema ownership
 
-| Domain | Tables/views | Purpose |
-| --- | --- | --- |
-| Account | `users`, `sessions`, `account_tokens`, `avatars` | Account roles/status/preferences, password hashes, revocable sessions, expiring invitation/reset tokens, and profile PNGs. |
-| Workspace | `workspaces`, `pages`, `workspace_members` | Ownership, titles/order, metadata revisions, page JSON, and explicit member roles. |
-| Workspace | `page_leases`, `editor_requests` | Current writer/session/client, fencing epoch/expiry, and pending/finished control requests. |
-| Workspace | `assets`, `asset_variants`, `page_assets` | Immutable originals, size-bucket variants, and retained page/image associations. |
-| Workspace | `save_receipts`, `image_jobs` | Idempotent save acknowledgments and deferred image processing. |
-| Workspace | `workspace_templates`, `template_assets` | Named reusable element snapshots and retained image references. |
-| Workspace | `comment_threads`, `comment_messages` | Positioned discussions, authorship, replies, and resolution. |
-| Workspace | `workspace_access`, `asset_access` views | Workspace roles and authorized image visibility. |
-| Email | `mail_jobs` | Deduplicated credential email, attempts, next run, and delivery status. |
-| Installation | `app_settings` | Singleton initialization state, public URL, and SMTP configuration. |
+| Domain       | Tables/views                                                                                   | Purpose                                                                                                                    |
+| ------------ | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Account      | `users`, `sessions`, `account_tokens`, `avatars`                                               | Account roles/status/preferences, password hashes, revocable sessions, expiring invitation/reset tokens, and profile PNGs. |
+| Workspace    | `workspaces`, `pages`, `workspace_members`                                                     | Ownership, titles/order, metadata revisions, page JSON, and explicit member roles.                                         |
+| Workspace    | `page_leases`, `editor_requests`                                                               | Current writer/session/client, fencing epoch/expiry, and pending/finished control requests.                                |
+| Workspace    | `assets`, `asset_variants`, `page_assets`                                                      | Immutable originals, size-bucket variants, and retained page/image associations.                                           |
+| Workspace    | `save_receipts`, `image_jobs`                                                                  | Idempotent save acknowledgments and deferred image processing.                                                             |
+| Workspace    | `workspace_templates`, `template_assets`                                                       | Named reusable element snapshots and retained image references.                                                            |
+| Workspace    | `comment_threads`, `comment_messages`                                                          | Positioned discussions, authorship, replies, and resolution.                                                               |
+| Workspace    | `workspace_access`, `asset_access`, `active_workspaces`, `active_pages`, `active_assets` views | Workspace roles and authorized image visibility.                                                                           |
+| Email        | `mail_jobs`                                                                                    | Deduplicated credential and welcome email, attempts, next run, and delivery status.                                        |
+| Installation | `app_settings`                                                                                 | Singleton initialization state, public URL, and SMTP configuration.                                                        |
 
 Each top-level domain owns its migrations and `goose_<domain>_version` history table. Subdomains share their parent's history. Account IDs in workspace/email records are opaque references; no query or foreign key reaches another domain's tables. Services coordinate lifecycle cleanup explicitly.
 
@@ -73,12 +73,12 @@ A page's `document` is versioned JSON. `pages.revision` tracks saved document ch
 
 The ordered element list defines stacking, back to front. Common fields are stable `id`, `type`, center `x/y` in world units, positive local `width/height`, rotation in radians, and optional `groupId`. Groups are flat memberships; transforms update the member elements. Optional `locked: true` marks group members as fixed in the editor. Every member of a group must have the same lock state; ungrouped elements cannot be locked. Missing `locked` means false. No document-schema bump is required.
 
-| Element type | Additional fields |
-| --- | --- |
-| `shape` | `shape` (`rectangle`, `circle`, `star`), fill, border, border width. |
-| `text` | Plain text, whole-number font size, bold/italic, color, horizontal and vertical alignment. Formatting applies to the whole element. |
-| `stroke` | Normalized local point pairs, color, and pen width. Resizing stretches the path. |
-| `image` | Asset ID and optional normalized `crop` rectangle (`x`, `y`, `width`, `height`). Cropping never modifies the original BLOB. |
+| Element type | Additional fields                                                                                                                   |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `shape`      | `shape` (`rectangle`, `circle`, `star`), fill, border, border width.                                                                |
+| `text`       | Plain text, whole-number font size, bold/italic, color, horizontal and vertical alignment. Formatting applies to the whole element. |
+| `stroke`     | Normalized local point pairs, color, and pen width. Resizing stretches the path.                                                    |
+| `image`      | Asset ID and optional normalized `crop` rectangle (`x`, `y`, `width`, `height`). Cropping never modifies the original BLOB.         |
 
 New text defaults to horizontal center/vertical middle. Legacy missing alignment fields retain the renderer's fallback behavior. Camera, selection, insertion preview, undo history, and recovery state are not document content. A page supports at most 10,000 elements; unsupported document schemas and invalid payloads are rejected.
 
@@ -94,11 +94,9 @@ New text defaults to horizontal center/vertical middle. Legacy missing alignment
 
 The authoritative definitions are the [account](../../internal/account/storage/migrations), [workspace](../../internal/workspace/storage/migrations), [email](../../internal/email/storage/migrations), and [installation](../../internal/installation/storage/migrations) migrations, plus the [frontend model](../../web/src/model.ts). HTTP payloads are in [OpenAPI](../../api/openapi.yaml).
 
-
 List text adds optional `listStyle` (`bullet`, `number`, `check`) and `checked` line indices; a text element still stores newline-separated `text`. Highlights are ordinary strokes with optional `highlight: true`, rendered at 35% opacity with multiply blending. These fields are additive to schema version 1.
 
 PDF elements use `type: "pdf"` and an `assetId`. The parent workspace's existing `assets` table stores the original with MIME `application/pdf`; `asset_variants` stores a first-page PNG under bucket 1024. Width/height describe the thumbnail. Page/template asset links retain the original and preview through copies and lifecycle operations, using the existing workspace asset permissions. No separate PDF database or cross-domain schema is introduced. Image-mode imports use normal PNG assets and image elements.
-
 
 Account migration 3 adds `users.display_name` and backfills existing accounts from the email local part (up to 80 characters). New account writes store a normalized name. The authenticated directory exposes only active account IDs, display names, and avatar versions. Sharing uses stable account IDs; duplicate or changed names do not change access. Legacy exact-email API grants remain supported. Workspace migration 5 adds the requester-name snapshot to the existing editor-control request record. Comment author and membership names resolve through the account service without cross-domain table queries.
 
@@ -109,3 +107,13 @@ Pen strokes may contain `pressures`, an array of finite values in `[0, 1]`, with
 `InkStroke` captures pressure and smooths new centerline samples at Off, Light or Strong settings. Its distance-based filter uses screen pixels so the response stays consistent across zoom levels. Release commits the exact physical endpoint while retaining the last contact pressure. Hold detection uses raw pointer coordinates, independently of smoothing. Straightening redistributes the existing pressure profile along a straight line using cumulative path length; subsequent motion adjusts the line endpoint. Constant-width profiles collapse to two points.
 
 `strokeGeometry` builds a filled ribbon with round caps; live preview, the editor, PDF/PNG exports and workspace thumbnails use the same pressure-width mapping. Preview geometry updates at most once per animation frame, while all coalesced pointer samples retain their individual pressures. Lasso containment uses each sample's effective radius. Stabilization settings are transient tool state; the smoothed output points are persisted, so no filter is rerun on reload or export.
+
+## Retention, ownership, and element links
+
+Workspace migration `00006_trash.sql` adds non-null Unix-second `deleted_at` columns (zero means active) and indexes to `workspaces` and `pages`. Active views and access views hide deleted parents/children and media referenced exclusively by trashed content. Retained references prevent ordinary orphan cleanup from deleting recoverable media. The `workspace/trash` subdomain restores within the 30-day cutoff and purges expired content in bounded transactions through the background worker. Account deletion calls the existing immediate hard-delete workflow, including trashed data. Restores and ownership changes fence old leases and cancel approval requests.
+
+`workspace/ownership` orchestrates transfers using only parent `workspace/storage` SQL and account service lookups. Exclusive media is reassigned; media also used by other workspaces is cloned with all variants and page/template references rewritten. This makes account deletion independent in either direction. All changes, membership updates, and lease fencing commit together under optimistic workspace metadata revision control.
+
+Every canvas element may have `link: { "pageId": "...", "elementId": "..." }`. Newly assigned targets must exist on an active page in the same workspace; unchanged links may retain missing targets to support Trash restoration. No SQL foreign key couples embedded element identities to page lifecycle. Coordinated copies remap page/element/group identities before writing; links outside a portable selection are removed. The format remains schema version 1 because the field is optional.
+
+Welcome jobs use a per-account deduplication key, queue atomically with initial setup or invitation redemption, and verify current account eligibility before delivery. The outbox is independent from SMTP configuration; it can queue within setup's transaction without reading uncommitted settings through another database connection.

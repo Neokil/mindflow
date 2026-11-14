@@ -87,6 +87,10 @@ func (a *Service) SaveDocument(ctx context.Context, actor session.Principal, res
 	if err != nil {
 		return SaveReceipt{}, err
 	}
+	err = a.validateLinksWithin(ctx, transaction, resourceID, command.Document)
+	if err != nil {
+		return SaveReceipt{}, err
+	}
 	err = a.ValidateAssetsWithin(ctx, transaction, page.ID, resourceID, command.Document)
 	if err != nil {
 		return SaveReceipt{}, err
@@ -177,17 +181,7 @@ func CloneDocument(raw string) (string, error) {
 	if unmarshalErr != nil {
 		return "", wrap("workspace_repository.go", unmarshalErr)
 	}
-	groups := map[string]string{}
-	for iValue := range document.Elements {
-		document.Elements[iValue].ID = newID()
-		g := document.Elements[iValue].GroupID
-		if g != "" {
-			if groups[g] == "" {
-				groups[g] = newID()
-			}
-			document.Elements[iValue].GroupID = groups[g]
-		}
-	}
+	document = ClonePages([]PageCopy{{Document: document}}, false)[0]
 	data, err := json.Marshal(document)
 
 	return string(data), err

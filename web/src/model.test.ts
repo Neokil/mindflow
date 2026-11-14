@@ -1,5 +1,11 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { uid, wholeFontSize, validClipboardElements } from "./model";
+import type { CanvasElement } from "./model";
+import {
+  duplicateElements,
+  uid,
+  wholeFontSize,
+  validClipboardElements,
+} from "./model";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -54,4 +60,34 @@ it("accepts portable pressure ink and rejects mismatched or invalid pressure sam
     expect(validClipboardElements([{ ...stroke, pressures }])).toBe(false);
   expect(validClipboardElements([{ ...stroke, highlight: true }])).toBe(false);
   expect(validClipboardElements([{ ...stroke, type: "text" }])).toBe(false);
+});
+
+it("duplicates internal element links and discards foreign clipboard targets", () => {
+  const source: CanvasElement[] = [
+    {
+      id: "source",
+      type: "shape",
+      shape: "rectangle",
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      rotation: 0,
+      link: { pageId: "first", elementId: "target" },
+    },
+    {
+      id: "target",
+      type: "text",
+      x: 200,
+      y: 0,
+      width: 100,
+      height: 100,
+      rotation: 0,
+      link: { pageId: "other", elementId: "outside" },
+    },
+  ];
+  const copied = duplicateElements(source, 20, "first", "second", false);
+  expect(copied[0].link).toEqual({ pageId: "second", elementId: copied[1].id });
+  expect(copied[1].link).toBeUndefined();
+  expect(source[0].link?.elementId).toBe("target");
 });

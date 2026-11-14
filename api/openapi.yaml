@@ -4686,6 +4686,27 @@
               "maximum": 1
             },
             "description": "Optional pen-pressure sample per coordinate pair in points. Only non-highlight strokes support pressure. Absent for legacy strokes and mouse/finger input; pressure changes width between 20% and 100% of penWidth."
+          },
+          "link": {
+            "type": "object",
+            "required": [
+              "pageId",
+              "elementId"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "pageId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "elementId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            },
+            "description": "Existing target on the same workspace; unchanged missing targets remain restorable."
           }
         },
         "additionalProperties": false

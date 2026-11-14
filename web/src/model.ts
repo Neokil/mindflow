@@ -1,5 +1,7 @@
 export type ImageCrop = { x: number; y: number; width: number; height: number };
+export type ElementLink = { pageId: string; elementId: string };
 export type CanvasElement = {
+  link?: ElementLink;
   id: string;
   type: "image" | "shape" | "text" | "stroke" | "pdf";
   x: number;
@@ -107,13 +109,30 @@ export const emptyDocument = (): CanvasDocument => ({
   },
 });
 export const MAX_ELEMENTS = 10000;
-export function duplicateElements(elements: CanvasElement[], offset = 20) {
+export function duplicateElements(
+  elements: CanvasElement[],
+  offset = 20,
+  pageId?: string,
+  targetPageId = pageId,
+  keepExternal = true,
+) {
+  const identities = new Map(elements.map((element) => [element.id, uid()]));
   const groups = new Map<string, string>();
   return clone(elements).map((e) => {
     if (e.groupId && !groups.has(e.groupId)) groups.set(e.groupId, uid());
     return {
       ...e,
-      id: uid(),
+      id: identities.get(e.id)!,
+      link: e.link
+        ? e.link.pageId === pageId && identities.has(e.link.elementId)
+          ? {
+              pageId: targetPageId!,
+              elementId: identities.get(e.link.elementId)!,
+            }
+          : keepExternal
+            ? e.link
+            : undefined
+        : undefined,
       x: e.x + offset,
       y: e.y + offset,
       groupId: e.groupId ? groups.get(e.groupId) : undefined,
@@ -174,6 +193,18 @@ export function validClipboardElements(
           (p: unknown) =>
             typeof p !== "number" || !Number.isFinite(p) || p < 0 || p > 1,
         ))
+    )
+      return false;
+    if (
+      e.link !== undefined &&
+      (!e.link ||
+        typeof e.link !== "object" ||
+        typeof e.link.pageId !== "string" ||
+        !e.link.pageId ||
+        e.link.pageId.length > 128 ||
+        typeof e.link.elementId !== "string" ||
+        !e.link.elementId ||
+        e.link.elementId.length > 128)
     )
       return false;
     if (

@@ -17,34 +17,35 @@ type ImageCrop struct {
 
 // Element is an independently transformed canvas object.
 type Element struct {
-	ID            string     `json:"id"`
-	Type          string     `json:"type"`
-	X             float64    `json:"x"`
-	Y             float64    `json:"y"`
-	Width         float64    `json:"width"`
-	Height        float64    `json:"height"`
-	Rotation      float64    `json:"rotation"`
-	GroupID       string     `json:"groupId,omitempty"`
-	Locked        bool       `json:"locked,omitempty"`
-	Shape         string     `json:"shape,omitempty"`
-	Fill          string     `json:"fill,omitempty"`
-	Border        string     `json:"border,omitempty"`
-	BorderWidth   float64    `json:"borderWidth,omitempty"`
-	Text          string     `json:"text,omitempty"`
-	ListStyle     string     `json:"listStyle,omitempty"`
-	Checked       []int      `json:"checked,omitempty"`
-	FontSize      float64    `json:"fontSize,omitempty"`
-	Bold          bool       `json:"bold,omitempty"`
-	Italic        bool       `json:"italic,omitempty"`
-	Align         string     `json:"align,omitempty"`
-	VerticalAlign string     `json:"verticalAlign,omitempty"`
-	Crop          *ImageCrop `json:"crop,omitempty"`
-	Color         string     `json:"color,omitempty"`
-	AssetID       string     `json:"assetId,omitempty"`
-	Points        []float64  `json:"points,omitempty"`
-	Pressures     []float64  `json:"pressures,omitempty"`
-	PenWidth      float64    `json:"penWidth,omitempty"`
-	Highlight     bool       `json:"highlight,omitempty"`
+	Link          *ElementLink `json:"link,omitempty"`
+	ID            string       `json:"id"`
+	Type          string       `json:"type"`
+	X             float64      `json:"x"`
+	Y             float64      `json:"y"`
+	Width         float64      `json:"width"`
+	Height        float64      `json:"height"`
+	Rotation      float64      `json:"rotation"`
+	GroupID       string       `json:"groupId,omitempty"`
+	Locked        bool         `json:"locked,omitempty"`
+	Shape         string       `json:"shape,omitempty"`
+	Fill          string       `json:"fill,omitempty"`
+	Border        string       `json:"border,omitempty"`
+	BorderWidth   float64      `json:"borderWidth,omitempty"`
+	Text          string       `json:"text,omitempty"`
+	ListStyle     string       `json:"listStyle,omitempty"`
+	Checked       []int        `json:"checked,omitempty"`
+	FontSize      float64      `json:"fontSize,omitempty"`
+	Bold          bool         `json:"bold,omitempty"`
+	Italic        bool         `json:"italic,omitempty"`
+	Align         string       `json:"align,omitempty"`
+	VerticalAlign string       `json:"verticalAlign,omitempty"`
+	Crop          *ImageCrop   `json:"crop,omitempty"`
+	Color         string       `json:"color,omitempty"`
+	AssetID       string       `json:"assetId,omitempty"`
+	Points        []float64    `json:"points,omitempty"`
+	Pressures     []float64    `json:"pressures,omitempty"`
+	PenWidth      float64      `json:"penWidth,omitempty"`
+	Highlight     bool         `json:"highlight,omitempty"`
 }
 
 // Settings stores a page's background and grid preferences.
@@ -256,6 +257,10 @@ func validateDefaultColors(settings Settings) error {
 }
 
 func validateElementAttributes(entry Element) error {
+	if entry.Link != nil && (entry.Link.PageID == "" || len(entry.Link.PageID) > maxIdentifierLength || entry.Link.ElementID == "" || len(entry.Link.ElementID) > maxIdentifierLength) {
+		return invalid("Invalid element link.")
+	}
+
 	listErr := validateList(entry)
 	if listErr != nil {
 		return listErr

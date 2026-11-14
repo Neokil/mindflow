@@ -227,7 +227,10 @@ func (a *Service) RecoveryCopy(ctx context.Context, actor session.Principal, com
 
 // CreateWithin inserts page metadata and content in the caller transaction.
 func (a *Service) CreateWithin(ctx context.Context, tx *storage.Transaction, wid, name, raw string) (string, error) {
-	id := newID()
+	return a.createWithIDWithin(ctx, tx, wid, newID(), name, raw)
+}
+
+func (a *Service) createWithIDWithin(ctx context.Context, tx *storage.Transaction, wid, id, name, raw string) (string, error) {
 	_, err := a.repository.Within(tx).PageCreatePage(ctx, storage.PageCreatePageParams{ID: id, WorkspaceID: wid, Name: name, Document: raw, UpdatedAt: time.Now().Unix(), WorkspaceID_2: wid})
 
 	return id, err
@@ -241,17 +244,16 @@ func (a *Service) CopyWithin(ctx context.Context, transaction *storage.Transacti
 	if err != nil {
 		return "", err
 	}
-	cloned, err := canvas.CloneDocument(raw)
+	var document canvas.Document
+	err = json.Unmarshal([]byte(raw), &document)
 	if err != nil {
-		return "", err
+		return "", wrap("decode copied canvas", err)
 	}
-	resourceID, err := a.CreateWithin(ctx, transaction, wid, name, cloned)
-	if err != nil {
-		return "", err
-	}
-	err = a.canvas.CopyAssetsWithin(ctx, transaction, resourceID, source)
+	targetID := newID()
+	document = canvas.ClonePages([]canvas.PageCopy{{SourceID: source, TargetID: targetID, Document: document}}, true)[0]
+	err = a.copyDocumentWithin(ctx, transaction, source, targetID, wid, name, document)
 
-	return resourceID, err
+	return targetID, err
 }
 
 func copyName(name string) string {

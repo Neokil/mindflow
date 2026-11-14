@@ -45,19 +45,19 @@ Pages open fitted to their content; your camera position is retained when switch
 
 ## Canvas controls
 
-| Action | Control |
-| --- | --- |
-| Zoom around the cursor | Scroll. |
-| Pan | Pan tool (H), Cmd/Ctrl + drag, or hold the middle mouse button and drag. |
-| Select enclosed elements | Drag a freehand lasso in Select mode. An element must be fully contained. |
-| Add to selection | Shift + click or lasso. |
-| Create an element | Choose a tool, drag to preview its size, and release. Shift constrains it to 1:1; a click uses its default size. |
-| Undo / redo | Cmd/Ctrl + Z / Shift + Z, or the toolbar. History is kept only in the current session. |
-| Copy / paste / duplicate | Cmd/Ctrl + C / V / D. |
-| Group / ungroup | Cmd/Ctrl + G / Shift + G. |
-| Delete | Delete/Backspace. Pen strokes are selectable elements; there is no eraser. |
-| Finish editing text | Done, or Cmd/Ctrl + Enter. |
-| Cancel | Escape. |
+| Action                   | Control                                                                                                          |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| Zoom around the cursor   | Scroll.                                                                                                          |
+| Pan                      | Pan tool (H), Cmd/Ctrl + drag, or hold the middle mouse button and drag.                                         |
+| Select enclosed elements | Drag a freehand lasso in Select mode. An element must be fully contained.                                        |
+| Add to selection         | Shift + click or lasso.                                                                                          |
+| Create an element        | Choose a tool, drag to preview its size, and release. Shift constrains it to 1:1; a click uses its default size. |
+| Undo / redo              | Cmd/Ctrl + Z / Shift + Z, or the toolbar. History is kept only in the current session.                           |
+| Copy / paste / duplicate | Cmd/Ctrl + C / V / D.                                                                                            |
+| Group / ungroup          | Cmd/Ctrl + G / Shift + G.                                                                                        |
+| Delete                   | Delete/Backspace. Pen strokes are selectable elements; there is no eraser.                                       |
+| Finish editing text      | Done, or Cmd/Ctrl + Enter.                                                                                       |
+| Cancel                   | Escape.                                                                                                          |
 
 The keyboard button in the editor lists shortcuts. Hovering over movable elements shows a grab cursor; dragging shows a grabbing cursor.
 
@@ -71,11 +71,11 @@ Choose **Highlighter (M)** to mark text, images, or other canvas content. It dra
 
 Choose **Import PDF** in the canvas toolbar, select a file, then choose its placement:
 
-| Placement | Result |
-| --- | --- |
-| One mindflow page per PDF page | Creates new tabbed pages with one page image each, in PDF order. Existing pages remain intact. |
-| All pages as images on this canvas | Adds page images in a vertical column on the current canvas as one undoable insertion. |
-| Embedded PDF viewer | Keeps the original PDF as one canvas object with a first-page preview. Double-click it, or choose **Open PDF viewer** in its properties, to browse pages in the in-app read-only viewer. |
+| Placement                          | Result                                                                                                                                                                                   |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One mindflow page per PDF page     | Creates new tabbed pages with one page image each, in PDF order. Existing pages remain intact.                                                                                           |
+| All pages as images on this canvas | Adds page images in a vertical column on the current canvas as one undoable insertion.                                                                                                   |
+| Embedded PDF viewer                | Keeps the original PDF as one canvas object with a first-page preview. Double-click it, or choose **Open PDF viewer** in its properties, to browse pages in the in-app read-only viewer. |
 
 Image imports can be annotated with the pen/highlighter. The retained PDF viewer does not support annotations; canvas marks do not become annotations inside PDF pages. PDF imports support up to **50 MiB and 100 pages**. Password-protected documents are rejected; export an unlocked copy first. Rendering is local to the browser, with bounded image resolution (up to 2×, capped at 2,400 pixels on the longest edge), so image imports are not vector copies. Rendering errors are shown before canvas insertion; new-page batches commit atomically. Workspace permissions also protect retained PDFs and their previews.
 
@@ -133,12 +133,12 @@ To fix objects in place, select them, group them with Cmd/Ctrl + G, and choose *
 
 Click **Private** beside the workspace name to choose a registered user by display name. The picker lists active users with avatars and supports case-insensitive name search, including common accent differences. Select a person, choose their access level, and click **Add user**. Email addresses are not displayed. Existing members are managed in the member list; invited or inactive accounts are not offered. The badge becomes **Shared**; every member can see who owns the workspace.
 
-| Access | Capabilities |
-| --- | --- |
-| Read-only | View saved pages, images, and comments. |
-| Comment | Read and add comment threads/replies. |
+| Access      | Capabilities                                                             |
+| ----------- | ------------------------------------------------------------------------ |
+| Read-only   | View saved pages, images, and comments.                                  |
+| Comment     | Read and add comment threads/replies.                                    |
 | Full access | Comment and edit page content, manage pages, and request editor control. |
-| Owner | Full access plus sharing, workspace lifecycle, and force control. |
+| Owner       | Full access plus sharing, workspace lifecycle, and force control.        |
 
 Only the owner changes membership. Sharing does not send account invitations or create a public-access link. Removing the last member makes the workspace private again. Duplicated workspaces start private. Workspace/page copies do not copy comment threads; page copies in a shared workspace remain accessible through that workspace.
 
@@ -156,9 +156,9 @@ Copy the current workspace/page URL to send an authorized user directly to that 
 
 After a new server build is deployed, existing tabs show a reload banner. Reload is explicit and warns about unsaved work. Tabs predating this notification feature need one initial reload to install it.
 
-## Align selected elements
+## Welcome email
 
-Select two or more objects, then choose **Align selection** in the bottom selection bar or object properties. Align their left/right edges, top/bottom edges, horizontal centers, or vertical centers to the combined selection bounds. Rotated objects use their visible bounds; each group moves as a unit. Locked groups must be unlocked first. Alignment is one undoable edit.
+After setting up your account, you receive a personalized welcome email with buttons to open mindflow, read release notes on GitHub, and report issues. Invitation links remain single-use; resetting a password does not send another welcome email.
 
 ## Trash and recovery
 
@@ -169,3 +169,13 @@ Only the owner can restore a deleted workspace. Owners and full-access members c
 ## Transfer workspace ownership
 
 The owner can open **Workspace sharing**, choose **Transfer ownership**, search for another active user by display name, and confirm the transfer. The recipient becomes the owner; the previous owner keeps **full access**. Other members retain their roles. Pending changes in this browser must save first, and existing editor sessions are released so clients reload the transferred content. All saved pages (including Trash), comments, templates, originals, and image variants stay with the workspace. Deleting the former owner's account later does not delete the transferred workspace or its media.
+
+## Align selected elements
+
+Select two or more objects, then choose **Align selection** in the bottom selection bar or object properties. Align their left/right edges, top/bottom edges, horizontal centers, or vertical centers to the combined selection bounds. Rotated objects use their visible bounds; each group moves as a unit. Locked groups must be unlocked first. Alignment is one undoable edit.
+
+## Link canvas elements
+
+Select an element and choose **Link selection** in the selection bar, or **Add element link** in object properties. Choose a target page in the same workspace, then click an element in its preview or select it in the target list. **Save link** applies the target to the selection. Clicking a linked element with Select active moves the viewport to its target, including on another page. Shift-click selects the source for editing; right-click or Pencil double-tap still opens its properties. Object properties also offer **Go to linked element**, **Change element link**, and **Remove element link**. Following links works for readers and never steals an occupied editor session.
+
+Links grant no additional access. A deleted target shows an unavailable message; restoring it makes the link usable again. Page/workspace duplication and native import/export retarget links to the corresponding copies. Native exports drop links to targets outside the selected pages. Clipboard copies across workspaces keep only links among the copied elements. Copies made for disconnected recovery drop links to the source workspace.

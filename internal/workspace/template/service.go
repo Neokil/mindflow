@@ -228,15 +228,25 @@ func (a *Service) Remove(ctx context.Context, actor session.Principal, workspace
 }
 
 // CopyWithin copies the private workspace's library and retains its images.
-func (a *Service) CopyWithin(ctx context.Context, transaction *storage.Transaction, source, target string) error {
+func (a *Service) CopyWithin(ctx context.Context, transaction *storage.Transaction, source, target string, targets map[canvas.ElementLink]canvas.ElementLink) error {
 	queries := a.repository.Within(transaction)
 	rows, err := queries.TemplateCopies(ctx, source)
 	if err != nil {
 		return err
 	}
 	for _, row := range rows {
+		var elements []canvas.Element
+		decodeErr := json.Unmarshal([]byte(row.Elements), &elements)
+		if decodeErr != nil {
+			return wrap("decode copied template links", decodeErr)
+		}
+		canvas.RemapLinks(elements, targets, false)
+		encoded, encodeErr := json.Marshal(elements)
+		if encodeErr != nil {
+			return wrap("encode copied template links", encodeErr)
+		}
 		resourceID := newID()
-		err = queries.TemplateCreate(ctx, storage.TemplateCreateParams{ID: resourceID, WorkspaceID: target, Name: row.Name, Elements: row.Elements, ElementCount: row.ElementCount})
+		err = queries.TemplateCreate(ctx, storage.TemplateCreateParams{ID: resourceID, WorkspaceID: target, Name: row.Name, Elements: string(encoded), ElementCount: row.ElementCount})
 		if err != nil {
 			return err
 		}

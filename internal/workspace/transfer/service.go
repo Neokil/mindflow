@@ -86,6 +86,7 @@ func (a *Service) Export(ctx context.Context, actor session.Principal, workspace
 			bundle.Templates = append(bundle.Templates, Template{Name: row.Name, Elements: elements})
 		}
 	}
+	portableLinks(&bundle)
 	contents := map[string][]byte{}
 	assets := map[string]string{}
 	size := 0
@@ -160,7 +161,7 @@ func (a *Service) snapshotWithin(ctx context.Context, transaction *storage.Trans
 		if documentBytes > maxManifestBytes || elementCount > maxElements || len(result.Pages) >= maxPages {
 			return Snapshot{}, invalid("This export exceeds the page or document limits. Select fewer pages.")
 		}
-		result.Pages = append(result.Pages, Page{Name: row.Name, Document: document})
+		result.Pages = append(result.Pages, Page{ID: row.ID, Name: row.Name, Document: document})
 	}
 	if len(result.Pages) > maxPages {
 		return Snapshot{}, invalid("Export up to 100 pages at a time. Select fewer pages.")
@@ -219,4 +220,22 @@ func collectAssets(ctx context.Context, queries *storage.Queries, userID, worksp
 	}
 
 	return nil
+}
+
+// portableLinks prevents exported links from referring to content outside the bundle.
+func portableLinks(bundle *Bundle) {
+	targets := map[canvas.ElementLink]canvas.ElementLink{}
+	for i, entry := range bundle.Pages {
+		id := fmt.Sprintf("p%d", i+1)
+		for _, element := range entry.Document.Elements {
+			targets[canvas.ElementLink{PageID: entry.ID, ElementID: element.ID}] = canvas.ElementLink{PageID: id, ElementID: element.ID}
+		}
+		bundle.Pages[i].ID = id
+	}
+	for _, entry := range bundle.Pages {
+		canvas.RemapLinks(entry.Document.Elements, targets, false)
+	}
+	for _, entry := range bundle.Templates {
+		canvas.RemapLinks(entry.Elements, targets, false)
+	}
 }

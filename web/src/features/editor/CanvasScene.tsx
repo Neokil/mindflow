@@ -4,7 +4,12 @@ import type { RefObject } from "react";
 import { useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import { Group, Layer, Line, Rect, Stage, Transformer } from "react-konva";
 import { selectedWithGroup, snap, worldPoint } from "../../geometry";
-import type { CanvasDocument, CanvasElement, Point } from "../../model";
+import type {
+  CanvasDocument,
+  CanvasElement,
+  ElementLink,
+  Point,
+} from "../../model";
 import { wholeFontSize } from "../../model";
 import CanvasElementView from "./CanvasElement";
 import type { Camera, Tool } from "./types";
@@ -33,6 +38,7 @@ type Props = {
   onPointerDown: (event: Konva.KonvaEventObject<PointerEvent>) => void;
   onPointerMove: (event: Konva.KonvaEventObject<PointerEvent>) => void;
   onZoom: (delta: number, mode: number) => void;
+  onFollowLink: (link: ElementLink) => void;
   onSelectElement: (id: string, shift?: boolean) => void;
   onSelectionChange: (ids: string[]) => void;
   onTextEdit: (element: CanvasElement) => void;
@@ -65,6 +71,7 @@ export default function CanvasScene({
   onPointerDown,
   onPointerMove,
   onZoom,
+  onFollowLink,
   onSelectElement,
   onSelectionChange,
   onTextEdit,
@@ -74,6 +81,8 @@ export default function CanvasScene({
   const nodes = useRef(new Map<string, Konva.Group>()),
     transformer = useRef<Konva.Transformer>(null),
     transformAnchor = useRef("");
+  const linkTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(linkTimer.current), []);
   const drag = useRef<
     { source: string; start: Point; positions: Map<string, Point> } | undefined
   >(undefined);
@@ -175,19 +184,25 @@ export default function CanvasScene({
       event.target.getParent()?.getClassName() === "Transformer"
     )
       return;
+    const elementID = event.target.findAncestor(".canvas-element", true)?.id();
+    const linked = document.elements.some(
+      (element) => element.id === elementID && element.link,
+    );
     container.style.cursor =
       isPanning() || drag.current
         ? "grabbing"
         : event.evt.metaKey || event.evt.ctrlKey
           ? "grab"
-          : editable &&
-              tool === "select" &&
-              !placement &&
-              !templatePlacement.length &&
-              !editing &&
-              canMove(event.target)
-            ? "grab"
-            : "";
+          : linked && tool === "select" && !event.evt.shiftKey
+            ? "pointer"
+            : editable &&
+                tool === "select" &&
+                !placement &&
+                !templatePlacement.length &&
+                !editing &&
+                canMove(event.target)
+              ? "grab"
+              : "";
   }
   function commitTransform() {
     if (cancelling.current) return;
@@ -303,7 +318,30 @@ export default function CanvasScene({
                   return;
                 onSelectElement(e.id, event.evt.shiftKey);
               }}
+              onPointerClick={(event) => {
+                if (
+                  !e.link ||
+                  !allowPointer(event.evt) ||
+                  event.evt.button !== 0 ||
+                  event.evt.shiftKey ||
+                  event.evt.metaKey ||
+                  event.evt.ctrlKey ||
+                  tool !== "select" ||
+                  placement ||
+                  templatePlacement.length ||
+                  navigating
+                )
+                  return;
+                clearTimeout(linkTimer.current);
+                if (event.evt.pointerType === "pen")
+                  linkTimer.current = setTimeout(
+                    () => onFollowLink(e.link!),
+                    Konva.dblClickWindow + 20,
+                  );
+                else onFollowLink(e.link);
+              }}
               onContextMenu={(event) => {
+                clearTimeout(linkTimer.current);
                 event.evt.preventDefault();
                 onObjectSettings(e.id, {
                   x: event.evt.clientX,
@@ -311,6 +349,7 @@ export default function CanvasScene({
                 });
               }}
               onPointerDblClick={(event) => {
+                clearTimeout(linkTimer.current);
                 if (!allowPointer(event.evt)) return;
                 if (event.evt.pointerType === "pen") {
                   onObjectSettings(e.id, {

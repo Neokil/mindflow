@@ -2210,3 +2210,11 @@ body {
   margin-top: 20px;
   padding-top: 12px;
 }
+
+.link-preview {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--panel);
+  margin: 12px 0;
+}

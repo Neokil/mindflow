@@ -4,15 +4,15 @@ mindflow provides a quiet, flexible space for collecting images, arranging thoug
 
 ## What it does
 
-Users organize their work in private-by-default workspaces containing tabbed infinite-canvas pages. Pages support images, rectangle/circle/star shapes, plain text with element-wide formatting, and freehand pen strokes with optional Pencil pressure and adjustable stabilization. Elements can be selected, moved, resized, rotated, grouped, duplicated, cropped where applicable, and arranged in layers.
+Users organize their work in private-by-default workspaces containing tabbed infinite-canvas pages. Pages support images, rectangle/circle/star shapes, plain text with element-wide formatting, and freehand pen strokes with optional Pencil pressure and adjustable stabilization. Elements can be selected, moved, resized, rotated, grouped, duplicated, cropped where applicable, aligned, linked to other elements on any page of the workspace, and arranged in layers.
 
 Butterfly version-13 exports can be imported into new private workspaces, preserving ordered pages, embedded images, text, freehand strokes, and rectangle/ellipse shapes. Conversion notes identify approximations and unsupported content.
 
 Selections can be saved as workspace templates and inserted on other pages as independently editable copies. Groups can be locked to protect them against accidental editing or movement.
 
-Workspaces can be shared with existing users as read-only, comment, or full access. Comment threads attach conversations to canvas points. Each page has one writer at a time; other users can request control, and the workspace owner can force a transfer. Saved changes are visible to other sessions.
+Workspaces can be shared with existing users as read-only, comment, or full access. Comment threads attach conversations to canvas points. Each page has one writer at a time; other users can request control, and the workspace owner can force a transfer. Saved changes are visible to other sessions. Owners can transfer a workspace to another active user and retain full access. Deleted workspaces/pages can be restored from Trash for 30 days before permanent removal.
 
-Accounts are invite-only. Administrators manage users and invitations without gaining access to private workspaces. The first administrator and email settings are configured during initial setup.
+Accounts are invite-only. Administrators manage users and invitations without gaining access to private workspaces. The first administrator and email settings are configured during initial setup. New accounts receive a welcome email with application, release-note, and issue-report links.
 
 Workspaces or selected pages can be exported as editable `.mindflow` files and imported into new or existing workspaces. PDF and PNG exports create one flattened output per canvas page.
 
