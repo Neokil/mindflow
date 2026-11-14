@@ -43,7 +43,7 @@ func TestWelcomeQueuedExactlyOnceOnActivation(t *testing.T) {
 	if message.Subject != "Welcome Simon <Friend>!" || message.TokenHash != "" {
 		t.Fatal("incorrect welcome", message)
 	}
-	for _, link := range []string{"https://github.com/Neokil/mindflow/releases", "https://github.com/Neokil/mindflow/issues", "Open mindflow"} {
+	for _, link := range []string{"https://github.com/Neokil/mindflow/releases", "https://github.com/Neokil/mindflow/issues", "Open mindflow", "View patchnotes on GitHub", "Report an error or request a feature on GitHub"} {
 		if !strings.Contains(message.Body, link) {
 			t.Fatal("welcome link missing", link)
 		}

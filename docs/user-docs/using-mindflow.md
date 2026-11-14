@@ -160,7 +160,7 @@ After a new server build is deployed, existing tabs show a reload banner. Reload
 
 ## Welcome email
 
-After setting up your account, you receive a personalized welcome email with buttons to open mindflow, read release notes on GitHub, and report issues. Invitation links remain single-use; resetting a password does not send another welcome email.
+After setting up your account, you receive a personalized welcome email with buttons to open mindflow, view patchnotes on GitHub, and report errors or request features on GitHub. The HTML welcome message shows button links without repeated raw URLs; the plain-text alternative retains usable URLs. The shared email header links to the repository through the GitHub icon. Invitation links remain single-use; resetting a password does not send another welcome email.
 
 ## Trash and recovery
 

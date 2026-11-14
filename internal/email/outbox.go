@@ -32,7 +32,7 @@ func (a *Outbox) QueueWithin(ctx context.Context, transaction *storage.Transacti
 // QueueWelcomeWithin queues onboarding once account creation succeeds.
 func (a *Outbox) QueueWelcomeWithin(ctx context.Context, transaction *storage.Transaction, user account.User, publicURL string) error {
 	subject := "Welcome " + user.DisplayName + "!"
-	body := "We're happy to see you on board. Here are the most important links to get started:\n\nOpen mindflow\t" + publicURL + "/\nView patch notes\thttps://github.com/Neokil/mindflow/releases\nReport an error\thttps://github.com/Neokil/mindflow/issues"
+	body := "We're happy to see you on board. Here are the most important links to get started:\n\nOpen mindflow\t" + publicURL + "/\nView patchnotes on GitHub\thttps://github.com/Neokil/mindflow/releases\nReport an error or request a feature on GitHub\thttps://github.com/Neokil/mindflow/issues"
 
 	return a.QueueWithin(ctx, transaction, user.ID, "welcome", user.Email, subject, body, "")
 }
