@@ -118,7 +118,6 @@ export default function CanvasTextEditor({
         <button
           className="primary"
           aria-label="Done editing text"
-          onPointerDown={(event) => event.preventDefault()}
           onClick={() => onFinish()}
         >
           Done

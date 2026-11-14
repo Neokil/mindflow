@@ -209,6 +209,7 @@ test("PDF and PNG outputs contain each rendered canvas page", async ({
   await expect(
     page.getByRole("checkbox", { name: "Page 2", exact: true }),
   ).toBeChecked();
-  expect((await download(page)).name).toBe("Page 2.png");
+  // WebKit on Linux sanitizes spaces in the suggested download name.
+  expect((await download(page)).name).toMatch(/^Page[ _]2\.png$/);
   expect(errors).toEqual([]);
 });
