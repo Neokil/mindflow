@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { activate, create, login, selectTool } from "./helpers";
 import { TabletInput } from "./tablet-input";
+import type { CanvasDocument } from "../src/model";
 test("shape dropdown, tooltips and minimal header controls work together", async ({
   page,
   browserName,
@@ -128,4 +129,92 @@ test("shape dropdown, tooltips and minimal header controls work together", async
   await dismiss.focus();
   await expect(dialog.getByRole("tooltip")).toHaveText("Close dialog");
   await activate(page, dismiss);
+});
+
+test("holding Pencil and marker loops produces clean closed shapes with saved pressure", async ({
+  page,
+  browserName,
+}, info) => {
+  await login(page);
+  await create(page, `Shape assist ${info.project.name}`);
+  const input = new TabletInput(page);
+  if (browserName === "chromium") await input.native();
+  const box = (await page.getByTestId("canvas").boundingBox())!;
+  const path = async (points: { x: number; y: number }[]) => {
+    await input.pen("down", box.x + points[0].x, box.y + points[0].y, 0.1);
+    for (let i = 1; i < points.length; i++)
+      await input.pen(
+        "move",
+        box.x + points[i].x,
+        box.y + points[i].y,
+        0.1 + (0.8 * i) / (points.length - 1),
+      );
+    await page.waitForTimeout(850);
+    const end = points.at(-1)!;
+    await input.pen("up", box.x + end.x, box.y + end.y, 0);
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  };
+  const snapshot = async () =>
+    (
+      await (
+        await page.request.get(
+          `/api/v1/pages/${page.url().split("/pages/")[1]}/document`,
+        )
+      ).json()
+    ).document as CanvasDocument;
+  await activate(
+    page,
+    page.getByRole("button", { name: "Pen (P)", exact: true }),
+  );
+  await path(
+    Array.from({ length: 65 }, (_, i) => ({
+      x: 350 + 85 * Math.cos((i / 64) * Math.PI * 2) + ((i % 3) - 1) * 2,
+      y: 300 + 85 * Math.sin((i / 64) * Math.PI * 2) + ((i % 4) - 1.5) * 2,
+    })),
+  );
+  const circle = (await snapshot()).elements[0];
+  expect(circle.points!.slice(0, 2)).toEqual(circle.points!.slice(-2));
+  for (let i = 0; i < circle.points!.length; i += 2)
+    expect(
+      Math.hypot(circle.points![i] * 2 - 1, circle.points![i + 1] * 2 - 1),
+    ).toBeCloseTo(1, 1);
+  expect(Math.max(...circle.pressures!)).toBeGreaterThan(0.85);
+  await activate(
+    page,
+    page.getByRole("button", { name: "Highlighter (M)", exact: true }),
+  );
+  const corners = [
+    [480, 400],
+    [680, 400],
+    [680, 540],
+    [480, 540],
+    [480, 400],
+  ];
+  await path(
+    corners
+      .slice(0, -1)
+      .flatMap(([x, y], edge) =>
+        Array.from({ length: 10 }, (_, i) => ({
+          x: x + ((corners[edge + 1][0] - x) * i) / 10 + ((i % 3) - 1),
+          y: y + ((corners[edge + 1][1] - y) * i) / 10 + (i % 2 ? 1 : -1),
+        })),
+      )
+      .concat([{ x: 480, y: 400 }]),
+  );
+  const saved = await snapshot(),
+    rectangle = saved.elements[1];
+  expect(rectangle.highlight).toBe(true);
+  expect(rectangle.pressures).toBeUndefined();
+  expect(rectangle.points!.slice(0, 2)).toEqual(rectangle.points!.slice(-2));
+  for (let i = 0; i < rectangle.points!.length; i += 2) {
+    const x = rectangle.points![i],
+      y = rectangle.points![i + 1];
+    expect(Math.min(x, 1 - x, y, 1 - y)).toBeLessThan(0.02);
+  }
+  await page.screenshot({
+    path: `../.cache/e2e/shape-assist-${info.project.name}.png`,
+  });
+  await page.reload();
+  await expect(page.getByTestId("canvas")).toBeVisible();
+  expect(await snapshot()).toEqual(saved);
 });

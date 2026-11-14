@@ -537,10 +537,10 @@ export default function Canvas({
     if (g.kind === "pen" && g.ink) {
       g.rawEnd = world;
       g.ink.add(world, event.evt.pressure);
-      if (!g.ink.straight)
+      if (!g.ink.optimized)
         strokeHold.move(world, g.camera.zoom, () => {
           if (gesture.current !== g || !session.editable || !g.ink) return;
-          g.ink.straighten(g.rawEnd || world);
+          g.ink.optimize(g.rawEnd || world);
           paintInk();
         });
       paintInk();
@@ -881,7 +881,7 @@ export default function Canvas({
               : tool === "pan"
                 ? "Drag to pan. Use two fingers to pan and pinch to zoom."
                 : tool === "pen" || tool === "highlighter"
-                  ? "Draw freely. Hold at the end to straighten. Select a stroke to move or delete it."
+                  ? "Draw freely. Hold to tidy a line, circle, or rectangle. Select a stroke to move or delete it."
                   : tool === "text"
                     ? "Drag to size a text box."
                     : tool === "comment"

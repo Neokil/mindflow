@@ -1,3 +1,5 @@
+import { recognizeShape, pathFractions } from "./recognizeShape";
+import type { RecognizedShape } from "./recognizeShape";
 import type { CanvasElement, Point } from "../../model";
 import type { InkSample } from "../../strokeGeometry";
 export type Stabilization = "off" | "light" | "strong";
@@ -9,6 +11,19 @@ function validPressure(value: number) {
 export class InkStroke {
   samples: InkSample[];
   straight = false;
+  private shape?: {
+    geometry: RecognizedShape;
+    radius: number;
+    fractions: number[];
+    pressures: number[];
+  };
+  get optimized() {
+    return this.straight || !!this.shape;
+  }
+  get shapeKind() {
+    return this.shape?.geometry.kind;
+  }
+
   private profile?: { fraction: number; pressure: number }[];
   constructor(
     readonly start: Point,
@@ -21,6 +36,10 @@ export class InkStroke {
   }
   add(point: Point, pressure: number) {
     const value = validPressure(pressure);
+    if (this.shape) {
+      this.updateShape(point, value);
+      return;
+    }
     if (this.straight) {
       this.updateLine(point, value);
       return;
@@ -39,6 +58,56 @@ export class InkStroke {
       return;
     }
     if (this.samples.length < maxSamples) this.samples.push(next);
+  }
+  optimize(end: Point) {
+    this.finish(end);
+    const geometry = recognizeShape(this.samples, this.zoom);
+    if (!geometry) {
+      const width =
+        Math.max(...this.samples.map((point) => point.x)) -
+        Math.min(...this.samples.map((point) => point.x));
+      const height =
+        Math.max(...this.samples.map((point) => point.y)) -
+        Math.min(...this.samples.map((point) => point.y));
+      if (
+        Math.hypot(end.x - this.start.x, end.y - this.start.y) >
+        Math.hypot(width, height) * 0.2
+      )
+        this.straighten(end);
+      return;
+    }
+    const source = this.samples,
+      profile = pathFractions(source);
+    const stride = Math.max(1, Math.ceil(source.length / (maxSamples - 256)));
+    const fractions = [
+      ...new Set([
+        ...geometry.fractions,
+        ...profile.filter((_, i) => i % stride === 0),
+        0,
+        1,
+      ]),
+    ].sort((a, b) => a - b);
+    let index = 1;
+    const pressures = fractions.map((fraction) => {
+      while (index < source.length - 1 && profile[index] < fraction) index++;
+      const part =
+        (fraction - profile[index - 1]) /
+        (profile[index] - profile[index - 1] || 1);
+      return (
+        source[index - 1].pressure +
+        (source[index].pressure - source[index - 1].pressure) * part
+      );
+    });
+    this.shape = {
+      geometry,
+      radius: Math.max(
+        1 / this.zoom,
+        Math.hypot(end.x - geometry.center.x, end.y - geometry.center.y),
+      ),
+      fractions,
+      pressures,
+    };
+    this.updateShape(end, source.at(-1)!.pressure);
   }
   straighten(end: Point) {
     // Use the physical pointer position, not the stabilized (slightly delayed) tip.
@@ -74,6 +143,10 @@ export class InkStroke {
   finish(point: Point) {
     const last = this.samples[this.samples.length - 1];
     // pointerup reports zero pressure; preserve the last in-contact pressure.
+    if (this.shape) {
+      this.updateShape(point, last.pressure);
+      return;
+    }
     if (this.straight) {
       this.updateLine(point, last.pressure);
       return;
@@ -121,6 +194,27 @@ export class InkStroke {
       penWidth: width,
       highlight: highlight || undefined,
     };
+  }
+  private updateShape(end: Point, pressure: number) {
+    const shape = this.shape!;
+    const { center } = shape.geometry;
+    const scale = Math.max(
+      0.05,
+      Math.hypot(end.x - center.x, end.y - center.y) / shape.radius,
+    );
+    shape.pressures[shape.pressures.length - 1] = pressure;
+    this.samples = shape.fractions.map((fraction, i) => {
+      const point = shape.geometry.pointAt(fraction);
+      return {
+        x: center.x + (point.x - center.x) * scale,
+        y: center.y + (point.y - center.y) * scale,
+        pressure: shape.pressures[i],
+      };
+    });
+    const first = this.samples[0],
+      last = this.samples.at(-1)!;
+    last.x = first.x;
+    last.y = first.y;
   }
   private updateLine(end: Point, pressure: number) {
     if (!this.profile) return;

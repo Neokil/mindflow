@@ -12,7 +12,9 @@ export default function EditorHelp({ close }: { close: () => void }) {
         {[
           ["Pan", "Pan tool (H), Cmd/Ctrl + drag, or middle button"],
           ["Zoom around cursor", "Scroll; two-finger pinch on tablets"],
-          ["Create an element", "Drag; Shift for 1:1"],
+          ["Create an element", "Choose a tool or Shapes; drag; Shift for 1:1"],
+          ["Tidy ink", "Hold to fit a line, circle, or rectangle"],
+          ["Icon descriptions", "Hover, focus, or hold an icon"],
           ["Object properties", "Right-click; Pencil double-tap in Select"],
           ["Select enclosed elements", "Drag a freehand lasso"],
           ["Add to selection", "Shift + click / lasso"],

@@ -78,7 +78,8 @@ export default function PenOptions({
         </select>
       </label>
       <small>
-        Smooths small hand movements. Hold still at the end to straighten.
+        Smooths small hand movements. Hold still to tidy lines, circles, and
+        rectangles.
       </small>
     </div>
   );

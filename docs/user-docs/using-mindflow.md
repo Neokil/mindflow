@@ -95,7 +95,7 @@ On an iPad, use Safari. Choose a tool, then drag with one finger or Pencil to cr
 
 Use **two fingers** to pan and pinch to zoom around their midpoint, with any tool selected. Starting a second touch discards the unfinished single-finger drawing, creation, or transform; lift both fingers before starting another tool gesture. The **Pan** tool also lets one finger pan, including in read-only pages. The drawing surface captures gestures so they do not scroll the page or trigger pull-to-refresh; menus and forms retain normal touch scrolling.
 
-With **Pen** or **Highlighter**, keep the mouse button or Pencil tip down and hold at the end of a stroke for about **0.65 seconds** to straighten it between its start and end. Small hand movements are tolerated. The preview changes while you hold; keep dragging to adjust the endpoint, then release to save the line. Release promptly to keep freehand ink. Dots and strokes ending very close to their start are left unchanged. Straightened strokes retain normal color/thickness, selection, resizing, and undo behavior.
+With **Pen** or **Highlighter**, keep the mouse button or Pencil tip down and hold at the end for about **0.65 seconds**. Open strokes become straight lines; sufficiently closed circles/ellipses and rectangles become clean outlines, including rotated rectangles. Small hand movements are tolerated. Keep dragging after the hold to adjust a line's endpoint or resize a fitted closed outline about its center, then release to save it. Release promptly to keep freehand ink. Tiny loops and unrecognized closed doodles stay freehand. Fitted outlines remain selectable, resizable, rotatable strokes with the original color, pen pressure, or translucent highlighter styling.
 
 The pen and highlighter settings include **Stabilization: Off / Light / Strong**. Light is the default; Strong smooths more hand jitter and has a slightly trailing tip. Off follows the sampled pointer path. The saved stroke always reaches the actual release position. Stabilization affects new strokes and is baked into their saved geometry; it does not change existing ink. These tool preferences reset when the canvas is reopened.
 
@@ -106,6 +106,8 @@ The pen's **Pencil only** option makes one finger pan while Pencil draws. Other 
 Upload images through **Add images**, then drag on the canvas to place and size them. To cancel pending image/template placement without a keyboard, choose another tool. Tap comment pins to open threads and reply. Drawing controls and transformation handles are enlarged on touch devices, and the tool strip can scroll horizontally when needed.
 
 ## Elements and settings
+
+The **Shapes** dropdown groups Rectangle, Circle, and Star into one toolbar control. Choose a shape, then drag to size it; Shift keeps equal sides. The dropdown supports arrow keys and Escape. Icon controls show descriptions on hover or keyboard focus. On a tablet, hold an icon briefly to read its tooltip without activating the action. Escape or tapping elsewhere dismisses the tooltip.
 
 Add images by upload, drag-and-drop, or clipboard paste. Once ready, an image follows the cursor until placed; drag to size it or click for its default size. PNG, JPEG, and WebP uploads support up to 20 MiB, 40 megapixels, and 16,384 pixels per side. Unsupported animated images are rejected. Originals are retained and smaller display variants are generated when useful.
 
