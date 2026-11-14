@@ -21,6 +21,7 @@ Protect backups as private data. They contain accounts, workspaces, images, SMTP
    ```
 
    On TrueNAS, run equivalent one-off commands against the restored dataset while the normal app is stopped. For a local binary, set `MINDFLOW_DATA=/path/to/data` on each command.
+
 4. Sign in again and verify accounts, workspaces, images, new saves, and SMTP. Resend needed invitations.
 
 `revoke-credentials` removes sessions, invitation/reset links, queued token emails, and editor control; it preserves passwords and content. A restore may resurrect accounts or content deleted after the snapshot. Review those changes before reopening access.
@@ -43,16 +44,24 @@ The `scratch` image has no shell. Invoke maintenance commands through its entryp
 
 ## Health and troubleshooting
 
-| Symptom/check | What to inspect |
-| --- | --- |
-| `/health/live` | Process can respond. |
-| `/health/ready` | Database is accessible after startup/migrations. An uninitialized instance can be ready for setup. |
-| Login works only locally or cookies are missing | Public HTTPS URL, production mode, and reverse-proxy configuration. |
-| Email fails | Provider host/port, verified TLS mode, credentials, sender permission, and queued delivery status. |
-| Other tabs update slowly | SSE streaming and proxy buffering/caching. Polling is a fallback. |
+| Symptom/check                                                       | What to inspect                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/health/live`                                                      | Process can respond.                                                                                                                                                                                                                                                                        |
+| `/health/ready`                                                     | Database is accessible after startup/migrations. An uninitialized instance can be ready for setup.                                                                                                                                                                                          |
+| Login works only locally or cookies are missing                     | Public HTTPS URL, production mode, and reverse-proxy configuration.                                                                                                                                                                                                                         |
+| Email fails                                                         | Provider host/port, verified TLS mode, credentials, sender permission, and queued delivery status.                                                                                                                                                                                          |
+| Other tabs update slowly                                            | SSE streaming and proxy buffering/caching. Polling is a fallback.                                                                                                                                                                                                                           |
 | Database cannot be opened or `migrate` fails before creating tables | Confirm the host dataset exists, both services mount it at `/data`, `MINDFLOW_DATA` is a directory, and the configured UID/GID (`568:568` in the TrueNAS YAML; `10001:10001` by default) can create/write the database and its sidecar files. Check free space and dataset read-only state. |
-| Save failed or disconnected | Network, available disk space, permissions, current editor control, and server logs. Preserve the tab until work is saved or recovered. |
+| Save failed or disconnected                                         | Network, available disk space, permissions, current editor control, and server logs. Preserve the tab until work is saved or recovered.                                                                                                                                                     |
 
 SMTP failure does not take the canvas offline. Logs exclude passwords, cookies, token URLs, image bytes, and document bodies, apart from the intentionally logged first-run setup credential.
 
 Image processing is serialized to bound memory. Start with two CPUs and 1 GiB memory, then measure your workload; this is not a guaranteed minimum. Keep free disk for originals, variants, WAL growth, and snapshots. Read the [security policy](../SECURITY.md) before exposing or restoring an instance.
+
+## Inactive accounts and release notifications
+
+Keep SMTP working: active non-admin users receive inactivity reminders after 90 days without authenticated use, and a final seven-day reminder before permanent deletion. Grace deadlines start from successful SMTP delivery, not queue creation. Missing delivery receipts prevent automatic deletion. Inactive/unactivated accounts are excluded; administrators are exempt. Check the email-delivery status in user management when mail fails. A successful SMTP handoff does not guarantee inbox delivery, so monitor your mail provider's bounces too.
+
+Use version-tagged production images so the app can identify releases. The first observed release establishes a baseline; subsequent semantic-version upgrades email only users who explicitly opted in. Restarting the same image or rolling back does not send another announcement. The cursor and queued announcements are stored in SQLite and therefore follow your backups. Restoring an older snapshot can repeat an announcement previously sent after that snapshot.
+
+Feedback reports and screenshots are private to authors and administrators. Review **Administration → Feedback & bugs** periodically; new reports are not automatically emailed or sent to GitHub. A screenshot can contain private workspace content that its author deliberately shared. Account deletion removes owned reports and screenshots as well as authored report comments.

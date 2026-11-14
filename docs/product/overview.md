@@ -12,7 +12,7 @@ Selections can be saved as workspace templates and inserted on other pages as in
 
 Workspaces can be shared with existing users as read-only, comment, or full access. Comment threads attach conversations to canvas points. Each page has one writer at a time; other users can request control, and the workspace owner can force a transfer. Saved changes are visible to other sessions. Owners can transfer a workspace to another active user and retain full access. Deleted workspaces/pages can be restored from Trash for 30 days before permanent removal.
 
-Accounts are invite-only. Administrators manage users and invitations without gaining access to private workspaces. The first administrator and email settings are configured during initial setup. New accounts receive a welcome email with application, release-note, and issue-report links.
+Accounts are invite-only. Administrators manage users and invitations without gaining access to private workspaces. The first administrator and email settings are configured during initial setup. New accounts receive a welcome email with application, user-guide, release-note, and issue-report links. Users can opt into upgrade emails and unsubscribe with one click. Active non-admin accounts follow a delivery-aware inactivity reminder and deletion policy. Private in-app bug reports and feature requests support optional screenshots, discussion, admin decisions, and release-linked bug closure.
 
 Workspaces or selected pages can be exported as editable `.mindflow` files and imported into new or existing workspaces. PDF and PNG exports create one flattened output per canvas page.
 

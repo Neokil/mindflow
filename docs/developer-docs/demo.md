@@ -17,7 +17,6 @@ Outputs:
 
 Temporary database and PNG-frame directories are removed when the script exits. It does not connect to an existing instance or publish anything. Do not replace its local origin with a production URL. Review the GIF after recording, and commit it alongside UI changes when appropriate. The recording is deliberately manual and not part of CI.
 
-
 ## Recording a social announcement reel
 
 Run `make reel` to record an isolated local demo and render a **22-second, 1080×1920, 9:16, 30 fps H.264 MP4**. It uses real app captures, the current icon and brand palette, large baked-in captions, and an invitation to DM the author for testing access. The video is silent so it can be posted as-is or paired with music in the posting app. This command is manual and does not publish anything.
@@ -35,3 +34,7 @@ Outputs stay out of Git under `.cache/reel/export/`:
 Edit `web/scripts/record-reel.mjs` for the app workflow and `scripts/render-reel.py` for copy, timing, colors, and composition. Raw captures and their timing manifest remain under `.cache/reel/`; rerender without recording by running `.cache/reel-venv/bin/python scripts/render-reel.py`. The renderer uses macOS system fonts or DejaVu Sans on Linux; `--font` and `--bold-font` accept alternative font paths. Pillow and the bundled FFmpeg encoder are pinned in `scripts/reel-requirements.txt` and updated by `make upgrade`.
 
 Review the storyboard and watch the MP4 before posting. Physical iPad footage is not claimed: these are recordings of the actual web app in desktop Chromium. The reel makes no claim of public registration; access is offered by contacting the author.
+
+## Refreshing the illustrated user guide
+
+Run `make guide-images` after installing Playwright Chromium. It uses the same isolated local fixture and creates `docs/media/guide-{canvas,workspaces,sharing,comments}.png` without encoding a GIF. Captions and the demonstration pointer are hidden. Review all four images before committing; no screenshots are taken from a real account. This command is manual and is not run by CI.

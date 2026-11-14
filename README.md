@@ -67,6 +67,7 @@ For TrueNAS Apps, use [the installation guide](docs/user-docs/installation.md) a
 - **Read and annotate PDFs:** import pages as images on one canvas or separate pages, or keep a PDF with an in-app reader.
 - **Take your work with you:** export workspaces or selected pages as editable `.mindflow` files, PDFs, or PNG images; import native files as new workspaces or append their pages.
 - **Bring existing work:** import Butterfly `.bfly` documents as private workspaces with editable pages and embedded images.
+- **Help shape mindflow:** private bug reports and feature requests with optional screenshots, discussion, and release-linked fixes; opt-in product-update emails.
 - **Make it yours:** light/dark appearance and a quiet interface for desktop Chrome/Firefox and iPad Safari.
 
 Scroll to zoom. Cmd/Ctrl + drag or hold the middle mouse button to pan. Hold Shift while creating an element for equal width and height. On tablets, drag with one finger or Pencil and use two fingers to pan/pinch to zoom. The editor's keyboard button lists more controls.

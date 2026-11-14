@@ -24,7 +24,7 @@ mindflow is one Go process serving an embedded React/TypeScript frontend, a same
 
 Behavior belongs to the domain that owns it. Account subdomains include `authentication`, `session`, `invitation`, `passwordreset`, and `avatar`. Workspace subdomains include `sharing`, `image`, `template`, `transfer`, `butterfly`, `page`, and the page's `canvas`, `editor`, and `comment` packages.
 
-Only the topmost domain defines its database structure. Its `storage/` contains repository adapters, sqlc queries/generated bindings, and Goose migrations. Nested domains share that parent storage. The account, workspace, email, and installation schemas are independent: no cross-domain foreign keys or table access. References into another domain are opaque IDs.
+Only the topmost domain defines its database structure. Its `storage/` contains repository adapters, sqlc queries/generated bindings, and Goose migrations. Nested domains share that parent storage. The account, workspace, email, installation, release, and feedback schemas are independent: no cross-domain foreign keys or table access. References into another domain are opaque IDs.
 
 Domains collaborate through explicit service interfaces. For example, sharing asks the account service to resolve an active user; it does not query account tables. Account deletion coordinates content and credential cleanup through interfaces. A shared transaction handle supports atomic collaboration without granting cross-domain table access.
 
@@ -45,3 +45,11 @@ Native transfer lives in `workspace/transfer`; its storage stays in the parent d
 `WorkspacePreview` lazily renders the first saved page on each workspace card using the shared canvas export renderer. The workspace list returns `firstPageId` and its `previewRevision` from the authorized workspace query; no thumbnail tables or new migrations are needed. Page invalidations refresh that metadata. Only one thumbnail renders at a time, and generated object URLs are revoked when a card changes or unmounts.
 
 `workspace/trash` owns soft deletion recovery and expiry; `workspace/ownership` owns ownership transfer. Their SQL, migrations, and generated sqlc bindings live in `workspace/storage`. Canvas links are validated by `workspace/page/canvas` and stored in page JSON; the frontend link picker and navigation remain separate from shape rendering. Alignment is a pure editor operation shared by the selection toolbar and object inspector. Transactional welcome notifications use the email outbox without introducing an account-to-email storage dependency.
+
+## Account lifecycle, releases and feedback
+
+`account/inactivity` advances delivery-aware 90/30/7-day reminders using `account/storage`. Authentication records activity with hourly write throttling and immediately resets any pending deletion cycle. The worker rechecks role, status and activity within the deletion transaction. Administrators are exempt. Email owns successful SMTP-delivery receipts; missing receipts prevent deletion. Root composition coordinates workspace and feedback cleanup with account deletion atomically.
+
+`account/updates` owns explicit consent and hashed, purpose-limited unsubscribe capabilities. `release` owns a highest-observed-version cursor in independent storage. Upgrading queues subscriber mail and advances the cursor in one transaction; first installation establishes a baseline, while restarts, development builds and downgrades do nothing. This is a durable outbox, not exactly-once SMTP: a process crash after SMTP acceptance can cause a delivery retry. Consent is checked again before sending. No external release lookup is required.
+
+`feedback` owns reports, discussion, screenshot BLOBs and admin decisions. Opaque author IDs have no account foreign keys. Domain queries authorize author/admin access before returning report content. Screenshots are bounded, decoded and re-encoded as PNG before persistence. The frontend separates lists, composition, discussion/review and lazy-loaded screenshot capture. Only explicitly submitted screenshots grant administrators a view of otherwise private content.

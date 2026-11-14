@@ -109,3 +109,10 @@ $(CURDIR)/.cache/reel-venv/.ready: scripts/reel-requirements.txt
 	python3 -m venv .cache/reel-venv
 	.cache/reel-venv/bin/python -m pip install -r scripts/reel-requirements.txt
 	touch "$@"
+
+# Manual user-guide screenshots, using the same isolated fixture as the demo.
+.PHONY: guide-images
+guide-images: frontend-build
+	mkdir -p .cache/demo
+	go build -o .cache/demo/mindflow ./cmd/mindflow
+	node web/scripts/record-demo.mjs --guide

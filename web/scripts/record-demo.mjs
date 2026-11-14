@@ -8,6 +8,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 
+const guide = process.argv.includes("--guide");
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const output = join(root, ".cache/demo");
 const frames = mkdtempSync(join(tmpdir(), "mindflow-frames-"));
@@ -128,6 +129,10 @@ try {
     token: invitation,
     password: "another private demo passphrase",
   });
+  if (guide)
+    await page.addStyleTag({
+      content: "#demo-caption,#demo-pointer{display:none!important}",
+    });
   await page.addStyleTag({
     content: `#demo-caption{position:fixed;left:24px;bottom:65px;z-index:10000;padding:12px 18px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:var(--shadow);color:var(--text);font:500 15px Arial;pointer-events:none}#demo-pointer{position:fixed;width:12px;height:12px;border:2px solid white;background:var(--sprout);border-radius:50%;z-index:10001;pointer-events:none;transform:translate(-50%,-50%);box-shadow:0 1px 5px #0004}`,
   });
@@ -146,13 +151,14 @@ try {
   });
   const caption = async (text) => {
     console.log(text);
+    if (guide) return;
     await page
       .locator("#demo-caption")
       .evaluate((element, value) => (element.textContent = value), text);
     await delay(700);
   };
   const manifest = [];
-  recording = true;
+  recording = !guide;
   capture = (async () => {
     while (recording) {
       const file = `${String(manifest.length).padStart(5, "0")}.png`;
@@ -263,11 +269,11 @@ try {
     .getByLabel("Edit canvas text")
     .pressSequentially("Make space\nfor the next big idea.", { delay: 65 });
   await page.getByLabel("Edit canvas text").press("Control+Enter");
-  // Forest keeps the heading readable on the pale card in the dark-mode demo.
+  // Gold keeps the heading readable on the Forest card.
   await page
     .getByRole("button", { name: "Selection properties", exact: true })
     .click();
-  await page.getByLabel("Element color", { exact: true }).fill("#1b5e3b");
+  await page.getByLabel("Element color", { exact: true }).fill("#d9a441");
   await page
     .getByRole("button", { name: "Close settings", exact: true })
     .click();
@@ -287,6 +293,8 @@ try {
   await page.getByRole("button", { name: "Select (V)", exact: true }).click();
   await expect(page.getByTestId("element-count")).toHaveText("5 elements");
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  if (guide)
+    await page.screenshot({ path: join(root, "docs/media/guide-canvas.png") });
   await caption("4. Share your workspace with someone you trust");
   await page
     .getByRole("button", { name: "Workspace sharing", exact: true })
@@ -298,6 +306,8 @@ try {
     .selectOption("comment");
   await page.getByRole("button", { name: "Add user", exact: true }).click();
   await expect(page.getByLabel("Access for sam")).toHaveValue("comment");
+  if (guide)
+    await page.screenshot({ path: join(root, "docs/media/guide-sharing.png") });
   await delay(1200);
   await page.getByRole("button", { name: "Close dialog", exact: true }).click();
   await caption("5. Start a conversation right on the canvas");
@@ -320,6 +330,23 @@ try {
     }),
   ).toBeVisible();
   await delay(1600);
+  if (guide) {
+    await page.screenshot({
+      path: join(root, "docs/media/guide-comments.png"),
+    });
+    await page
+      .getByRole("button", { name: "Back to workspaces", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: "Open A little room for ideas",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: join(root, "docs/media/guide-workspaces.png"),
+    });
+  }
   await caption("mindflow — a little space for your thoughts");
   await delay(1800);
   recording = false;
@@ -335,17 +362,19 @@ try {
   const manifestPath = join(frames, "frames.json");
   writeFileSync(manifestPath, JSON.stringify(entries));
   await context.close();
-  const result = spawnSync(
-    join(root, ".cache/demo-venv/bin/python"),
-    [
-      join(root, "scripts/demo-gif.py"),
-      manifestPath,
-      join(root, "docs/media/workflow.gif"),
-    ],
-    { stdio: "inherit" },
-  );
-  if (result.status !== 0) throw new Error("GIF encoding failed");
-  console.log("Raw Playwright video: .cache/demo/video/");
+  if (!guide) {
+    const result = spawnSync(
+      join(root, ".cache/demo-venv/bin/python"),
+      [
+        join(root, "scripts/demo-gif.py"),
+        manifestPath,
+        join(root, "docs/media/workflow.gif"),
+      ],
+      { stdio: "inherit" },
+    );
+    if (result.status !== 0) throw new Error("GIF encoding failed");
+    console.log("Raw Playwright video: .cache/demo/video/");
+  }
 } finally {
   process.removeListener("SIGINT", interrupt);
   process.removeListener("SIGTERM", interrupt);

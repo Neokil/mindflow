@@ -2,9 +2,20 @@
 
 Sign in to see your own and shared workspaces. Create a workspace, open it, and use the page tabs to organize separate canvases. Workspaces and pages can be renamed, duplicated, or deleted; page tabs can be reordered. Workspace lifecycle and sharing management belong to the owner. Deleted workspaces and pages remain recoverable for 30 days.
 
+## A first workspace in a minute
+
+1. Choose **New workspace**, give it a name, and open it.
+2. Upload or paste an image. Drag to choose its position and size.
+3. Open **Shapes** to add a rectangle, circle, or star; use **Text**, **Pen**, or **Highlighter** to build on it.
+4. Your work saves automatically. Add pages with **+** and return to **Workspaces** whenever you like.
+
+![A workspace with an image, heading, shapes, and freehand ink](../media/guide-canvas.png)
+
 ## Workspace previews
 
 Workspace cards show a small preview of the first page in tab order, fitted to its saved content. Multipage workspaces show stacked sheets and a page-count badge. Saving changes to the first page, changing page order, or deleting the first page refreshes the preview. Blank pages and workspaces with no pages have explicit labels. Previews follow the canvas background and your light/dark appearance, and load as cards come into view. Viewing a preview does not acquire editor control.
+
+![Workspace overview with a preview of its first page](../media/guide-workspaces.png)
 
 ## Passwords
 
@@ -181,3 +192,31 @@ Select two or more objects, then choose **Align selection** in the bottom select
 Select an element and choose **Link selection** in the selection bar, or **Add element link** in object properties. Choose a target page in the same workspace, then click an element in its preview or select it in the target list. **Save link** applies the target to the selection. Clicking a linked element with Select active moves the viewport to its target, including on another page. Shift-click selects the source for editing; right-click or Pencil double-tap still opens its properties. Object properties also offer **Go to linked element**, **Change element link**, and **Remove element link**. Following links works for readers and never steals an occupied editor session.
 
 Links grant no additional access. A deleted target shows an unavailable message; restoring it makes the link usable again. Page/workspace duplication and native import/export retarget links to the corresponding copies. Native exports drop links to targets outside the selected pages. Clipboard copies across workspaces keep only links among the copied elements. Copies made for disconnected recovery drop links to the source workspace.
+
+## Share an idea and discuss it
+
+Open **Private / Shared** in the workspace heading. Search registered users by display name, choose **Read-only**, **Comment**, or **Full access**, and add them. Workspace links open the same page for people who already have access; copying a URL does not make it public.
+
+![Sharing a workspace with a collaborator](../media/guide-sharing.png)
+
+Choose **Add comment**, click a point on the canvas, and post your message. Hover or tap an avatar pin to read its discussion and reply. Comments remain available without taking editor control.
+
+![A comment attached to a point on the canvas](../media/guide-comments.png)
+
+## Product-update emails
+
+The signup screen and **Your profile → Product updates** offer an optional checkbox for new-version emails. It starts **off**. On a server upgrade, subscribers receive a message linking to that release's patchnotes. Every message has a one-click **Unsubscribe from product updates** button; signing in is not required. You can subscribe again in your profile. Password, invitation, and account-lifecycle messages are independent of this preference.
+
+The small version below the mindflow title links to the release notes. Development builds show **unreleased**. A banner asks you to reload when the server build changes.
+
+## Feedback and bug reports
+
+Choose **Feedback & Bugreport** in the app header, then **New report**. Select **Report a bug** or **Request a feature**, enter a title and details, and send it. Reports are private between their author and this instance's administrators; they are not automatically posted to GitHub.
+
+For a visible issue, choose **Capture current view** or upload a PNG up to 5 MB. Review the preview and remove it if it includes information you do not want to share. Automatic capture excludes dialogs and shows an approximation of the visible app; use a device screenshot if it misses the problem. Screenshots are attached only when you send the report.
+
+Return to your report list to read replies, add comments, and see its status. A closed bug links to the release that fixes it. Administrators use **Administration → Feedback & bugs** to accept, deny, reopen, or discuss reports, and close bugs with a release version such as `v1.2.0`.
+
+## Keep your account active
+
+Using mindflow while signed in counts as activity. Non-administrator accounts inactive for more than **90 days** receive a request to sign in within **30 days**. A final reminder gives at least **7 days** before permanent deletion. Both reminders must be successfully sent; delayed email delivery extends the grace period. Sign in or use the app to cancel the pending deletion. Administrators are exempt. Permanently deleting an account also deletes its owned workspaces, including content in Trash.
