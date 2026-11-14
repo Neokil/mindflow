@@ -32,17 +32,20 @@ function samplePath(points: Point[], count: number) {
     };
   });
 }
-function bounds(points: Point[], angle: number) {
+function bounds(points: Point[], angle: number, robust = false) {
   const cos = Math.cos(angle),
     sin = Math.sin(angle),
     local = points.map((p) => ({
       x: p.x * cos + p.y * sin,
       y: -p.x * sin + p.y * cos,
     }));
-  const minX = Math.min(...local.map((p) => p.x)),
-    maxX = Math.max(...local.map((p) => p.x)),
-    minY = Math.min(...local.map((p) => p.y)),
-    maxY = Math.max(...local.map((p) => p.y));
+  const xs = local.map((p) => p.x).sort((a, b) => a - b),
+    ys = local.map((p) => p.y).sort((a, b) => a - b);
+  const trim = robust ? Math.floor(points.length * 0.025) : 0;
+  const minX = xs[trim],
+    maxX = xs[xs.length - 1 - trim],
+    minY = ys[trim],
+    maxY = ys[ys.length - 1 - trim];
   const cx = (minX + maxX) / 2,
     cy = (minY + maxY) / 2,
     width = maxX - minX,
@@ -73,7 +76,7 @@ export function recognizeShape(
   if (
     Math.min(axis.width, axis.height) * zoom < 18 ||
     diagonal * zoom < 30 ||
-    distance(points[0], points.at(-1)!) > Math.max(8 / zoom, diagonal * 0.18)
+    distance(points[0], points.at(-1)!) > Math.max(8 / zoom, diagonal * 0.34)
   )
     return;
   const sampled = samplePath([...points, points[0]], 65),
@@ -84,44 +87,53 @@ export function recognizeShape(
     area += sampled[i - 1].x * sampled[i].y - sampled[i].x * sampled[i - 1].y;
     length += distance(sampled[i - 1], sampled[i]);
   }
-  if (Math.abs(area) / 2 < axis.width * axis.height * 0.45) return;
+  if (Math.abs(area) / 2 < axis.width * axis.height * 0.32) return;
   const direction = area >= 0 ? 1 : -1,
     fractions = Array.from({ length: 129 }, (_, i) => i / 128);
-  const circle = bounds(outline, 0),
-    radial = circle.local.map((p) => Math.abs(Math.hypot(p.x, p.y) - 1));
-  const circleError = radial.reduce((a, b) => a + b, 0) / outline.length;
-  const radiusA = circle.width / 2,
-    radiusB = circle.height / 2,
-    perimeter =
-      Math.PI *
-      (3 * (radiusA + radiusB) -
-        Math.sqrt((3 * radiusA + radiusB) * (radiusA + 3 * radiusB)));
-  if (
-    circleError < 0.085 &&
-    Math.max(...radial) < 0.25 &&
-    length / perimeter < 1.35
-  ) {
-    const start = circle.local[0],
-      angle = Math.atan2(start.y, start.x);
+  // Remove small hand oscillations before scoring geometry. Arc-length sampling
+  // makes slow corners and fast sides contribute equally.
+  const smooth = outline.map((point, i) => {
+    const previous = outline[(i + outline.length - 1) % outline.length],
+      next = outline[(i + 1) % outline.length];
     return {
-      kind: "circle",
-      center: circle.center,
-      fractions,
-      pointAt: (f) =>
-        circle.world(
-          Math.cos(angle + direction * tau * f) * radiusA,
-          Math.sin(angle + direction * tau * f) * radiusB,
-        ),
+      x: (previous.x + 2 * point.x + next.x) / 4,
+      y: (previous.y + 2 * point.y + next.y) / 4,
     };
+  });
+  let ellipse: { fit: ReturnType<typeof bounds>; error: number } | undefined;
+  for (let step = 0; step < 18; step++) {
+    const fit = bounds(smooth, (step * Math.PI) / 36, true);
+    const errors = fit.local
+      .map((p) => Math.abs(Math.hypot(p.x, p.y) - 1))
+      .sort((a, b) => a - b);
+    const error =
+      errors
+        .slice(0, Math.ceil(errors.length * 0.94))
+        .reduce((a, b) => a + b, 0) / Math.ceil(errors.length * 0.94);
+    const a = fit.width / 2,
+      b = fit.height / 2,
+      perimeter =
+        Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
+    const coverage = new Set(
+      fit.local.map((p) => Math.floor(wrap(Math.atan2(p.y, p.x) / tau) * 12)),
+    ).size;
+    if (
+      error < 0.145 &&
+      errors[Math.floor(errors.length * 0.9)] < 0.32 &&
+      length / perimeter < 1.65 &&
+      coverage >= 10 &&
+      (!ellipse || error < ellipse.error)
+    )
+      ellipse = { fit, error };
   }
   let best: { fit: ReturnType<typeof bounds>; error: number } | undefined;
   for (let step = 0; step < 36; step++) {
-    const fit = bounds(outline, (step * Math.PI) / 72);
-    const errors = fit.local.map(
-        (p) => 1 - Math.max(Math.abs(p.x), Math.abs(p.y)),
+    const fit = bounds(smooth, (step * Math.PI) / 72, true);
+    const errors = fit.local.map((p) =>
+        Math.abs(1 - Math.max(Math.abs(p.x), Math.abs(p.y))),
       ),
       error = errors.reduce((a, b) => a + b, 0) / outline.length;
-    if (error > 0.075 || length / (2 * (fit.width + fit.height)) > 1.35)
+    if (error > 0.15 || length / (2 * (fit.width + fit.height)) > 1.65)
       continue;
     const corners = [
       [-1, -1],
@@ -132,12 +144,36 @@ export function recognizeShape(
     if (
       corners.some(
         ([x, y]) =>
-          Math.min(...fit.local.map((p) => Math.hypot(p.x - x, p.y - y))) >
-          0.32,
+          Math.min(...fit.local.map((p) => Math.hypot(p.x - x, p.y - y))) > 0.6,
       )
     )
       continue;
-    if (!best || error < best.error) best = { fit, error };
+    const straightEdges =
+      fit.local.reduce((sum, p, i) => {
+        const next = fit.local[(i + 1) % fit.local.length],
+          dx = Math.abs(next.x - p.x),
+          dy = Math.abs(next.y - p.y);
+        return (
+          sum + (Math.min(dx, dy) / (Math.hypot(dx, dy) || 1) < 0.3 ? 1 : 0)
+        );
+      }, 0) / fit.local.length;
+    const score = error - (straightEdges > 0.6 ? 0.035 : 0);
+    if (!best || score < best.error) best = { fit, error: score };
+  }
+  if (ellipse && (!best || ellipse.error + 0.012 < best.error)) {
+    const { fit } = ellipse,
+      start = fit.local[0],
+      angle = Math.atan2(start.y, start.x);
+    return {
+      kind: "circle",
+      center: fit.center,
+      fractions,
+      pointAt: (f) =>
+        fit.world(
+          (Math.cos(angle + direction * tau * f) * fit.width) / 2,
+          (Math.sin(angle + direction * tau * f) * fit.height) / 2,
+        ),
+    };
   }
   if (!best) return;
   const { fit } = best,

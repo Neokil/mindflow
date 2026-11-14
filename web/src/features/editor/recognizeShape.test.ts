@@ -117,3 +117,21 @@ it("keeps the existing line hold behavior for open strokes", () => {
   expect(ink.straight).toBe(true);
   expect(ink.samples).toHaveLength(2);
 });
+
+it("recognizes loose loops with gaps, uneven speed, wobbly sides and rounded corners", () => {
+  const oval = Array.from({ length: 91 }, (_, i) => {
+    const t = (i / 100) * Math.PI * 2;
+    const r = 1 + 0.1 * Math.sin(t * 5) + 0.05 * Math.cos(t * 9);
+    return { x: 300 + 100 * r * Math.cos(t), y: 250 + 75 * r * Math.sin(t) };
+  });
+  expect(recognizeShape(oval, 1)?.kind).toBe("circle");
+  const loose = rectangle(Math.PI / 9).map((p, i) => ({
+    x: p.x + 8 * Math.sin(i * 1.7),
+    y: p.y + 7 * Math.cos(i * 1.3),
+  }));
+  loose.splice(-5);
+  expect(recognizeShape(loose, 1)?.kind).toBe("rectangle");
+  const outlier = circle.map((p) => ({ ...p }));
+  outlier[17].x += 30;
+  expect(recognizeShape(outlier, 1)?.kind).toBe("circle");
+});
