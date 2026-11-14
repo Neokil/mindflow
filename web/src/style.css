@@ -2174,3 +2174,33 @@ body {
 .alignment-buttons button {
   font-size: 11px;
 }
+
+.workspace-card.menu-open {
+  z-index: 42;
+  transform: none;
+}
+.trash-list {
+  display: grid;
+  gap: 12px;
+}
+.trash-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.trash-item > div {
+  flex: 1;
+  min-width: 0;
+}
+.trash-item strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.trash-item small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+  font-size: 11px;
+}

@@ -103,7 +103,7 @@ func (a *Service) RenamePage(ctx context.Context, actor session.Principal, resou
 	return Completed{OK: true}, nil
 }
 
-// DeletePage deletes an owned page and its unshared assets.
+// DeletePage moves a page and its retained content to the 30-day trash.
 func (a *Service) DeletePage(ctx context.Context, actor session.Principal, resourceID string, command DeletePageCommand) (_ Completed, err error) {
 	defer func() { err = repositoryError(err) }()
 
@@ -122,11 +122,15 @@ func (a *Service) DeletePage(ctx context.Context, actor session.Principal, resou
 	if page.MetadataRevision != command.Revision {
 		return Completed{}, failure("metadata_conflict", "Page changed. Refresh and retry.")
 	}
-	_, err = a.images.DeletePageAssetsWithin(ctx, transaction, page.ID)
+	err = a.repository.Within(transaction).TrashRevokePage(ctx, page.ID)
 	if err != nil {
 		return Completed{}, err
 	}
-	_, err = a.repository.Within(transaction).PageDeletePage(ctx, page.ID)
+	err = a.repository.Within(transaction).TrashCancelPageRequests(ctx, page.ID)
+	if err != nil {
+		return Completed{}, err
+	}
+	_, err = a.repository.Within(transaction).TrashPage(ctx, storage.TrashPageParams{ID: page.ID, DeletedAt: time.Now().Unix()})
 	if err != nil {
 		return Completed{}, err
 	}

@@ -1,3 +1,4 @@
+import TrashDialog from "./TrashDialog";
 import WorkspacePreview from "./WorkspacePreview";
 import ExportDialog from "../transfer/ExportDialog";
 import ImportWorkspaceDialog from "./ImportWorkspaceDialog";
@@ -36,6 +37,7 @@ export default function Dashboard({
     action: (name: string) => Promise<void>;
   }>();
   const [exporting, setExporting] = useState<Workspace>();
+  const [trashOpen, setTrashOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [menu, setMenu] = useState<string>();
   useEffect(() => {
@@ -101,6 +103,10 @@ export default function Dashboard({
           </p>
         </div>
         <div className="workspace-actions">
+          <button className="secondary" onClick={() => setTrashOpen(true)}>
+            <Trash2 size={17} />
+            Trash
+          </button>
           <button className="secondary" onClick={() => setImporting(true)}>
             <Upload size={17} />
             Import workspace
@@ -139,7 +145,10 @@ export default function Dashboard({
           </div>
           <div className="workspace-grid">
             {items.map((w) => (
-              <article className="workspace-card" key={w.id}>
+              <article
+                className={`workspace-card${menu === w.id ? " menu-open" : ""}`}
+                key={w.id}
+              >
                 <button
                   className="workspace-preview"
                   onClick={() => open(w)}
@@ -232,7 +241,9 @@ export default function Dashboard({
                             disabled={!!w.role && w.role !== "owner"}
                             onClick={() => {
                               if (
-                                confirm(`Delete “${w.name}” and all its pages?`)
+                                confirm(
+                                  `Move “${w.name}” and all its pages to Trash? You can restore it for 30 days.`,
+                                )
                               )
                                 void mutate(() =>
                                   api(`/workspaces/${w.id}`, "DELETE", {
@@ -265,6 +276,9 @@ export default function Dashboard({
         <LockKeyhole size={12} />
         Only you can see your workspaces.
       </div>
+      {trashOpen && (
+        <TrashDialog close={() => setTrashOpen(false)} changed={load} />
+      )}
       {exporting && (
         <ExportDialog
           workspace={exporting}

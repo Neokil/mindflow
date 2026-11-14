@@ -1,3 +1,4 @@
+import TrashDialog from "./TrashDialog";
 import ExportDialog from "../transfer/ExportDialog";
 import ImportWorkspaceDialog from "./ImportWorkspaceDialog";
 import type { CanvasFullscreen } from "../../useCanvasFullscreen";
@@ -63,6 +64,7 @@ export default function WorkspaceEditor({
     }>(),
     [menu, setMenu] = useState<string>();
   const [exporting, setExporting] = useState<{ pageId?: string }>();
+  const [trashOpen, setTrashOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const canManage = !workspace.role || workspace.role === "owner";
@@ -223,7 +225,7 @@ export default function WorkspaceEditor({
     if (
       action === "delete" &&
       confirm(
-        `Delete “${page.name}”? Its canvas and any unsaved changes will be removed.`,
+        `Move “${page.name}” to Trash? Saved content can be restored for 30 days. Unsaved changes will be discarded.`,
       )
     )
       void mutate(async () => {
@@ -316,6 +318,16 @@ export default function WorkspaceEditor({
             </button>
           </div>
           <div className="workspace-transfer-actions">
+            {canWrite && (
+              <button
+                className="icon-button"
+                aria-label="Workspace trash"
+                title="Workspace trash"
+                onClick={() => setTrashOpen(true)}
+              >
+                <Trash2 size={17} />
+              </button>
+            )}
             {canWrite && (
               <button
                 className="icon-button"
@@ -570,6 +582,13 @@ export default function WorkspaceEditor({
             </button>
           )}
         </div>
+      )}
+      {trashOpen && (
+        <TrashDialog
+          workspaceId={workspaceId}
+          close={() => setTrashOpen(false)}
+          changed={load}
+        />
       )}
       {exporting && (
         <ExportDialog

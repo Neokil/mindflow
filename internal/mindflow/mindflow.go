@@ -25,6 +25,7 @@ import (
 	"mindflow/internal/workspace/sharing"
 	"mindflow/internal/workspace/template"
 	"mindflow/internal/workspace/transfer"
+	"mindflow/internal/workspace/trash"
 	"net/http"
 	"strings"
 	"sync"
@@ -45,6 +46,7 @@ type Config struct {
 
 // App serves the HTTP API and coordinates domain services.
 type App struct {
+	trash          *trash.Service
 	Log            *slog.Logger
 	limitMu        sync.Mutex
 	limits         map[string]rateWindow
@@ -107,6 +109,8 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	service.pages = page.NewService(data.Workspaces, service.canvases, service.images, publish)
 	templates := template.NewService(data.Workspaces, publish)
 	service.workspace = workspace.NewService(data.Workspaces, service.pages, service.images, templates, publish)
+	service.trash = trash.NewService(data.Workspaces, service.images, publish, config.Now)
+	service.trash.RegisterHTTP(service)
 	templates.RegisterHTTP(service)
 	avatar.NewService(data.Accounts).RegisterHTTP(service)
 	service.accounts.RegisterHTTP(service)
@@ -204,6 +208,7 @@ func (a *App) RunWorkers(ctx context.Context) {
 			_ = a.sessions.Cleanup(ctx)
 			_ = a.invitations.Cleanup(ctx)
 			_ = a.passwordResets.Cleanup(ctx)
+			_ = a.trash.Cleanup(ctx)
 			_ = a.images.Cleanup(ctx)
 			_ = a.canvases.Cleanup(ctx)
 		}

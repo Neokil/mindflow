@@ -10,10 +10,10 @@ import (
 )
 
 const templateAssetAllowed = `-- name: TemplateAssetAllowed :one
-SELECT count(*) FROM assets a JOIN workspaces w ON w.id=?1
+SELECT count(*) FROM assets a JOIN active_workspaces w ON w.id=?1
 WHERE a.id=?2 AND (
  (a.owner_id=?3 AND a.owner_id=w.owner_id) OR a.workspace_id=w.id
- OR EXISTS(SELECT 1 FROM page_assets pa JOIN pages p ON p.id=pa.page_id WHERE pa.asset_id=a.id AND p.workspace_id=w.id)
+ OR EXISTS(SELECT 1 FROM page_assets pa JOIN active_pages p ON p.id=pa.page_id WHERE pa.asset_id=a.id AND p.workspace_id=w.id)
  OR EXISTS(SELECT 1 FROM template_assets ta JOIN workspace_templates t ON t.id=ta.template_id WHERE ta.asset_id=a.id AND t.workspace_id=w.id)
 )
 `

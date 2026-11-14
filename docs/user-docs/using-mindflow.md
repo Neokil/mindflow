@@ -1,6 +1,6 @@
 # Using mindflow
 
-Sign in to see your own and shared workspaces. Create a workspace, open it, and use the page tabs to organize separate canvases. Workspaces and pages can be renamed, duplicated, or deleted; page tabs can be reordered. Workspace lifecycle and sharing management belong to the owner.
+Sign in to see your own and shared workspaces. Create a workspace, open it, and use the page tabs to organize separate canvases. Workspaces and pages can be renamed, duplicated, or deleted; page tabs can be reordered. Workspace lifecycle and sharing management belong to the owner. Deleted workspaces and pages remain recoverable for 30 days.
 
 ## Workspace previews
 
@@ -159,3 +159,9 @@ After a new server build is deployed, existing tabs show a reload banner. Reload
 ## Align selected elements
 
 Select two or more objects, then choose **Align selection** in the bottom selection bar or object properties. Align their left/right edges, top/bottom edges, horizontal centers, or vertical centers to the combined selection bounds. Rotated objects use their visible bounds; each group moves as a unit. Locked groups must be unlocked first. Alignment is one undoable edit.
+
+## Trash and recovery
+
+Deleting a workspace or page moves its saved content into **Trash** for 30 days. Open **Trash** from the workspace list, or **Workspace trash** beside the workspace save status, then choose **Restore**. Deleted pages/workspaces cannot be opened, edited, or exported while in Trash. Media used only by trashed content is also hidden from old media links. Pages restored individually are appended to the tab list.
+
+Only the owner can restore a deleted workspace. Owners and full-access members can restore deleted pages in an active workspace. Restore a deleted workspace first to see any pages that were separately deleted before it. Restoring a workspace preserves its existing membership, templates, comments, and pages, but does not revive those separately deleted pages or old editor sessions. After 30 days, the server permanently removes expired content and media that no other retained content needs. Deleting the owning user bypasses Trash and immediately removes all their owned workspaces, including trashed content.

@@ -37,7 +37,7 @@ func (q *Queries) TransferPDFPreview(ctx context.Context, assetID string) ([]byt
 }
 
 const transferPages = `-- name: TransferPages :many
-SELECT id,name,document FROM pages WHERE workspace_id=? ORDER BY position,id
+SELECT id,name,document FROM active_pages WHERE workspace_id=? ORDER BY position,id
 `
 
 type TransferPagesRow struct {
@@ -102,7 +102,7 @@ func (q *Queries) TransferTemplates(ctx context.Context, workspaceID string) ([]
 }
 
 const transferWorkspace = `-- name: TransferWorkspace :one
-SELECT name FROM workspaces WHERE id=?
+SELECT name FROM active_workspaces WHERE id=?
 `
 
 func (q *Queries) TransferWorkspace(ctx context.Context, id string) (string, error) {

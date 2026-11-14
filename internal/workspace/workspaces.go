@@ -90,7 +90,7 @@ func (a *Service) RenameWorkspace(ctx context.Context, actor session.Principal, 
 	return Completed{OK: true}, nil
 }
 
-// DeleteWorkspace deletes an owned workspace and its unshared assets.
+// DeleteWorkspace moves an owned workspace and its content to the 30-day trash.
 func (a *Service) DeleteWorkspace(ctx context.Context, actor session.Principal, resourceID string, command DeleteWorkspaceCommand) (_ Completed, err error) {
 	defer func() { err = repositoryError(err) }()
 
@@ -115,11 +115,15 @@ func (a *Service) DeleteWorkspace(ctx context.Context, actor session.Principal, 
 	if audienceErr != nil {
 		return Completed{}, audienceErr
 	}
-	_, err = a.images.DeleteWorkspaceAssetsWithin(ctx, transaction, actor.ID, resourceID)
+	err = a.repository.Within(transaction).TrashRevokeWorkspace(ctx, resourceID)
 	if err != nil {
 		return Completed{}, err
 	}
-	_, err = a.repository.Within(transaction).WorkspaceDeleteWorkspace(ctx, storage.WorkspaceDeleteWorkspaceParams{ID: resourceID, OwnerID: actor.ID})
+	err = a.repository.Within(transaction).TrashCancelWorkspaceRequests(ctx, resourceID)
+	if err != nil {
+		return Completed{}, err
+	}
+	_, err = a.repository.Within(transaction).TrashWorkspace(ctx, storage.TrashWorkspaceParams{ID: resourceID, OwnerID: actor.ID, DeletedAt: time.Now().Unix()})
 	if err != nil {
 		return Completed{}, err
 	}

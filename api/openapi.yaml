@@ -1516,7 +1516,7 @@
         }
       },
       "delete": {
-        "summary": "DELETE /workspaces/{id}",
+        "summary": "Move workspace to Trash for 30 days",
         "operationId": "delete_workspaces_id",
         "security": [
           {
@@ -1988,7 +1988,7 @@
         }
       },
       "delete": {
-        "summary": "DELETE /pages/{id}",
+        "summary": "Move page to Trash for 30 days",
         "operationId": "delete_pages_id",
         "security": [
           {
@@ -4243,6 +4243,159 @@
           }
         }
       }
+    },
+    "/trash": {
+      "get": {
+        "summary": "List recoverable owned workspaces and editable-workspace pages",
+        "operationId": "list_trash",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Items retained for 30 days",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrashItem"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sign-in required"
+          }
+        }
+      }
+    },
+    "/trash/workspaces/{id}/restore": {
+      "post": {
+        "summary": "Restore a deleted workspace (owner only)",
+        "operationId": "restore_workspace",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Membership updated"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/trash/pages/{id}/restore": {
+      "post": {
+        "summary": "Restore a deleted page (owner/full access)",
+        "operationId": "restore_page",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Membership updated"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -4931,6 +5084,45 @@
                 }
               }
             }
+          }
+        }
+      },
+      "TrashItem": {
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "name",
+          "workspaceId",
+          "workspaceName",
+          "deletedAt",
+          "purgeAt"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "workspace",
+              "page"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "workspaceName": {
+            "type": "string"
+          },
+          "deletedAt": {
+            "type": "integer"
+          },
+          "purgeAt": {
+            "type": "integer"
           }
         }
       }

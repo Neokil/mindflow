@@ -54,6 +54,22 @@ sql:
             go_type: int64
           - column: pages.updated_at
             go_type: int64
+          - column: workspaces.deleted_at
+            go_type: int64
+          - column: pages.deleted_at
+            go_type: int64
+          - column: active_workspaces.updated_at
+            go_type: int64
+          - column: active_workspaces.created_at
+            go_type: int64
+          - column: active_workspaces.deleted_at
+            go_type: int64
+          - column: active_pages.updated_at
+            go_type: int64
+          - column: active_pages.deleted_at
+            go_type: int64
+          - column: active_assets.created_at
+            go_type: int64
           - column: workspaces.updated_at
             go_type: int64
           - column: workspaces.created_at

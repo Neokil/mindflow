@@ -10,6 +10,11 @@ export async function login(page: Page) {
   await page.goto("/");
   if (page.context().browser()?.browserType().name() === "firefox")
     await page.bringToFront();
+  await expect(
+    page
+      .getByLabel("Setup credential")
+      .or(page.getByRole("button", { name: "Sign in", exact: true })),
+  ).toBeVisible();
   if (await page.getByLabel("Setup credential").isVisible()) {
     await page
       .getByLabel("Setup credential")
