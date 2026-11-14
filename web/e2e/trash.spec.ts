@@ -20,7 +20,13 @@ test("deleted pages and workspaces can be restored from trash", async ({
   await expect(page.getByRole("tab")).toHaveCount(0);
   await activate(
     page,
-    page.getByRole("button", { name: "Workspace trash", exact: true }),
+    page
+      .getByRole("button", { name: "Back to workspaces", exact: true })
+      .first(),
+  );
+  await activate(
+    page,
+    page.getByRole("button", { name: "Trash", exact: true }),
   );
   await expect(page.getByRole("dialog")).toContainText("Untitled");
   await activate(
@@ -31,12 +37,21 @@ test("deleted pages and workspaces can be restored from trash", async ({
     page,
     page.getByRole("button", { name: "Close dialog", exact: true }),
   );
+  await activate(
+    page,
+    page.getByRole("button", {
+      name: `Open Restore ${info.project.name}`,
+      exact: true,
+    }),
+  );
   await expect(
     page.getByRole("tab", { name: "Untitled", exact: true }),
   ).toBeVisible();
   await activate(
     page,
-    page.getByRole("button", { name: "Back to workspaces", exact: true }),
+    page
+      .getByRole("button", { name: "Back to workspaces", exact: true })
+      .first(),
   );
   const card = page
     .locator(".workspace-card")

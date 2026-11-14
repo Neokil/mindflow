@@ -1,4 +1,3 @@
-import TrashDialog from "./TrashDialog";
 import ExportDialog from "../transfer/ExportDialog";
 import ImportWorkspaceDialog from "./ImportWorkspaceDialog";
 import type { CanvasFullscreen } from "../../useCanvasFullscreen";
@@ -66,7 +65,6 @@ export default function WorkspaceEditor({
   const [exporting, setExporting] = useState<{ pageId?: string }>();
   const [focusTarget, setFocusTarget] = useState<ElementLink>();
   const focusHandled = useCallback(() => setFocusTarget(undefined), []);
-  const [trashOpen, setTrashOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const canManage = !workspace.role || workspace.role === "owner";
@@ -320,16 +318,6 @@ export default function WorkspaceEditor({
             </button>
           </div>
           <div className="workspace-transfer-actions">
-            {canWrite && (
-              <button
-                className="icon-button"
-                aria-label="Workspace trash"
-                title="Workspace trash"
-                onClick={() => setTrashOpen(true)}
-              >
-                <Trash2 size={17} />
-              </button>
-            )}
             {canWrite && (
               <button
                 className="icon-button"
@@ -596,13 +584,6 @@ export default function WorkspaceEditor({
             </button>
           )}
         </div>
-      )}
-      {trashOpen && (
-        <TrashDialog
-          workspaceId={workspaceId}
-          close={() => setTrashOpen(false)}
-          changed={load}
-        />
       )}
       {exporting && (
         <ExportDialog

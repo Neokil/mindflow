@@ -162,7 +162,7 @@ After setting up your account, you receive a personalized welcome email with but
 
 ## Trash and recovery
 
-Deleting a workspace or page moves its saved content into **Trash** for 30 days. Open **Trash** from the workspace list, or **Workspace trash** beside the workspace save status, then choose **Restore**. Deleted pages/workspaces cannot be opened, edited, or exported while in Trash. Media used only by trashed content is also hidden from old media links. Pages restored individually are appended to the tab list.
+Deleting a workspace or page moves its saved content into **Trash** for 30 days. Open **Trash** from the workspace list, then choose **Restore**. Deleted pages/workspaces cannot be opened, edited, or exported while in Trash. Media used only by trashed content is also hidden from old media links. Pages restored individually are appended to the tab list.
 
 Only the owner can restore a deleted workspace. Owners and full-access members can restore deleted pages in an active workspace. Restore a deleted workspace first to see any pages that were separately deleted before it. Restoring a workspace preserves its existing membership, templates, comments, and pages, but does not revive those separately deleted pages or old editor sessions. After 30 days, the server permanently removes expired content and media that no other retained content needs. Deleting the owning user bypasses Trash and immediately removes all their owned workspaces, including trashed content.
 
