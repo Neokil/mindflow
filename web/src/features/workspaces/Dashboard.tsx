@@ -153,6 +153,7 @@ export default function Dashboard({
                   className="workspace-preview"
                   onClick={() => open(w)}
                   aria-label={`Open ${w.name}`}
+                  data-tooltip={`Open ${w.name}`}
                 >
                   <WorkspacePreview
                     key={`${w.firstPageId}:${w.previewRevision}:${previewBackground}`}
@@ -181,6 +182,7 @@ export default function Dashboard({
                       className="icon-button"
                       aria-label={`Options for ${w.name}`}
                       onClick={() => setMenu(menu === w.id ? undefined : w.id)}
+                      data-tooltip={`Options for ${w.name}`}
                     >
                       <MoreHorizontal size={19} />
                     </button>

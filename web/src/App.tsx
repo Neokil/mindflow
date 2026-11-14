@@ -191,7 +191,7 @@ export default function App() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="mindflow on GitHub"
-              title="View on GitHub"
+              data-tooltip="View on GitHub"
             >
               <Github size={18} />
             </a>
@@ -201,6 +201,7 @@ export default function App() {
               className="account-profile"
               aria-label="Your profile"
               onClick={() => setProfile(true)}
+              data-tooltip="Your profile"
             >
               <Avatar
                 id={user.id}
@@ -214,7 +215,7 @@ export default function App() {
             </button>
             <button
               className="icon-button"
-              title={`Appearance: ${user.appearance}`}
+              data-tooltip={`Appearance: ${user.appearance}`}
               aria-label="Change appearance"
               onClick={appearance}
             >
@@ -225,6 +226,7 @@ export default function App() {
                 className="icon-button"
                 aria-label="Administration"
                 onClick={() => setAdmin(true)}
+                data-tooltip="Administration"
               >
                 <Settings size={18} />
               </button>
@@ -254,6 +256,7 @@ export default function App() {
                   setError((e as Error).message);
                 }
               }}
+              data-tooltip="Sign out"
             >
               <LogOut size={18} />
             </button>

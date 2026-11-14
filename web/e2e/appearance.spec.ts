@@ -33,7 +33,10 @@ test("system appearance follows live changes and GitHub aligns with the brand", 
     path: `../.cache/e2e/branding-${info.project.name}-dark.png`,
   });
   const appearance = page.getByRole("button", { name: "Change appearance" });
-  await expect(appearance).toHaveAttribute("title", "Appearance: system");
+  await expect(appearance).toHaveAttribute(
+    "data-tooltip",
+    "Appearance: system",
+  );
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -58,14 +61,23 @@ test("system appearance follows live changes and GitHub aligns with the brand", 
   // Explicit choices remain available; returning to System resumes automatic changes.
   try {
     await appearance.click();
-    await expect(appearance).toHaveAttribute("title", "Appearance: light");
+    await expect(appearance).toHaveAttribute(
+      "data-tooltip",
+      "Appearance: light",
+    );
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await appearance.click();
-    await expect(appearance).toHaveAttribute("title", "Appearance: dark");
+    await expect(appearance).toHaveAttribute(
+      "data-tooltip",
+      "Appearance: dark",
+    );
     await page.emulateMedia({ colorScheme: "light" });
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await appearance.click();
-    await expect(appearance).toHaveAttribute("title", "Appearance: system");
+    await expect(appearance).toHaveAttribute(
+      "data-tooltip",
+      "Appearance: system",
+    );
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");

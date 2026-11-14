@@ -282,6 +282,7 @@ export default function WorkspaceEditor({
               className="icon-button"
               aria-label="Back to workspaces"
               onClick={leave}
+              data-tooltip="Back to workspaces"
             >
               <ArrowLeft size={18} />
             </button>
@@ -289,7 +290,7 @@ export default function WorkspaceEditor({
             <span className="breadcrumb-slash">/</span>
             <button
               className="workspace-name"
-              title={canManage ? "Rename workspace" : "Workspace name"}
+              data-tooltip={canManage ? "Rename workspace" : "Workspace name"}
               disabled={!canManage}
               onClick={() =>
                 setDialog({
@@ -312,6 +313,7 @@ export default function WorkspaceEditor({
               className="private-badge"
               aria-label="Workspace sharing"
               onClick={() => setSharing(true)}
+              data-tooltip="Workspace sharing"
             >
               <LockKeyhole size={10} />
               {workspace.shared ? "Shared" : "Private"}
@@ -322,7 +324,7 @@ export default function WorkspaceEditor({
               <button
                 className="icon-button"
                 aria-label="Import pages"
-                title="Import pages"
+                data-tooltip="Import pages"
                 onClick={() => setImporting(true)}
               >
                 <Download size={17} />
@@ -331,7 +333,7 @@ export default function WorkspaceEditor({
             <button
               className="icon-button"
               aria-label="Export workspace"
-              title="Export workspace"
+              data-tooltip="Export workspace"
               onClick={() => setExporting({})}
             >
               <Upload size={17} />
@@ -393,6 +395,7 @@ export default function WorkspaceEditor({
                   className="tab-menu icon-button"
                   aria-label={`Page options for ${p.name}`}
                   onClick={() => setMenu(menu === p.id ? undefined : p.id)}
+                  data-tooltip={`Page options for ${p.name}`}
                 >
                   <MoreHorizontal size={14} />
                 </button>
@@ -446,6 +449,7 @@ export default function WorkspaceEditor({
             aria-label="Add page"
             disabled={!canWrite}
             onClick={newPage}
+            data-tooltip="Add page"
           >
             <Plus size={17} />
           </button>
@@ -457,7 +461,7 @@ export default function WorkspaceEditor({
               ? "Show app header and pages"
               : "Hide app header and pages"
           }
-          title={
+          data-tooltip={
             headerCollapsed
               ? "Show app header and pages"
               : "Hide app header and pages"
@@ -480,6 +484,7 @@ export default function WorkspaceEditor({
             className="icon-button"
             aria-label="Dismiss message"
             onClick={() => setError("")}
+            data-tooltip="Dismiss message"
           >
             <X size={15} />
           </button>

@@ -114,6 +114,7 @@ export default function SelectionInspector({
           className="icon-button"
           aria-label="Close settings"
           onClick={onClose}
+          data-tooltip="Close settings"
         >
           <X size={15} />
         </button>
@@ -310,6 +311,7 @@ export default function SelectionInspector({
                       aria-pressed={!!first.bold}
                       className={first.bold ? "active" : ""}
                       onClick={() => onPatch({ bold: !first.bold })}
+                      data-tooltip="Bold"
                     >
                       <b>B</b>
                     </button>
@@ -319,6 +321,7 @@ export default function SelectionInspector({
                       aria-pressed={!!first.italic}
                       className={first.italic ? "active" : ""}
                       onClick={() => onPatch({ italic: !first.italic })}
+                      data-tooltip="Italic"
                     >
                       <i>I</i>
                     </button>
@@ -401,7 +404,7 @@ export default function SelectionInspector({
             <button
               className="secondary"
               disabled={!editable}
-              title="Duplicate"
+              data-tooltip="Duplicate"
               aria-label="Duplicate selection"
               onClick={onDuplicate}
             >
@@ -410,7 +413,7 @@ export default function SelectionInspector({
             <button
               className="secondary"
               disabled={!editable || selected.length < 2}
-              title="Group"
+              data-tooltip="Group"
               aria-label="Group selection"
               onClick={onGroup}
             >
@@ -419,7 +422,7 @@ export default function SelectionInspector({
             <button
               className="secondary"
               disabled={!editable || !first?.groupId}
-              title="Ungroup"
+              data-tooltip="Ungroup"
               aria-label="Ungroup selection"
               onClick={onUngroup}
             >
@@ -428,7 +431,7 @@ export default function SelectionInspector({
             <button
               className="secondary"
               disabled={!editable}
-              title="Bring forward"
+              data-tooltip="Bring forward"
               aria-label="Bring forward"
               onClick={() => onReorder(1)}
             >
@@ -437,7 +440,7 @@ export default function SelectionInspector({
             <button
               className="secondary"
               disabled={!editable}
-              title="Send backward"
+              data-tooltip="Send backward"
               aria-label="Send backward"
               onClick={() => onReorder(-1)}
             >
@@ -446,7 +449,7 @@ export default function SelectionInspector({
             <button
               className="secondary danger"
               disabled={!editable}
-              title="Delete"
+              data-tooltip="Delete"
               aria-label="Delete selection"
               onClick={onDelete}
             >

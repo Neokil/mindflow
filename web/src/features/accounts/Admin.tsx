@@ -159,7 +159,7 @@ export default function Admin({
                   {u.status === "invited" ? (
                     <button
                       className="icon-button"
-                      title="Resend invitation"
+                      data-tooltip="Resend invitation"
                       aria-label={`Resend invitation to ${u.email}`}
                       disabled={busy}
                       onClick={() =>
@@ -189,7 +189,7 @@ export default function Admin({
                       </button>
                       <button
                         className="icon-button"
-                        title="Send password reset"
+                        data-tooltip="Send password reset"
                         aria-label={`Send password reset to ${u.email}`}
                         disabled={busy || u.status !== "active"}
                         onClick={() =>
@@ -219,6 +219,7 @@ export default function Admin({
                           }),
                         );
                     }}
+                    data-tooltip={`Delete ${u.email}`}
                   >
                     <Trash2 size={17} />
                   </button>

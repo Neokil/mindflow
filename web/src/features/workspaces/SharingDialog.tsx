@@ -191,6 +191,7 @@ export default function SharingDialog({
                         ),
                       )
                     }
+                    data-tooltip={`Remove ${member.displayName}`}
                   >
                     Remove
                   </button>

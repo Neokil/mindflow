@@ -28,7 +28,7 @@ export default function PageControlStatus({
               session.control?.status === "pending"
             }
             hidden={!session.canWrite}
-            title={
+            data-tooltip={
               session.recovery
                 ? "Save or discard the local recovery copy before taking control."
                 : undefined

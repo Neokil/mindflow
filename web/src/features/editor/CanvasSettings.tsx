@@ -22,6 +22,7 @@ export default function CanvasSettings({
           className="icon-button"
           aria-label="Close settings"
           onClick={onClose}
+          data-tooltip="Close settings"
         >
           <X size={15} />
         </button>

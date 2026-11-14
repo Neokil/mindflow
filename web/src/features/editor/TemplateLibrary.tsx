@@ -172,6 +172,7 @@ export default function TemplateLibrary({
                   aria-label={`Insert ${item.name}`}
                   disabled={busy || !session.editable}
                   onClick={() => void place(item)}
+                  data-tooltip={`Insert ${item.name}`}
                 >
                   Insert
                 </button>
@@ -181,6 +182,7 @@ export default function TemplateLibrary({
                     aria-label={`Delete template ${item.name}`}
                     disabled={busy}
                     onClick={() => void remove(item)}
+                    data-tooltip={`Delete template ${item.name}`}
                   >
                     <Trash2 size={16} />
                   </button>

@@ -107,7 +107,7 @@ export default function CanvasTextEditor({
             className={`icon-button ${element.listStyle === style ? "active" : ""}`}
             aria-label={label}
             aria-pressed={element.listStyle === style}
-            title={label}
+            data-tooltip={label}
             disabled={!!style && value.split("\n").length > 1000}
             onPointerDown={(event) => event.preventDefault()}
             onClick={() => onListStyle(style)}
@@ -123,6 +123,7 @@ export default function CanvasTextEditor({
             onFinish();
           }}
           onClick={() => onFinish()}
+          data-tooltip="Done editing text"
         >
           Done
         </button>

@@ -149,6 +149,7 @@ export default function CommentsLayer({
                     className="icon-button"
                     aria-label="Close comment"
                     onClick={() => setOpen(undefined)}
+                    data-tooltip="Close comment"
                   >
                     <X size={14} />
                   </button>
@@ -207,6 +208,7 @@ export default function CommentsLayer({
                             api(`/comments/${thread.id}`, "DELETE", {}),
                           );
                       }}
+                      data-tooltip="Delete comment thread"
                     >
                       <Trash2 size={14} />
                       Delete
@@ -235,6 +237,7 @@ export default function CommentsLayer({
                 className="icon-button"
                 aria-label="Cancel comment"
                 onClick={closeDraft}
+                data-tooltip="Cancel comment"
               >
                 <X size={14} />
               </button>

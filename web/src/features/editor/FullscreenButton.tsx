@@ -54,7 +54,7 @@ export default function FullscreenButton({
       <button
         className="fullscreen-toggle icon-button"
         aria-label={label}
-        title={disabled ? undefined : label}
+        data-tooltip={disabled ? undefined : label}
         aria-pressed={fullscreen.active}
         aria-describedby={showingHint ? hint : undefined}
         disabled={disabled}

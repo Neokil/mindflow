@@ -67,7 +67,7 @@ export default function EditorToolbar({
             )}
             <button
               className={`tool ${tool === id && !placing ? "active" : ""}`}
-              title={label}
+              data-tooltip={label}
               aria-label={label}
               aria-pressed={tool === id}
               disabled={
@@ -83,7 +83,7 @@ export default function EditorToolbar({
         ))}
         <button
           className="tool"
-          title="Workspace templates"
+          data-tooltip="Workspace templates"
           aria-label="Workspace templates"
           onClick={onTemplates}
         >
@@ -92,7 +92,7 @@ export default function EditorToolbar({
         <span className="toolbar-divider" />
         <button
           className="tool"
-          title="Add images"
+          data-tooltip="Add images"
           aria-label="Add images"
           disabled={!editable}
           onClick={onImages}
@@ -102,7 +102,7 @@ export default function EditorToolbar({
         <button
           className="tool"
           aria-label="Import PDF"
-          title="Import PDF"
+          data-tooltip="Import PDF"
           disabled={!editable}
           onClick={onPDF}
         >
@@ -111,7 +111,7 @@ export default function EditorToolbar({
         <span className="toolbar-divider" />
         <button
           className="tool"
-          title="Undo"
+          data-tooltip="Undo"
           aria-label="Undo"
           disabled={!editable || !canUndo}
           onClick={onUndo}
@@ -120,7 +120,7 @@ export default function EditorToolbar({
         </button>
         <button
           className="tool"
-          title="Redo"
+          data-tooltip="Redo"
           aria-label="Redo"
           disabled={!editable || !canRedo}
           onClick={onRedo}

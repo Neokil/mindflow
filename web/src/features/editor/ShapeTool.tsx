@@ -62,7 +62,7 @@ export default function ShapeTool({
         ref={trigger}
         className={`tool ${active && !placing ? "active" : ""}`}
         aria-label="Shapes"
-        title="Shapes: rectangle, circle, or star"
+        data-tooltip="Shapes: rectangle, circle, or star"
         aria-pressed={!!active && !placing}
         aria-haspopup="menu"
         aria-expanded={open}

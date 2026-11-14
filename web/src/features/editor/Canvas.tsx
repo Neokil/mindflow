@@ -942,7 +942,7 @@ export default function Canvas({
         <FullscreenButton fullscreen={fullscreen} />
         <button
           className={`inspector-toggle icon-button ${canvasSettingsOpen ? "active" : ""}`}
-          title="Canvas settings"
+          data-tooltip="Canvas settings"
           aria-label="Canvas settings"
           onClick={() => setCanvasSettingsOpen(!canvasSettingsOpen)}
         >
@@ -1032,7 +1032,7 @@ export default function Canvas({
           <button
             className="icon-button"
             aria-label="Link selection"
-            title="Link to an element"
+            data-tooltip="Link to an element"
             disabled={!session.editable || selectionLocked}
             onClick={() => setLinkOpen(true)}
           >
@@ -1051,6 +1051,7 @@ export default function Canvas({
               const box = event.currentTarget.getBoundingClientRect();
               setObjectSettingsAnchor({ x: box.left, y: box.top });
             }}
+            data-tooltip="Selection properties"
           >
             <SlidersHorizontal size={16} />
           </button>
@@ -1059,13 +1060,14 @@ export default function Canvas({
             aria-label="Duplicate selection"
             disabled={!session.editable}
             onClick={duplicate}
+            data-tooltip="Duplicate selection"
           >
             <Copy size={16} />
           </button>
           <button
             className="icon-button"
             aria-label="Save as template"
-            title="Save as template"
+            data-tooltip="Save as template"
             disabled={!session.canWrite || selected.length > 500}
             onClick={() => setTemplatesOpen("save")}
           >
@@ -1075,7 +1077,7 @@ export default function Canvas({
             <button
               className="icon-button"
               aria-label={selectionLocked ? "Unlock groups" : "Lock groups"}
-              title={selectionLocked ? "Unlock groups" : "Lock groups"}
+              data-tooltip={selectionLocked ? "Unlock groups" : "Lock groups"}
               disabled={!session.editable}
               onClick={toggleLock}
             >
@@ -1091,6 +1093,7 @@ export default function Canvas({
             aria-label="Delete selection"
             disabled={!session.editable || selectionLocked}
             onClick={remove}
+            data-tooltip="Delete selection"
           >
             <Trash2 size={16} />
           </button>
@@ -1139,6 +1142,7 @@ export default function Canvas({
             className="icon-button"
             aria-label="Dismiss error"
             onClick={() => setError("")}
+            data-tooltip="Dismiss error"
           >
             <X size={15} />
           </button>

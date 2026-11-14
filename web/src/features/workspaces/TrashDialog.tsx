@@ -89,6 +89,7 @@ export default function TrashDialog({
                 disabled={!!busy}
                 aria-label={`Restore ${item.name}`}
                 onClick={() => void restore(item)}
+                data-tooltip={`Restore ${item.name}`}
               >
                 {busy === item.id ? <Spinner /> : <RotateCcw size={14} />}
                 Restore

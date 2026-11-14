@@ -45,7 +45,7 @@ export default function AlignmentMenu({
       <button
         className="icon-button"
         aria-label="Align selection"
-        title="Align selection"
+        data-tooltip="Align selection"
         aria-expanded={open}
         disabled={disabled}
         onClick={() => setOpen(!open)}
