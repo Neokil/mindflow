@@ -4431,6 +4431,17 @@
               "maximum": 999
             },
             "description": "Zero-based checked line indices, only for checklist text."
+          },
+          "pressures": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 20000,
+            "items": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "description": "Optional pen-pressure sample per coordinate pair in points. Only non-highlight strokes support pressure. Absent for legacy strokes and mouse/finger input; pressure changes width between 20% and 100% of penWidth."
           }
         },
         "additionalProperties": false

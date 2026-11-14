@@ -7,6 +7,7 @@ const (
 	elementImage       = "image"
 	elementPDF         = "pdf"
 	elementText        = "text"
+	elementStroke      = "stroke"
 
 	maxElements         = 10000
 	maxIdentifierLength = 128

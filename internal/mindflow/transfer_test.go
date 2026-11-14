@@ -8,6 +8,7 @@ import (
 	"mindflow/internal/workspace/template"
 	"mindflow/internal/workspace/transfer"
 	"net/http/httptest"
+	"slices"
 	"testing"
 )
 
@@ -89,6 +90,10 @@ func TestNativeRoundTripPreservesMediaAndEditableContent(t *testing.T) {
 	source.Elements[0].Locked = true
 	source.Elements[1].GroupID = "locked-group"
 	source.Elements[1].Locked = true
+	source.Elements[2].Pressures = make([]float64, len(source.Elements[2].Points)/2)
+	for index := range source.Elements[2].Pressures {
+		source.Elements[2].Pressures[index] = float64(index) / float64(len(source.Elements[2].Pressures)-1)
+	}
 	originalAsset := source.Elements[1].AssetID
 	pdfBytes := []byte("%PDF-1.4\nretained document\n%%EOF\n")
 	pdfAsset := decoded[struct {
@@ -109,6 +114,9 @@ func TestNativeRoundTripPreservesMediaAndEditableContent(t *testing.T) {
 	}](t, other.ok("GET", "/api/v1/pages/"+result.PageID+"/document", nil)).Document
 	if imported.Elements[0].ID == source.Elements[0].ID || imported.Elements[0].GroupID == source.Elements[0].GroupID || !imported.Elements[0].Locked || imported.Elements[0].GroupID != imported.Elements[1].GroupID {
 		t.Fatal("element or group identity/locking was not preserved correctly")
+	}
+	if !slices.Equal(imported.Elements[2].Pressures, source.Elements[2].Pressures) {
+		t.Fatal("native transfer changed stroke pressure")
 	}
 	if imported.Elements[1].AssetID == originalAsset {
 		t.Fatal("media retained foreign identity")

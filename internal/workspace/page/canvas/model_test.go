@@ -129,3 +129,33 @@ func TestLists(t *testing.T) {
 const testTextKind = "text"
 
 const testShapeKind = "shape"
+
+func TestPressureStrokeValidation(t *testing.T) {
+	t.Parallel()
+	stroke := canvas.Element{ID: "pressure-ink", Type: "stroke", Width: 100, Height: 100, Points: []float64{0, 0, 1, 1}, PenWidth: 10, Color: testBlack}
+	document := canvas.NewDocument()
+	document.Elements = []canvas.Element{stroke}
+	for _, pressures := range [][]float64{nil, {0, 1}, {0.1, 0.9}} {
+		document.Elements[0].Pressures = pressures
+		if canvas.ValidateDocument(document) != nil {
+			t.Fatal("valid/legacy stroke rejected", pressures)
+		}
+	}
+	for _, pressures := range [][]float64{{0.5}, {0, 0.5, 1}, {-0.1, 1}, {0, 1.1}, {math.NaN(), 1}, {0, math.Inf(1)}} {
+		document.Elements[0].Pressures = pressures
+		if canvas.ValidateDocument(document) == nil {
+			t.Fatal("invalid pressure accepted", pressures)
+		}
+	}
+	document.Elements[0].Pressures = []float64{0, 1}
+	document.Elements[0].Highlight = true
+	if canvas.ValidateDocument(document) == nil {
+		t.Fatal("pressure on a highlighter accepted")
+	}
+	document.Elements[0].Highlight = false
+	document.Elements[0].Type = "pdf"
+	document.Elements[0].AssetID = "asset"
+	if canvas.ValidateDocument(document) == nil {
+		t.Fatal("pressure on a non-stroke accepted")
+	}
+}

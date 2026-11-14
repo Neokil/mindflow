@@ -42,6 +42,7 @@ type Element struct {
 	Color         string     `json:"color,omitempty"`
 	AssetID       string     `json:"assetId,omitempty"`
 	Points        []float64  `json:"points,omitempty"`
+	Pressures     []float64  `json:"pressures,omitempty"`
 	PenWidth      float64    `json:"penWidth,omitempty"`
 	Highlight     bool       `json:"highlight,omitempty"`
 }
@@ -135,26 +136,10 @@ func ValidateDocument(document Document) error {
 }
 
 func validateElement(entry Element) error {
-	listErr := validateList(entry)
-	if listErr != nil {
-		return listErr
+	attributesErr := validateElementAttributes(entry)
+	if attributesErr != nil {
+		return attributesErr
 	}
-
-	geometryErr := validateGeometry(entry)
-	if geometryErr != nil {
-		return geometryErr
-	}
-	if entry.VerticalAlign != "" && entry.VerticalAlign != "top" && entry.VerticalAlign != "middle" && entry.VerticalAlign != "bottom" {
-		return invalid("Invalid vertical alignment.")
-	}
-	if entry.Highlight && entry.Type != "stroke" {
-		return invalid("Only strokes can be highlights.")
-	}
-	cropErr := validateImageCrop(entry)
-	if cropErr != nil {
-		return cropErr
-	}
-
 	switch entry.Type {
 	case "shape":
 		if entry.Shape != "rectangle" && entry.Shape != "circle" && entry.Shape != "star" {
@@ -171,7 +156,7 @@ func validateElement(entry Element) error {
 		if entry.AssetID == "" || len(entry.AssetID) > maxIdentifierLength {
 			return invalid("Image asset is missing.")
 		}
-	case "stroke":
+	case elementStroke:
 		return validateStroke(entry)
 	default:
 		return invalid("Unsupported element type.")
@@ -264,6 +249,49 @@ func validateDefaultColors(settings Settings) error {
 	for _, color := range []string{settings.DefaultFill, settings.DefaultBorder, settings.DefaultTextColor} {
 		if color != "" && !ValidColor(color) {
 			return invalid("Invalid canvas element default color.")
+		}
+	}
+
+	return nil
+}
+
+func validateElementAttributes(entry Element) error {
+	listErr := validateList(entry)
+	if listErr != nil {
+		return listErr
+	}
+
+	geometryErr := validateGeometry(entry)
+	if geometryErr != nil {
+		return geometryErr
+	}
+	if entry.VerticalAlign != "" && entry.VerticalAlign != "top" && entry.VerticalAlign != "middle" && entry.VerticalAlign != "bottom" {
+		return invalid("Invalid vertical alignment.")
+	}
+	if entry.Highlight && entry.Type != elementStroke {
+		return invalid("Only strokes can be highlights.")
+	}
+	cropErr := validateImageCrop(entry)
+	if cropErr != nil {
+		return cropErr
+	}
+
+	return validatePressure(entry)
+}
+
+func validatePressure(entry Element) error {
+	if len(entry.Pressures) == 0 {
+		return nil
+	}
+	if entry.Type != elementStroke || entry.Highlight {
+		return invalid("Only pen strokes can have pressure samples.")
+	}
+	if len(entry.Pressures) > 0 && len(entry.Pressures) != len(entry.Points)/2 {
+		return invalid("Pressure samples must match the drawing points.")
+	}
+	for _, pressure := range entry.Pressures {
+		if !Finite(pressure) || pressure < 0 || pressure > 1 {
+			return invalid("Invalid pen pressure.")
 		}
 	}
 
