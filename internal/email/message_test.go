@@ -81,13 +81,13 @@ func TestLabeledWelcomeLinksAreEscapedAndDistinct(t *testing.T) {
 	const application = "https://mindflow.example/"
 	const releases = "https://github.com/Neokil/mindflow/releases"
 	const issues = "https://github.com/Neokil/mindflow/issues"
-	value, err := email.FormatMessage(email.Config{From: "mindflow@example.com", Name: "mindflow"}, "friend@example.com", "Welcome <Simon>!", "Open mindflow\t"+application+"\nView patchnotes on GitHub\t"+releases+"\nReport an error or request a feature on GitHub\t"+issues)
+	value, err := email.FormatMessage(email.Config{From: "mindflow@example.com", Name: "mindflow"}, "friend@example.com", "Welcome <Simon>!", "Learn how to use mindflow\thttps://github.com/Neokil/mindflow/wiki/user-docs-using-mindflow\nOpen mindflow\t"+application+"\nView patchnotes on GitHub\t"+releases+"\nReport an error or request a feature on GitHub\t"+issues)
 	if err != nil {
 		t.Fatal(err)
 	}
 	parts := alternativeBodies(t, value)
 	html := parts[htmlMIME]
-	for _, label := range []string{"Open mindflow", "View patchnotes on GitHub", "Report an error or request a feature on GitHub", "Welcome &lt;Simon&gt;!"} {
+	for _, label := range []string{"Learn how to use mindflow", "Open mindflow", "View patchnotes on GitHub", "Report an error or request a feature on GitHub", "Welcome &lt;Simon&gt;!"} {
 		if !strings.Contains(html, label) {
 			t.Fatal("missing escaped welcome content", label)
 		}

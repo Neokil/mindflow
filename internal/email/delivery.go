@@ -137,7 +137,7 @@ func (a *Service) runMail(ctx context.Context) {
 		err = Send(ctx, s, job.To, job.Subject, job.Body)
 	}
 	if err == nil {
-		_, _ = a.repository.EmailDeleteJob(ctx, resourceID)
+		_ = a.recordDelivery(ctx, resourceID, job)
 
 		return
 	}
@@ -160,9 +160,36 @@ var (
 )
 
 func (a *Service) canDeliver(ctx context.Context, job mailJob) (bool, error) {
+	if strings.HasPrefix(job.Purpose, "release-") {
+		return a.authorization.CanDeliverUpdate(ctx, job.UserID)
+	}
+	if strings.HasPrefix(job.Purpose, "inactivity-") {
+		return a.authorization.CanDeliverInactivity(ctx, job.UserID, job.Purpose)
+	}
 	if job.Purpose == "welcome" {
 		return a.authorization.CanDeliverNotice(ctx, job.UserID)
 	}
 
 	return a.authorization.CanDeliver(ctx, job.TokenHash)
+}
+
+func (a *Service) recordDelivery(ctx context.Context, resourceID string, job mailJob) error {
+	transaction, err := a.repository.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = transaction.Rollback() }()
+	queries := a.repository.Within(transaction)
+	if strings.HasPrefix(job.Purpose, "inactivity-") {
+		err = queries.EmailRecordDelivery(ctx, storage.EmailRecordDeliveryParams{DedupKey: job.UserID + ":" + job.Purpose, UserID: job.UserID, DeliveredAt: int(time.Now().Unix())})
+		if err != nil {
+			return err
+		}
+	}
+	_, err = queries.EmailDeleteJob(ctx, resourceID)
+	if err != nil {
+		return err
+	}
+
+	return wrap("record mail delivery", transaction.Commit())
 }

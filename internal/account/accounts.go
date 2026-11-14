@@ -9,6 +9,7 @@ import (
 	"mindflow/internal/account/storage"
 	"net/mail"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
@@ -199,6 +200,12 @@ func (a *Service) UpdateUser(ctx context.Context, actor User, resourceID string,
 	if err != nil {
 		return Completed{}, err
 	}
+	if command.Status == StatusActive {
+		err = a.repository.Within(transaction).ActivityTouch(ctx, storage.ActivityTouchParams{UserID: resourceID, LastSeen: int(time.Now().Unix())})
+		if err != nil {
+			return Completed{}, err
+		}
+	}
 	if command.Status != StatusActive {
 		err = a.revokeCredentials(ctx, transaction, resourceID)
 		if err != nil {
@@ -229,15 +236,7 @@ func (a *Service) DeleteUser(ctx context.Context, actor User, resourceID string,
 	if err != nil {
 		return Completed{}, err
 	}
-	err = a.content.DeleteOwnerWithin(ctx, transaction, resourceID)
-	if err != nil {
-		return Completed{}, err
-	}
-	err = a.mail.CancelUserWithin(ctx, transaction, resourceID)
-	if err != nil {
-		return Completed{}, err
-	}
-	_, err = a.repository.Within(transaction).AccountDeleteUser(ctx, resourceID)
+	err = a.DeleteWithin(ctx, transaction, resourceID)
 	if err != nil {
 		return Completed{}, err
 	}

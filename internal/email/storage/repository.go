@@ -42,8 +42,11 @@ func IsNotFound(err error) bool { return errors.Is(err, sql.ErrNoRows) }
 // CancelUserWithin removes secret-bearing messages during a credential change.
 func (a *Repository) CancelUserWithin(ctx context.Context, transaction *Transaction, userID string) error {
 	_, err := a.Within(transaction).EmailDeleteUserMail(ctx, userID)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return a.Within(transaction).EmailDeleteUserDeliveries(ctx, userID)
 }
 
 // CancelAllWithin removes queued credential mail after restoring a snapshot.

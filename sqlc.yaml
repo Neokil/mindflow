@@ -114,3 +114,28 @@ sql:
         overrides:
           - db_type: INTEGER
             go_type: int
+  - engine: sqlite
+    schema: internal/release/storage/migrations
+    queries: internal/release/storage/queries
+    gen:
+      go:
+        package: storage
+        out: internal/release/storage
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
+        emit_empty_slices: true
+        omit_unused_structs: true
+  - engine: sqlite
+    schema: internal/feedback/storage/migrations
+    queries: internal/feedback/storage/queries
+    gen:
+      go:
+        package: storage
+        out: internal/feedback/storage
+        output_db_file_name: sqlc_db.go
+        output_models_file_name: sqlc_models.go
+        emit_empty_slices: true
+        omit_unused_structs: true
+        overrides:
+          - db_type: INTEGER
+            go_type: int64

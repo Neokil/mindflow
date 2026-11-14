@@ -32,7 +32,22 @@ func (a *Outbox) QueueWithin(ctx context.Context, transaction *storage.Transacti
 // QueueWelcomeWithin queues onboarding once account creation succeeds.
 func (a *Outbox) QueueWelcomeWithin(ctx context.Context, transaction *storage.Transaction, user account.User, publicURL string) error {
 	subject := "Welcome " + user.DisplayName + "!"
-	body := "We're happy to see you on board. Here are the most important links to get started:\n\nOpen mindflow\t" + publicURL + "/\nView patchnotes on GitHub\thttps://github.com/Neokil/mindflow/releases\nReport an error or request a feature on GitHub\thttps://github.com/Neokil/mindflow/issues"
+	body := "We're happy to see you on board. Here are the most important links to get started:\n\nOpen mindflow\t" + publicURL + "/\nLearn how to use mindflow\thttps://github.com/Neokil/mindflow/wiki/user-docs-using-mindflow\nView patchnotes on GitHub\thttps://github.com/Neokil/mindflow/releases\nReport an error or request a feature on GitHub\thttps://github.com/Neokil/mindflow/issues"
 
 	return a.QueueWithin(ctx, transaction, user.ID, "welcome", user.Email, subject, body, "")
+}
+
+// DeliveredWithin returns the successful SMTP delivery time, or zero while pending.
+func (a *Outbox) DeliveredWithin(ctx context.Context, transaction *storage.Transaction, userID, purpose string) (int, error) {
+	value, err := a.repository.Within(transaction).EmailDelivered(ctx, userID+":"+purpose)
+	if storage.IsNotFound(err) {
+		return 0, nil
+	}
+
+	return value, err
+}
+
+// CancelUpdatesWithin removes pending release messages after consent is withdrawn.
+func (a *Outbox) CancelUpdatesWithin(ctx context.Context, tx *storage.Transaction, userID string) error {
+	return a.repository.Within(tx).EmailCancelUpdates(ctx, storage.EmailCancelUpdatesParams{UserID: userID, DedupKey: userID + ":release-%"})
 }

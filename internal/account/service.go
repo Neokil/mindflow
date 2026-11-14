@@ -83,6 +83,10 @@ func (a *Service) CreateAdministratorWithin(ctx context.Context, transaction *st
 
 	user := User{ID: newID(), Email: address, DisplayName: displayName, Role: RoleAdmin, Status: StatusActive}
 	_, err = a.repository.Within(transaction).AccountCreateAdministrator(ctx, storage.AccountCreateAdministratorParams{ID: user.ID, Email: address, PasswordHash: hash, CreatedAt: time.Now().Unix(), DisplayName: displayName})
+	if err != nil {
+		return User{}, err
+	}
+	err = a.repository.Within(transaction).ActivityTouch(ctx, storage.ActivityTouchParams{UserID: user.ID, LastSeen: int(time.Now().Unix())})
 
 	return user, err
 }
@@ -119,6 +123,11 @@ func (a *Service) SetPasswordWithin(ctx context.Context, transaction *storage.Tr
 		return err
 	}
 
+	err = a.repository.Within(transaction).ActivityTouch(ctx, storage.ActivityTouchParams{UserID: resourceID, LastSeen: int(time.Now().Unix())})
+	if err != nil {
+		return err
+	}
+
 	return a.revokeCredentials(ctx, transaction, resourceID)
 }
 
@@ -128,6 +137,36 @@ func repositoryError(err error) error {
 	}
 
 	return err
+}
+
+// RecordActivity records authenticated use and cancels the pending inactivity cycle.
+func (a *Service) RecordActivity(ctx context.Context, userID string) error {
+	return a.repository.ActivityTouch(ctx, storage.ActivityTouchParams{UserID: userID, LastSeen: int(time.Now().Unix())})
+}
+
+// DeleteWithin permanently removes an account through its content and mail collaborators.
+func (a *Service) DeleteWithin(ctx context.Context, transaction *storage.Transaction, userID string) error {
+	err := a.content.DeleteOwnerWithin(ctx, transaction, userID)
+	if err != nil {
+		return err
+	}
+	err = a.mail.CancelUserWithin(ctx, transaction, userID)
+	if err != nil {
+		return err
+	}
+	_, err = a.repository.Within(transaction).AccountDeleteUser(ctx, userID)
+
+	return err
+}
+
+// SetProductUpdatesWithin stores explicit product-update consent during activation.
+func (a *Service) SetProductUpdatesWithin(ctx context.Context, transaction *storage.Transaction, userID string, enabled bool) error {
+	value := 0
+	if enabled {
+		value = 1
+	}
+
+	return a.repository.Within(transaction).UpdatesSetPreference(ctx, storage.UpdatesSetPreferenceParams{UserID: userID, Enabled: value})
 }
 
 // revokeCredentials removes account credentials and their queued delivery atomically.

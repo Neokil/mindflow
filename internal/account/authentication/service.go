@@ -38,6 +38,10 @@ func (a *Service) Login(ctx context.Context, command LoginCommand) (LoginResult,
 	if err != nil {
 		return LoginResult{}, err
 	}
+	err = a.accounts.RecordActivity(ctx, user.ID)
+	if err != nil {
+		return LoginResult{}, err
+	}
 	credential, err := a.sessions.Create(ctx, user.ID)
 	if err != nil {
 		return LoginResult{}, err
@@ -62,6 +66,11 @@ func (a *Service) Authenticate(ctx context.Context, cookie string) (session.Prin
 	}
 	if user.Status != account.StatusActive {
 		return session.Principal{}, failure("session_expired", "Please sign in.")
+	}
+
+	err = a.accounts.RecordActivity(ctx, user.ID)
+	if err != nil {
+		return session.Principal{}, err
 	}
 
 	return session.Principal{User: user, SessionID: identity.SessionID, CSRF: identity.CSRF}, nil

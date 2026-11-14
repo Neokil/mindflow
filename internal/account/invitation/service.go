@@ -24,9 +24,10 @@ type Service struct {
 
 // RedeemCommand supplies a one-time credential link and the new password.
 type RedeemCommand struct {
-	Token       string `json:"token"`
-	DisplayName string `json:"displayName"`
-	Password    string `json:"password"`
+	Token          string `json:"token"`
+	DisplayName    string `json:"displayName"`
+	ProductUpdates bool   `json:"productUpdates"`
+	Password       string `json:"password"`
 }
 
 const tokenLifetimeSeconds = 7 * 86400
@@ -80,6 +81,10 @@ func (a *Service) Redeem(ctx context.Context, command RedeemCommand) (Completed,
 	}
 
 	user, err = a.accounts.FindWithin(ctx, transaction, user.ID)
+	if err != nil {
+		return Completed{}, err
+	}
+	err = a.accounts.SetProductUpdatesWithin(ctx, transaction, user.ID, command.ProductUpdates)
 	if err != nil {
 		return Completed{}, err
 	}

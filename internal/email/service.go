@@ -14,6 +14,8 @@ type Configuration interface {
 // Authorization prevents delivery of revoked or consumed credential links.
 type Authorization interface {
 	CanDeliverNotice(ctx context.Context, userID string) (bool, error)
+	CanDeliverUpdate(ctx context.Context, userID string) (bool, error)
+	CanDeliverInactivity(ctx context.Context, userID, purpose string) (bool, error)
 	CanDeliver(ctx context.Context, tokenHash string) (bool, error)
 }
 

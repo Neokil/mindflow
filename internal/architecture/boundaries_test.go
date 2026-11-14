@@ -27,7 +27,7 @@ func TestNoHorizontalPackages(t *testing.T) {
 
 func TestTopLevelDomainsOwnStorage(t *testing.T) {
 	t.Parallel()
-	for _, domain := range []string{"account", "workspace", "email", "installation"} {
+	for _, domain := range []string{"account", "workspace", "email", "installation", "release", "feedback"} {
 		for _, name := range []string{"storage/queries/queries.sql", "storage/queries.sql.go", "storage/sqlc_db.go", "storage/migrations/00001_initial.sql", "storage/migrations/migrations.go"} {
 			_, err := os.Stat(filepath.Join("..", domain, name))
 			if err != nil {
@@ -100,10 +100,12 @@ func checkQueryVisibility(t *testing.T, file, domain string) {
 func TestSQLReadsWritesAndForeignKeysStayWithinDomain(t *testing.T) {
 	t.Parallel()
 	ownership := map[string][]string{
-		"account":      {"users", "sessions", "account_tokens", "avatars"},
+		"account":      {"users", "sessions", "account_tokens", "avatars", "account_activity", "account_update_preferences"},
 		"workspace":    {"workspaces", "pages", "page_assets", "save_receipts", "page_leases", "assets", "asset_variants", "image_jobs", "workspace_members", "active_workspaces", "active_pages", "active_assets", "workspace_access", "asset_access", "comment_threads", "comment_messages", "editor_requests", "workspace_templates", "template_assets"},
-		"email":        {"mail_jobs"},
+		"email":        {"mail_jobs", "mail_deliveries"},
 		"installation": {"app_settings"},
+		"release":      {"release_state"},
+		"feedback":     {"feedback_reports", "feedback_comments"},
 	}
 	tableReference := regexp.MustCompile(`(?i)\b(?:FROM|JOIN|UPDATE|INTO|REFERENCES|CREATE TABLE(?: IF NOT EXISTS)?)\s+(\w+)`)
 	for domain, tables := range ownership {

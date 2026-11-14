@@ -18,11 +18,12 @@ type Settings struct {
 
 // SetupCommand supplies the one-time credential, first administrator and operator settings.
 type SetupCommand struct {
-	Credential  string   `json:"credential"`
-	Email       string   `json:"email"`
-	DisplayName string   `json:"displayName"`
-	Password    string   `json:"password"`
-	Settings    Settings `json:"settings"`
+	Credential     string   `json:"credential"`
+	Email          string   `json:"email"`
+	DisplayName    string   `json:"displayName"`
+	ProductUpdates bool     `json:"productUpdates"`
+	Password       string   `json:"password"`
+	Settings       Settings `json:"settings"`
 }
 
 // SetupTestEmailCommand tests SMTP before the installation is committed.
@@ -93,6 +94,10 @@ func (a *Service) Setup(ctx context.Context, _ account.User, command SetupComman
 		return Completed{}, failure("initialized", "Setup is already complete.")
 	}
 	administrator, err := a.accounts.CreateAdministratorWithin(ctx, transaction, address, command.DisplayName, hash)
+	if err != nil {
+		return Completed{}, err
+	}
+	err = a.accounts.SetProductUpdatesWithin(ctx, transaction, administrator.ID, command.ProductUpdates)
 	if err != nil {
 		return Completed{}, err
 	}

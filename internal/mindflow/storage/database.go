@@ -6,8 +6,10 @@ import (
 	"fmt"
 	accountstorage "mindflow/internal/account/storage"
 	emailstorage "mindflow/internal/email/storage"
+	feedbackstorage "mindflow/internal/feedback/storage"
 	installationstorage "mindflow/internal/installation/storage"
 	"mindflow/internal/mindflow/storage/transaction"
+	releasestorage "mindflow/internal/release/storage"
 	workspacestorage "mindflow/internal/workspace/storage"
 	"net/url"
 	"os"
@@ -19,6 +21,8 @@ import (
 
 // Database owns a SQLite connection and its domain storage adapters.
 type Database struct {
+	Releases     *releasestorage.Repository
+	Feedback     *feedbackstorage.Repository
 	connection   *sql.DB
 	Accounts     *accountstorage.Repository
 	Email        *emailstorage.Repository
@@ -45,7 +49,7 @@ func Open(ctx context.Context, path string) (*Database, error) {
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
 
-	return &Database{connection: connection, Accounts: accountstorage.NewRepository(connection), Email: emailstorage.NewRepository(connection), Installation: installationstorage.NewRepository(connection), Workspaces: workspacestorage.NewRepository(connection)}, nil
+	return &Database{Feedback: feedbackstorage.NewRepository(connection), Releases: releasestorage.NewRepository(connection), connection: connection, Accounts: accountstorage.NewRepository(connection), Email: emailstorage.NewRepository(connection), Installation: installationstorage.NewRepository(connection), Workspaces: workspacestorage.NewRepository(connection)}, nil
 }
 
 // OpenData opens the database and applies every discovered domain's pending migrations.

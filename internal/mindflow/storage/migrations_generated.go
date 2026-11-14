@@ -5,7 +5,9 @@ package storage
 import (
 	accountmigrations "mindflow/internal/account/storage/migrations"
 	emailmigrations "mindflow/internal/email/storage/migrations"
+	feedbackmigrations "mindflow/internal/feedback/storage/migrations"
 	installationmigrations "mindflow/internal/installation/storage/migrations"
+	releasemigrations "mindflow/internal/release/storage/migrations"
 	workspacemigrations "mindflow/internal/workspace/storage/migrations"
 )
 
@@ -13,7 +15,9 @@ func discoveredMigrations() []domainMigrations {
 	return []domainMigrations{
 		{name: "account", files: accountmigrations.Files()},
 		{name: "email", files: emailmigrations.Files()},
+		{name: "feedback", files: feedbackmigrations.Files()},
 		{name: "installation", files: installationmigrations.Files()},
+		{name: "release", files: releasemigrations.Files()},
 		{name: "workspace", files: workspacemigrations.Files()},
 	}
 }

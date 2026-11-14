@@ -10,6 +10,20 @@ import (
 	"database/sql"
 )
 
+const emailCancelUpdates = `-- name: EmailCancelUpdates :exec
+DELETE FROM mail_jobs WHERE user_id=? AND dedup_key LIKE ?
+`
+
+type EmailCancelUpdatesParams struct {
+	UserID   string
+	DedupKey string
+}
+
+func (q *Queries) EmailCancelUpdates(ctx context.Context, arg EmailCancelUpdatesParams) error {
+	_, err := q.db.ExecContext(ctx, emailCancelUpdates, arg.UserID, arg.DedupKey)
+	return err
+}
+
 const emailDeleteJob = `-- name: EmailDeleteJob :execresult
 DELETE FROM mail_jobs WHERE id=?
 `
@@ -31,12 +45,32 @@ func (q *Queries) EmailDeletePurposeMail(ctx context.Context, arg EmailDeletePur
 	return q.db.ExecContext(ctx, emailDeletePurposeMail, arg.UserID, arg.DedupKey)
 }
 
+const emailDeleteUserDeliveries = `-- name: EmailDeleteUserDeliveries :exec
+DELETE FROM mail_deliveries WHERE user_id=?
+`
+
+func (q *Queries) EmailDeleteUserDeliveries(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, emailDeleteUserDeliveries, userID)
+	return err
+}
+
 const emailDeleteUserMail = `-- name: EmailDeleteUserMail :execresult
 DELETE FROM mail_jobs WHERE user_id=?
 `
 
 func (q *Queries) EmailDeleteUserMail(ctx context.Context, userID string) (sql.Result, error) {
 	return q.db.ExecContext(ctx, emailDeleteUserMail, userID)
+}
+
+const emailDelivered = `-- name: EmailDelivered :one
+SELECT delivered_at FROM mail_deliveries WHERE dedup_key=?
+`
+
+func (q *Queries) EmailDelivered(ctx context.Context, dedupKey string) (int, error) {
+	row := q.db.QueryRowContext(ctx, emailDelivered, dedupKey)
+	var delivered_at int
+	err := row.Scan(&delivered_at)
+	return delivered_at, err
 }
 
 const emailDeliveryError = `-- name: EmailDeliveryError :one
@@ -100,6 +134,21 @@ func (q *Queries) EmailQueueMail(ctx context.Context, arg EmailQueueMailParams) 
 		arg.Payload,
 		arg.RunAt,
 	)
+}
+
+const emailRecordDelivery = `-- name: EmailRecordDelivery :exec
+INSERT INTO mail_deliveries(dedup_key,user_id,delivered_at) VALUES(?,?,?) ON CONFLICT(dedup_key) DO NOTHING
+`
+
+type EmailRecordDeliveryParams struct {
+	DedupKey    string
+	UserID      string
+	DeliveredAt int
+}
+
+func (q *Queries) EmailRecordDelivery(ctx context.Context, arg EmailRecordDeliveryParams) error {
+	_, err := q.db.ExecContext(ctx, emailRecordDelivery, arg.DedupKey, arg.UserID, arg.DeliveredAt)
+	return err
 }
 
 const emailRetryMail = `-- name: EmailRetryMail :execresult

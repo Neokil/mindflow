@@ -8,13 +8,17 @@ import (
 	"mindflow/internal/account"
 	"mindflow/internal/account/authentication"
 	"mindflow/internal/account/avatar"
+	"mindflow/internal/account/inactivity"
 	"mindflow/internal/account/invitation"
 	"mindflow/internal/account/passwordreset"
 	"mindflow/internal/account/session"
+	"mindflow/internal/account/updates"
 	"mindflow/internal/email"
+	"mindflow/internal/feedback"
 	"mindflow/internal/installation"
 	"mindflow/internal/mindflow/storage"
 	"mindflow/internal/notification"
+	"mindflow/internal/release"
 	"mindflow/internal/workspace"
 	"mindflow/internal/workspace/butterfly"
 	"mindflow/internal/workspace/ownership"
@@ -39,7 +43,7 @@ import (
 
 // Config supplies development mode and the one-time setup credential.
 type Config struct {
-	Release string
+	Release   string
 	Version   string
 	Now       func() time.Time
 	Dev       bool
@@ -48,6 +52,8 @@ type Config struct {
 
 // App serves the HTTP API and coordinates domain services.
 type App struct {
+	releases       *release.Service
+	inactivity     *inactivity.Service
 	trash          *trash.Service
 	Log            *slog.Logger
 	limitMu        sync.Mutex
@@ -74,16 +80,20 @@ type App struct {
 // New composes domain services and registers HTTP routes.
 func New(ctx context.Context, data *storage.Database, config Config) (*App, error) {
 	service := &App{Config: config, Mux: http.NewServeMux(), Log: slog.Default(), limits: make(map[string]rateWindow)}
-	accounts, err := account.NewService(data.Accounts, data.Email, data.Workspaces)
+	accounts, err := account.NewService(data.Accounts, data.Email, accountContent{data: data})
 	if err != nil {
 		return nil, err
 	}
 	service.accounts = accounts
+
 	service.sessions = session.NewService(data.Accounts)
 	service.installation = installation.NewService(data.Installation, accounts, installation.Config{Dev: config.Dev, Bootstrap: config.Bootstrap}, email.NewOutbox(data.Email))
 	service.mail = email.NewService(data.Email, service.installation, linkAuthorization{data: data, accounts: accounts})
 	service.invitations = invitation.NewService(data.Accounts, accounts, service.mail, service.installation)
 	service.passwordResets = passwordreset.NewService(data.Accounts, accounts, service.mail, service.installation)
+	subscriptions := updates.NewService(data.Accounts, service.mail, service.installation)
+	service.releases = release.NewService(data.Releases, subscriptions)
+	service.inactivity = inactivity.NewService(data.Accounts, accounts, service.mail, service.installation, config.Now)
 	service.authentication = authentication.NewService(accounts, service.sessions, config.Dev)
 	service.notifications = notification.NewService(service.authentication)
 	publish := func(userID, kind, resourceID string) {
@@ -116,6 +126,8 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	templates.RegisterHTTP(service)
 	avatar.NewService(data.Accounts).RegisterHTTP(service)
 	service.accounts.RegisterHTTP(service)
+	subscriptions.RegisterHTTP(service)
+	feedback.NewService(data.Feedback, accounts).RegisterHTTP(service)
 	service.authentication.RegisterHTTP(service)
 	service.installation.RegisterHTTP(service)
 	service.invitations.RegisterHTTP(service)
@@ -207,6 +219,14 @@ func (a *App) RunWorkers(ctx context.Context) {
 			return
 		case <-ticker.C:
 			a.mail.Process(ctx)
+			releaseErr := a.releases.Observe(ctx, a.Config.Release)
+			if releaseErr != nil {
+				a.Log.Error("announce release", "error", releaseErr)
+			}
+			err := a.inactivity.Process(ctx)
+			if err != nil {
+				a.Log.Error("process account inactivity", "error", err)
+			}
 			a.images.RunVariant(ctx)
 			_ = a.sessions.Cleanup(ctx)
 			_ = a.invitations.Cleanup(ctx)
