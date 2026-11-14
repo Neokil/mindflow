@@ -21,7 +21,7 @@ type Mail interface {
 
 // Configuration supplies the configured public application address.
 type Configuration interface {
-	PublicAddress(ctx context.Context) (string, error)
+	PublicAddressWithin(ctx context.Context, transactionValue *transaction.Transaction) (string, error)
 }
 
 // Service manages explicit opt-in and upgrade notification delivery.
@@ -38,7 +38,7 @@ func NewService(repository *storage.Repository, mail Mail, configuration Configu
 
 // NotifyWithin queues release mail for active subscribers in the upgrade transaction.
 func (a *Service) NotifyWithin(ctx context.Context, transactionValue *transaction.Transaction, version string) error {
-	address, err := a.configuration.PublicAddress(ctx)
+	address, err := a.configuration.PublicAddressWithin(ctx, transactionValue)
 	if err != nil {
 		return err
 	}
