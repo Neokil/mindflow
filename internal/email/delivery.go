@@ -181,7 +181,7 @@ func (a *Service) recordDelivery(ctx context.Context, resourceID string, job mai
 	defer func() { _ = transaction.Rollback() }()
 	queries := a.repository.Within(transaction)
 	if strings.HasPrefix(job.Purpose, "inactivity-") {
-		err = queries.EmailRecordDelivery(ctx, storage.EmailRecordDeliveryParams{DedupKey: job.UserID + ":" + job.Purpose, UserID: job.UserID, DeliveredAt: int(time.Now().Unix())})
+		err = queries.EmailRecordDelivery(ctx, storage.EmailRecordDeliveryParams{JobID: resourceID, DeliveredAt: time.Now().Unix()})
 		if err != nil {
 			return err
 		}

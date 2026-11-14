@@ -137,17 +137,18 @@ func (q *Queries) EmailQueueMail(ctx context.Context, arg EmailQueueMailParams) 
 }
 
 const emailRecordDelivery = `-- name: EmailRecordDelivery :exec
-INSERT INTO mail_deliveries(dedup_key,user_id,delivered_at) VALUES(?,?,?) ON CONFLICT(dedup_key) DO NOTHING
+INSERT INTO mail_deliveries(dedup_key,user_id,delivered_at)
+SELECT dedup_key,user_id,CAST(?1 AS INTEGER) FROM mail_jobs WHERE id=?2
+ON CONFLICT(dedup_key) DO NOTHING
 `
 
 type EmailRecordDeliveryParams struct {
-	DedupKey    string
-	UserID      string
-	DeliveredAt int
+	DeliveredAt int64
+	JobID       string
 }
 
 func (q *Queries) EmailRecordDelivery(ctx context.Context, arg EmailRecordDeliveryParams) error {
-	_, err := q.db.ExecContext(ctx, emailRecordDelivery, arg.DedupKey, arg.UserID, arg.DeliveredAt)
+	_, err := q.db.ExecContext(ctx, emailRecordDelivery, arg.DeliveredAt, arg.JobID)
 	return err
 }
 

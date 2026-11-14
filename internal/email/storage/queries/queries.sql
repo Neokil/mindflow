@@ -26,7 +26,9 @@ DELETE FROM mail_jobs;
 SELECT CAST(COALESCE((SELECT last_error FROM mail_jobs WHERE user_id=? ORDER BY run_at DESC LIMIT 1),'') AS TEXT);
 
 -- name: EmailRecordDelivery :exec
-INSERT INTO mail_deliveries(dedup_key,user_id,delivered_at) VALUES(?,?,?) ON CONFLICT(dedup_key) DO NOTHING;
+INSERT INTO mail_deliveries(dedup_key,user_id,delivered_at)
+SELECT dedup_key,user_id,CAST(sqlc.arg(delivered_at) AS INTEGER) FROM mail_jobs WHERE id=sqlc.arg(job_id)
+ON CONFLICT(dedup_key) DO NOTHING;
 
 -- name: EmailDelivered :one
 SELECT delivered_at FROM mail_deliveries WHERE dedup_key=?;
