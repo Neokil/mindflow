@@ -10,26 +10,29 @@ test("fast mouse releases use final coordinates even before a preview renders", 
   await create(page, `Fast mouse ${Date.now()}`);
   await selectTool(page, "Rectangle");
   // All events run in one task, without a React render between move and release.
-  await page.locator(".konvajs-content").evaluate((surface) => {
-    const box = surface.getBoundingClientRect();
-    for (const [type, x, y, buttons] of [
-      ["pointerdown", 300, 220, 1],
-      ["pointermove", 450, 300, 1],
-      ["pointerup", 500, 340, 0],
-    ] as const) {
-      surface.dispatchEvent(
-        new PointerEvent(type, {
-          bubbles: true,
-          pointerType: "mouse",
-          pointerId: 1,
-          button: 0,
-          buttons,
-          clientX: box.x + x,
-          clientY: box.y + y,
-        }),
-      );
-    }
-  });
+  await page
+    .getByTestId("canvas")
+    .locator(".konvajs-content")
+    .evaluate((surface) => {
+      const box = surface.getBoundingClientRect();
+      for (const [type, x, y, buttons] of [
+        ["pointerdown", 300, 220, 1],
+        ["pointermove", 450, 300, 1],
+        ["pointerup", 500, 340, 0],
+      ] as const) {
+        surface.dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            pointerType: "mouse",
+            pointerId: 1,
+            button: 0,
+            buttons,
+            clientX: box.x + x,
+            clientY: box.y + y,
+          }),
+        );
+      }
+    });
   await expect(page.getByTestId("element-count")).toHaveText("1 element");
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
   const id = page.url().split("/pages/")[1];
@@ -38,27 +41,30 @@ test("fast mouse releases use final coordinates even before a preview renders", 
   ).document as CanvasDocument;
   expect(doc.elements[0]).toMatchObject({ width: 200, height: 120 });
   await selectTool(page, "Rectangle");
-  await page.locator(".konvajs-content").evaluate((surface) => {
-    const box = surface.getBoundingClientRect();
-    for (const [type, x, y, buttons] of [
-      ["pointerdown", 300, 400, 1],
-      ["pointermove", 450, 480, 1],
-      ["pointerup", 500, 520, 0],
-    ] as const) {
-      // A release outside the stage must still finish the mouse gesture.
-      (type === "pointerup" ? window : surface).dispatchEvent(
-        new PointerEvent(type, {
-          bubbles: true,
-          pointerType: "mouse",
-          pointerId: 1,
-          button: 0,
-          buttons,
-          clientX: box.x + x,
-          clientY: box.y + y,
-        }),
-      );
-    }
-  });
+  await page
+    .getByTestId("canvas")
+    .locator(".konvajs-content")
+    .evaluate((surface) => {
+      const box = surface.getBoundingClientRect();
+      for (const [type, x, y, buttons] of [
+        ["pointerdown", 300, 400, 1],
+        ["pointermove", 450, 480, 1],
+        ["pointerup", 500, 520, 0],
+      ] as const) {
+        // A release outside the stage must still finish the mouse gesture.
+        (type === "pointerup" ? window : surface).dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            pointerType: "mouse",
+            pointerId: 1,
+            button: 0,
+            buttons,
+            clientX: box.x + x,
+            clientY: box.y + y,
+          }),
+        );
+      }
+    });
   await expect(page.getByTestId("element-count")).toHaveText("2 elements");
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
   const after = (
@@ -72,7 +78,7 @@ test("losing mouse capture preserves creation and an object drag", async ({
 }) => {
   await login(page);
   await create(page, `Mouse capture ${Date.now()}`);
-  const surface = page.locator(".konvajs-content");
+  const surface = page.getByTestId("canvas").locator(".konvajs-content");
   const box = (await surface.boundingBox())!;
   const rememberPointer = () =>
     surface.evaluate((element) => {
