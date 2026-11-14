@@ -280,7 +280,7 @@ export default function useCanvasInput({
       ) {
         for (const sample of event.evt.getCoalescedEvents?.() || []) {
           stage.current?.setPointersPositions(sample);
-          move(event);
+          move({ ...event, evt: sample });
         }
         stage.current?.setPointersPositions(event.evt);
       }

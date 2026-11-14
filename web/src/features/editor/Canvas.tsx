@@ -1,3 +1,7 @@
+import PenOptions from "./PenOptions";
+import { InkStroke } from "./InkStroke";
+import type { Stabilization } from "./InkStroke";
+import { strokeOutline } from "../../strokeGeometry";
 import FullscreenButton from "./FullscreenButton";
 import { StrokeHold } from "./strokeHold";
 import PageControlStatus from "./PageControlStatus";
@@ -6,7 +10,6 @@ import PDFImportDialog from "../pdf/PDFImportDialog";
 import PDFViewer from "../pdf/PDFViewer";
 import useCanvasInput from "./useCanvasInput";
 import type { CanvasInteraction } from "./useCanvasInput";
-import ColorInput from "../../ColorInput";
 import useCanvasAccent from "./useCanvasAccent";
 import TemplateLibrary from "./TemplateLibrary";
 import { instantiateTemplate } from "./templates";
@@ -73,7 +76,15 @@ export default function Canvas({
   const accent = useCanvasAccent();
   const interaction = useRef<CanvasInteraction>(null);
   const [strokeHold] = useState(() => new StrokeHold());
-  useEffect(() => () => strokeHold.cancel(), [strokeHold]);
+  const inkFrame = useRef<number | undefined>(undefined);
+  useEffect(
+    () => () => {
+      strokeHold.cancel();
+      if (inkFrame.current !== undefined)
+        cancelAnimationFrame(inkFrame.current);
+    },
+    [strokeHold],
+  );
   const host = useRef<HTMLDivElement>(null),
     stage = useRef<Konva.Stage>(null),
     preview = useRef<Konva.Line>(null),
@@ -87,6 +98,8 @@ export default function Canvas({
     [canvasSettingsOpen, setCanvasSettingsOpen] = useState(false),
     [objectSettingsAnchor, setObjectSettingsAnchor] = useState<Point>(),
     [help, setHelp] = useState(false);
+  const [pressureInk, setPressureInk] = useState(true);
+  const [stabilization, setStabilization] = useState<Stabilization>("light");
   const [markerColor, setMarkerColor] = useState("#a4d65e");
   const [markerWidth, setMarkerWidth] = useState(24);
   const [penColor, setPenColor] = useState(accent),
@@ -113,7 +126,8 @@ export default function Canvas({
         kind: "pan" | "lasso" | "pen" | "create" | "comment" | "template";
         element?: CanvasElement;
         highlight?: boolean;
-        straight?: boolean;
+        ink?: InkStroke;
+        rawEnd?: Point;
         start: Point;
         camera: Camera;
         points: Point[];
@@ -410,20 +424,33 @@ export default function Canvas({
         gesture.current = {
           kind: "pen",
           highlight: tool === "highlighter",
+          ink: new InkStroke(
+            world,
+            pressureInk && tool === "pen" && e.evt.pointerType === "pen",
+            stabilization,
+            camera.zoom,
+            e.evt.pressure,
+          ),
+          rawEnd: world,
           start: world,
           camera,
           points: [world],
         };
         preview.current?.setAttrs({
           points: [world.x, world.y, world.x + 0.01, world.y + 0.01],
-          stroke: tool === "highlighter" ? markerColor : penColor,
+          stroke: gesture.current.ink?.pressureEnabled
+            ? undefined
+            : tool === "highlighter"
+              ? markerColor
+              : penColor,
           strokeWidth: tool === "highlighter" ? markerWidth : penWidth,
           opacity: tool === "highlighter" ? 0.35 : 1,
           globalCompositeOperation:
             tool === "highlighter" ? "multiply" : "source-over",
-          fill: undefined,
-          closed: false,
+          fill: gesture.current.ink?.pressureEnabled ? penColor : undefined,
+          closed: gesture.current.ink?.pressureEnabled || false,
         });
+        paintInk();
       } else beginCreation(world);
       return;
     }
@@ -472,35 +499,43 @@ export default function Canvas({
       return;
     }
     if (g.kind === "comment" || g.kind === "template") return;
-    if (g.kind === "pen" && g.straight) {
-      g.points = [g.start, world];
-      preview.current?.points(g.points.flatMap((p) => [p.x, p.y]));
-      preview.current?.getLayer()?.batchDraw();
+    if (g.kind === "pen" && g.ink) {
+      g.rawEnd = world;
+      g.ink.add(world, event.evt.pressure);
+      if (!g.ink.straight)
+        strokeHold.move(world, g.camera.zoom, () => {
+          if (gesture.current !== g || !session.editable || !g.ink) return;
+          g.ink.straighten(g.rawEnd || world);
+          paintInk();
+        });
+      paintInk();
       return;
     }
     const last = g.points[g.points.length - 1];
-    if (Math.hypot(world.x - last.x, world.y - last.y) * camera.zoom < 2)
+    if (
+      Math.hypot(world.x - last.x, world.y - last.y) * camera.zoom < 2 ||
+      g.points.length >= 20000
+    )
       return;
-    if (g.points.length >= 20000) return;
     g.points.push(world);
-    if (g.kind === "pen") {
-      strokeHold.move(world, g.camera.zoom, () => {
-        if (gesture.current !== g || !session.editable) return;
-        const end = g.points[g.points.length - 1];
-        // Keep dots and nearly closed strokes intact instead of making a zero-length line.
-        if (
-          Math.hypot(end.x - g.start.x, end.y - g.start.y) * g.camera.zoom <
-          12
-        )
-          return;
-        g.straight = true;
-        g.points = [g.start, end];
-        preview.current?.points(g.points.flatMap((p) => [p.x, p.y]));
-        preview.current?.getLayer()?.batchDraw();
-      });
-    }
     preview.current?.points(g.points.flatMap((p) => [p.x, p.y]));
     preview.current?.getLayer()?.batchDraw();
+  }
+  function paintInk() {
+    if (inkFrame.current !== undefined) return;
+    inkFrame.current = requestAnimationFrame(() => {
+      inkFrame.current = undefined;
+      const active = gesture.current;
+      if (!active?.ink) return;
+      const ink = active.ink,
+        width = active.highlight ? markerWidth : penWidth;
+      const points = ink.pressureEnabled
+        ? strokeOutline(ink.samples, width)
+        : ink.samples.flatMap((p) => [p.x, p.y]);
+      if (points.length === 2) points.push(points[0] + 0.01, points[1] + 0.01);
+      preview.current?.points(points);
+      preview.current?.getLayer()?.batchDraw();
+    });
   }
   function pointerUp(event: PointerEvent) {
     strokeHold.cancel();
@@ -557,14 +592,9 @@ export default function Canvas({
       if (element.type === "text") startText(element);
       return;
     }
-    if (g.kind === "pen" && g.straight) {
-      g.points = [g.start, worldPoint(pointer(), camera)];
-    } else if (
-      (g.kind === "lasso" || g.kind === "pen") &&
-      g.points.length < 20000
-    ) {
-      const last = g.points[g.points.length - 1];
-      const release = worldPoint(pointer(), camera);
+    if (g.kind === "lasso" && g.points.length < 20000) {
+      const last = g.points[g.points.length - 1],
+        release = worldPoint(pointer(), camera);
       if (last.x !== release.x || last.y !== release.y) g.points.push(release);
     }
     if (g.kind === "lasso") {
@@ -573,31 +603,14 @@ export default function Canvas({
         g.additive ? [...new Set([...previous, ...ids])] : ids,
       );
     }
-    if (g.kind === "pen" && session.editable) {
-      const xs = g.points.map((p) => p.x),
-        ys = g.points.map((p) => p.y);
-      const minX = Math.min(...xs),
-        minY = Math.min(...ys);
-      const width = Math.max(0.1, Math.max(...xs) - minX),
-        height = Math.max(0.1, Math.max(...ys) - minY);
-      if (g.points.length === 1)
-        g.points.push({ x: minX + 0.1, y: minY + 0.1 });
-      const stroke: CanvasElement = {
-        id: uid(),
-        type: "stroke",
-        x: minX + width / 2,
-        y: minY + height / 2,
-        width,
-        height,
-        rotation: 0,
-        points: g.points.flatMap((p) => [
-          (p.x - minX) / width,
-          (p.y - minY) / height,
-        ]),
-        color: g.highlight ? markerColor : penColor,
-        penWidth: g.highlight ? markerWidth : penWidth,
-        highlight: g.highlight || undefined,
-      };
+    if (g.kind === "pen" && g.ink && session.editable) {
+      g.ink.finish(worldPoint(pointer(), camera));
+      const stroke = g.ink.element(
+        uid(),
+        g.highlight ? markerColor : penColor,
+        g.highlight ? markerWidth : penWidth,
+        !!g.highlight,
+      );
       editElements([...session.doc.elements, stroke]);
       setSelection([]);
     }
@@ -875,41 +888,19 @@ export default function Canvas({
         />
       )}
       {(tool === "pen" || tool === "highlighter") && session.editable && (
-        <div className="pen-options">
-          <label>
-            Color
-            <ColorInput
-              label="Pen color"
-              value={tool === "highlighter" ? markerColor : penColor}
-              onChange={tool === "highlighter" ? setMarkerColor : setPenColor}
-            />
-          </label>
-          <label className="check-label">
-            <input
-              type="checkbox"
-              aria-label="Pencil only"
-              checked={pencilOnly}
-              onChange={(event) => setPencilOnly(event.target.checked)}
-            />
-            Pencil only
-          </label>
-          <label>
-            Width
-            <input
-              aria-label="Pen thickness"
-              type="range"
-              min="1"
-              max="40"
-              value={tool === "highlighter" ? markerWidth : penWidth}
-              onChange={(e) =>
-                (tool === "highlighter" ? setMarkerWidth : setPenWidth)(
-                  +e.target.value,
-                )
-              }
-            />
-            <span>{tool === "highlighter" ? markerWidth : penWidth}px</span>
-          </label>
-        </div>
+        <PenOptions
+          highlighter={tool === "highlighter"}
+          color={tool === "highlighter" ? markerColor : penColor}
+          width={tool === "highlighter" ? markerWidth : penWidth}
+          pencilOnly={pencilOnly}
+          pressure={pressureInk}
+          stabilization={stabilization}
+          onColor={tool === "highlighter" ? setMarkerColor : setPenColor}
+          onWidth={tool === "highlighter" ? setMarkerWidth : setPenWidth}
+          onPencilOnly={setPencilOnly}
+          onPressure={setPressureInk}
+          onStabilization={setStabilization}
+        />
       )}
       <div className="canvas-top-actions">
         <FullscreenButton fullscreen={fullscreen} />

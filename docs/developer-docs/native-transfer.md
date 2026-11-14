@@ -33,7 +33,7 @@ No paths are extracted. Portable asset keys use 1–80 ASCII letters, digits, un
 }
 ```
 
-`kind` is `workspace` for a complete workspace and `pages` for a selection. Array order defines page order. Each template contains `name` and `elements`. Assets contain `id`, `mime`, and `preview: true` for PDFs; element `assetId` values reference these portable keys. Canvas elements/settings use the normal schema. Only referenced originals are included; display variants are regenerated as needed.
+`kind` is `workspace` for a complete workspace and `pages` for a selection. Array order defines page order. Each template contains `name` and `elements`. Assets contain `id`, `mime`, and `preview: true` for PDFs; element `assetId` values reference these portable keys. Canvas elements/settings use the normal schema. Pen strokes can include optional per-point `pressures`; originals and pressure profiles are preserved. Only referenced originals are included; display variants are regenerated as needed.
 
 Permissions, accounts, comments, editor leases, viewport positions, revisions, and undo history are excluded. Native files contain unencrypted original media, including portions hidden by image crops, so share them accordingly.
 

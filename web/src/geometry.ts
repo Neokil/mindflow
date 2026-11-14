@@ -1,3 +1,4 @@
+import { pressureWidth } from "./strokeGeometry";
 import type { CanvasElement, Point } from "./model";
 const EPS = 1e-7;
 export const snap = (n: number, grid: number) => Math.round(n / grid) * grid;
@@ -104,9 +105,9 @@ export function fullyContained(e: CanvasElement, lasso: Point[]) {
   if (lasso.length < 3) return false;
   if (e.type !== "stroke") return polygonInside(footprint(e), lasso);
   const points = e.points || [];
-  const radius = (e.penWidth || 1) / 2;
   const circles: Point[][] = [];
-  for (let i = 0; i < points.length; i += 2)
+  for (let i = 0; i < points.length; i += 2) {
+    const radius = pressureWidth(e.penWidth || 1, e.pressures?.[i / 2]) / 2;
     circles.push(
       Array.from({ length: 16 }, (_, n) =>
         localToWorld(
@@ -122,6 +123,7 @@ export function fullyContained(e: CanvasElement, lasso: Point[]) {
         ),
       ),
     );
+  }
   return circles.every(
     (circle, i) =>
       polygonInside(circle, lasso) &&

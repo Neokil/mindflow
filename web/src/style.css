@@ -2144,3 +2144,18 @@ body {
   flex: none;
   margin: 0;
 }
+
+.pen-options {
+  max-width: 180px;
+}
+.pen-options small {
+  display: block;
+  max-width: 155px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.pen-options select {
+  font-size: 11px;
+  padding: 6px 8px;
+}

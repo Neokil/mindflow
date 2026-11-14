@@ -25,6 +25,7 @@ export type CanvasElement = {
   color?: string;
   assetId?: string;
   points?: number[];
+  pressures?: number[];
   penWidth?: number;
   highlight?: boolean;
 };
@@ -160,6 +161,18 @@ export function validClipboardElements(
         e.points.length > 40000 ||
         e.points.some(
           (p: unknown) => typeof p !== "number" || !Number.isFinite(p),
+        ))
+    )
+      return false;
+    if (
+      e.pressures !== undefined &&
+      (!Array.isArray(e.pressures) ||
+        e.type !== "stroke" ||
+        e.highlight ||
+        e.pressures.length !== e.points.length / 2 ||
+        e.pressures.some(
+          (p: unknown) =>
+            typeof p !== "number" || !Number.isFinite(p) || p < 0 || p > 1,
         ))
     )
       return false;

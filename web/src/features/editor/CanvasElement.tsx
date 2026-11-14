@@ -1,3 +1,4 @@
+import { strokeOutline } from "../../strokeGeometry";
 import CanvasList from "./CanvasList";
 import { memo, useEffect, useState } from "react";
 import { Ellipse, Image as KImage, Line, Rect, Text } from "react-konva";
@@ -197,6 +198,24 @@ const ElementContent = memo(function ElementContent({
         wrap="word"
       />
     );
+  if (e.type === "stroke" && e.pressures?.length) {
+    const samples = e.pressures.map((pressure, index) => ({
+      x: (e.points![index * 2] - 0.5) * e.width,
+      y: (e.points![index * 2 + 1] - 0.5) * e.height,
+      pressure,
+    }));
+    return (
+      <Line
+        closed
+        points={strokeOutline(samples, e.penWidth || 3)}
+        fill={e.color || "#28282d"}
+        stroke={e.color || "#28282d"}
+        strokeWidth={0.01}
+        hitStrokeWidth={Math.max(10 / zoom, e.penWidth || 3)}
+        lineJoin="round"
+      />
+    );
+  }
   if (e.type === "stroke")
     return (
       <Line

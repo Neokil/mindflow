@@ -36,3 +36,22 @@ it("rejects clipboard image crops outside the original image", () => {
     validClipboardElements([{ ...image, crop: { ...image.crop, height: 0 } }]),
   ).toBe(false);
 });
+
+it("accepts portable pressure ink and rejects mismatched or invalid pressure samples", () => {
+  const stroke = {
+    id: "ink",
+    type: "stroke",
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    rotation: 0,
+    points: [0, 0, 1, 1],
+    pressures: [0.2, 0.9],
+  };
+  expect(validClipboardElements([stroke])).toBe(true);
+  for (const pressures of [[0.5], [0, 2], [NaN, 1], [0, Infinity]])
+    expect(validClipboardElements([{ ...stroke, pressures }])).toBe(false);
+  expect(validClipboardElements([{ ...stroke, highlight: true }])).toBe(false);
+  expect(validClipboardElements([{ ...stroke, type: "text" }])).toBe(false);
+});

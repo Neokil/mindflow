@@ -40,7 +40,12 @@ export class TabletInput {
       });
     } else await this.dispatch(kind, contact, "touch", active);
   }
-  async pen(kind: "down" | "move" | "up" | "cancel", x: number, y: number) {
+  async pen(
+    kind: "down" | "move" | "up" | "cancel",
+    x: number,
+    y: number,
+    pressure = 0.5,
+  ) {
     if (this.cdp && kind !== "cancel") {
       await this.cdp.send("Input.dispatchMouseEvent", {
         type: (
@@ -56,7 +61,7 @@ export class TabletInput {
         buttons: kind === "up" ? 0 : 1,
         clickCount: kind === "move" ? 0 : 1,
         pointerType: "pen",
-        force: kind === "up" ? 0 : 0.5,
+        force: kind === "up" ? 0 : pressure,
       });
     } else
       await this.dispatch(
@@ -64,6 +69,7 @@ export class TabletInput {
         { id: 99, x, y },
         "pen",
         kind === "up" || kind === "cancel" ? [] : [{ id: 99, x, y }],
+        pressure,
       );
   }
   private async dispatch(
@@ -71,9 +77,10 @@ export class TabletInput {
     contact: Contact,
     pointerType: string,
     active: Contact[],
+    pressure = 0.5,
   ) {
     await this.page.locator(".konvajs-content").evaluate(
-      (surface, { kind, contact, pointerType, active }) => {
+      (surface, { kind, contact, pointerType, active, pressure }) => {
         surface.dispatchEvent(
           new PointerEvent(`pointer${kind}`, {
             bubbles: true,
@@ -84,7 +91,7 @@ export class TabletInput {
             clientY: contact.y,
             button: 0,
             buttons: kind === "up" || kind === "cancel" ? 0 : 1,
-            pressure: 0.5,
+            pressure: kind === "up" || kind === "cancel" ? 0 : pressure,
             isPrimary: true,
           }),
         );
@@ -113,7 +120,7 @@ export class TabletInput {
         });
         surface.dispatchEvent(event);
       },
-      { kind, contact, pointerType, active },
+      { kind, contact, pointerType, active, pressure },
     );
   }
   async drag(

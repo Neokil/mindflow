@@ -4,7 +4,7 @@ mindflow provides a quiet, flexible space for collecting images, arranging thoug
 
 ## What it does
 
-Users organize their work in private-by-default workspaces containing tabbed infinite-canvas pages. Pages support images, rectangle/circle/star shapes, plain text with element-wide formatting, and freehand pen strokes. Elements can be selected, moved, resized, rotated, grouped, duplicated, cropped where applicable, and arranged in layers.
+Users organize their work in private-by-default workspaces containing tabbed infinite-canvas pages. Pages support images, rectangle/circle/star shapes, plain text with element-wide formatting, and freehand pen strokes with optional Pencil pressure and adjustable stabilization. Elements can be selected, moved, resized, rotated, grouped, duplicated, cropped where applicable, and arranged in layers.
 
 Butterfly version-13 exports can be imported into new private workspaces, preserving ordered pages, embedded images, text, freehand strokes, and rectangle/ellipse shapes. Conversion notes identify approximations and unsupported content.
 

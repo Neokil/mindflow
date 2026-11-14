@@ -101,3 +101,11 @@ PDF elements use `type: "pdf"` and an `assetId`. The parent workspace's existing
 
 
 Account migration 3 adds `users.display_name` and backfills existing accounts from the email local part (up to 80 characters). New account writes store a normalized name. The authenticated directory exposes only active account IDs, display names, and avatar versions. Sharing uses stable account IDs; duplicate or changed names do not change access. Legacy exact-email API grants remain supported. Workspace migration 5 adds the requester-name snapshot to the existing editor-control request record. Comment author and membership names resolve through the account service without cross-domain table queries.
+
+## Pressure ink
+
+Pen strokes may contain `pressures`, an array of finite values in `[0, 1]`, with one value per coordinate pair in `points` (at most 20,000 samples). It is only valid on non-highlight strokes. Omission preserves legacy constant-width rendering. Width is `penWidth × (0.2 + 0.8 × pressure)`, so `penWidth` is the maximum pressure width. This is an optional field in canvas schema version 1 and native format version 1; no database migration is needed. Geometry and pressures are copied together through templates and native transfers.
+
+`InkStroke` captures pressure and smooths new centerline samples at Off, Light or Strong settings. Its distance-based filter uses screen pixels so the response stays consistent across zoom levels. Release commits the exact physical endpoint while retaining the last contact pressure. Hold detection uses raw pointer coordinates, independently of smoothing. Straightening redistributes the existing pressure profile along a straight line using cumulative path length; subsequent motion adjusts the line endpoint. Constant-width profiles collapse to two points.
+
+`strokeGeometry` builds a filled ribbon with round caps; live preview, the editor, PDF/PNG exports and workspace thumbnails use the same pressure-width mapping. Preview geometry updates at most once per animation frame, while all coalesced pointer samples retain their individual pressures. Lasso containment uses each sample's effective radius. Stabilization settings are transient tool state; the smoothed output points are persisted, so no filter is rerun on reload or export.
