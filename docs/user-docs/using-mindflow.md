@@ -211,9 +211,9 @@ The small version below the mindflow title links to the release notes. Developme
 
 ## Feedback and bug reports
 
-Choose **Feedback & Bugreport** in the app header, then **New report**. Select **Report a bug** or **Request a feature**, enter a title and details, and send it. Reports are private between their author and this instance's administrators; they are not automatically posted to GitHub.
+Choose **Feedback & Bugreport** in the app header, then **New report**. Choose **Bug** or **Feature request** from **Report type** at the top of the form, enter a title and details, and send it. Reports are private between their author and this instance's administrators; they are not automatically posted to GitHub.
 
-For a visible issue, choose **Capture current view** or upload a PNG up to 5 MB. Review the preview and remove it if it includes information you do not want to share. Automatic capture excludes dialogs and shows an approximation of the visible app; use a device screenshot if it misses the problem. Screenshots are attached only when you send the report.
+For a visible issue, choose **Capture current view** or **Upload image**. PNG, JPG/JPEG, WebP, GIF, AVIF, BMP, and other formats supported by your browser can be attached, up to 5 MB and 16 million pixels. Attachments become still images; large images may need to be reduced to fit the attachment limit. Cancelling the image picker keeps the report and its draft open. Review the preview and remove it if it includes information you do not want to share. Automatic capture excludes dialogs and shows an approximation of the visible app; use a device screenshot if it misses the problem. Images are attached only when you send the report.
 
 The bug icon immediately left of **Sign out** opens your report list. The list always includes both bugs and feature requests; **New report** is at the top-right. Opening a report shows a second dialog titled with the ticket name. Its close button returns to the list, preserving the underlying dialog; the same navigation works inside **Administration → Feedback & bugs**. Add replies with the comment box and **Send comment** at the bottom-right.
 
@@ -225,7 +225,9 @@ Reports follow this lifecycle:
 | **Accepted, to do** | **Close with release** or **Close with comment** → Closed. Both require a comment. For a release, include a tag such as `Fixed in v1.2.0` in that comment; the report then links to its release notes. |
 | **Closed**          | **Reopen** → Created. Discussion remains available.                                                                                                                                                    |
 
-Only actions allowed by the current state appear. Accepting and reopening also add an entry to the discussion. State and explanation are saved together.
+Only actions allowed by the current state appear. Accepting and reopening also add an entry to the discussion. State and explanation are saved together. Closed bugs and feature requests are permanently removed **30 days after closure**, including their attachments and discussion. The detail view shows the deletion date. Comments do not extend this deadline. Reopening cancels it; closing the report again starts a fresh 30 days.
+
+Administrators can use **Search tickets** to match ticket titles, descriptions, and all discussion comments.
 
 A badge beside the administration button and on **Feedback & bugs** counts unread reports and comments from other people. Each administrator has their own read state. The bug icon counts unread replies on your own reports. List rows show their unread activity count. Opening a report marks the displayed discussion as read; replies that arrive afterward remain unread until displayed. Counts refresh periodically and when you return to the app.
 
