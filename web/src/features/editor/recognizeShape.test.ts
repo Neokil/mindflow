@@ -135,3 +135,40 @@ it("recognizes loose loops with gaps, uneven speed, wobbly sides and rounded cor
   outlier[17].x += 30;
   expect(recognizeShape(outlier, 1)?.kind).toBe("circle");
 });
+
+it("constrains held ellipses and rotated rectangles to equal sides without losing their original geometry", () => {
+  for (const points of [circle, rectangle(), rectangle(Math.PI / 7)]) {
+    const ink = new InkStroke(points[0], true, "light", 1, 0.2);
+    points
+      .slice(1)
+      .forEach((point, index) => ink.add(point, 0.2 + index / 200));
+    ink.optimize(points.at(-1)!);
+    expect(ink.optimized).toBe(true);
+    const original = ink.samples.map((point) => ({ ...point }));
+    ink.setConstrained(true);
+    const constrained = ink.element("equal", "#123456", 7, false);
+    expect(constrained.width / constrained.height).toBeCloseTo(1, 2);
+    expect(constrained.pressures).toEqual(
+      original.map((point) => point.pressure),
+    );
+    expect(constrained.points!.slice(0, 2)).toEqual(
+      constrained.points!.slice(-2),
+    );
+    ink.setConstrained(false);
+    expect(ink.samples).toEqual(original);
+    ink.setConstrained(true);
+    const geometry = recognizeShape(points, 1)!;
+    const end = points.at(-1)!;
+    ink.add(
+      {
+        x: geometry.center.x + (end.x - geometry.center.x) * 1.4,
+        y: geometry.center.y + (end.y - geometry.center.y) * 1.4,
+      },
+      0.8,
+    );
+    const resized = ink.element("resized", "#123456", 7, true);
+    expect(resized.width).toBeGreaterThan(constrained.width * 1.3);
+    expect(resized.width / resized.height).toBeCloseTo(1, 2);
+    expect(resized.highlight).toBe(true);
+  }
+});

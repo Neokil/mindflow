@@ -3,7 +3,7 @@ export type RecognizedShape = {
   kind: "circle" | "rectangle";
   center: Point;
   fractions: number[];
-  pointAt: (fraction: number) => Point;
+  pointAt: (fraction: number, equalSides?: boolean) => Point;
 };
 const tau = Math.PI * 2;
 const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -168,10 +168,14 @@ export function recognizeShape(
       kind: "circle",
       center: fit.center,
       fractions,
-      pointAt: (f) =>
+      pointAt: (f, equalSides = false) =>
         fit.world(
-          (Math.cos(angle + direction * tau * f) * fit.width) / 2,
-          (Math.sin(angle + direction * tau * f) * fit.height) / 2,
+          (Math.cos(angle + direction * tau * f) *
+            (equalSides ? Math.max(fit.width, fit.height) : fit.width)) /
+            2,
+          (Math.sin(angle + direction * tau * f) *
+            (equalSides ? Math.max(fit.width, fit.height) : fit.height)) /
+            2,
         ),
     };
   }
@@ -219,18 +223,24 @@ export function recognizeShape(
     kind: "rectangle",
     center: fit.center,
     fractions,
-    pointAt: (f) => {
+    pointAt: (f, equalSides = false) => {
+      const side = Math.max(fit.width, fit.height),
+        scaleX = equalSides ? side / fit.width : 1,
+        scaleY = equalSides ? side / fit.height : 1;
       let position = wrap(startPhase + direction * f) * perim;
       for (let i = 0; i < 4; i++) {
         if (position <= edges[i] || i === 3) {
           const a = corners[i],
             b = corners[(i + 1) % 4],
             part = position / edges[i];
-          return fit.world(a.x + (b.x - a.x) * part, a.y + (b.y - a.y) * part);
+          return fit.world(
+            (a.x + (b.x - a.x) * part) * scaleX,
+            (a.y + (b.y - a.y) * part) * scaleY,
+          );
         }
         position -= edges[i];
       }
-      return fit.world(-halfW, -halfH);
+      return fit.world(-halfW * scaleX, -halfH * scaleY);
     },
   };
 }

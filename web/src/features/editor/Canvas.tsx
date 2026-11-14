@@ -88,6 +88,7 @@ export default function Canvas({
   const accent = useCanvasAccent();
   const interaction = useRef<CanvasInteraction>(null);
   const [strokeHold] = useState(() => new StrokeHold());
+  const shiftHeld = useRef(false);
   const inkFrame = useRef<number | undefined>(undefined);
   useEffect(
     () => () => {
@@ -419,6 +420,7 @@ export default function Canvas({
   });
 
   function pointerDown(e: Konva.KonvaEventObject<PointerEvent>) {
+    shiftHeld.current = shiftHeld.current || e.evt.shiftKey;
     if (e.evt.button !== 0 && e.evt.button !== 1) return;
     strokeHold.cancel();
     const p = pointer();
@@ -536,10 +538,12 @@ export default function Canvas({
     if (g.kind === "comment" || g.kind === "template") return;
     if (g.kind === "pen" && g.ink) {
       g.rawEnd = world;
+      g.ink.setConstrained(shiftHeld.current || event.evt.shiftKey);
       g.ink.add(world, event.evt.pressure);
       if (!g.ink.optimized)
         strokeHold.move(world, g.camera.zoom, () => {
           if (gesture.current !== g || !session.editable || !g.ink) return;
+          g.ink.setConstrained(shiftHeld.current);
           g.ink.optimize(g.rawEnd || world);
           paintInk();
         });
@@ -556,7 +560,7 @@ export default function Canvas({
     preview.current?.points(g.points.flatMap((p) => [p.x, p.y]));
     preview.current?.getLayer()?.batchDraw();
   }
-  function paintInk() {
+  const paintInk = useCallback(() => {
     if (inkFrame.current !== undefined) return;
     inkFrame.current = requestAnimationFrame(() => {
       inkFrame.current = undefined;
@@ -571,7 +575,28 @@ export default function Canvas({
       preview.current?.points(points);
       preview.current?.getLayer()?.batchDraw();
     });
-  }
+  }, [markerWidth, penWidth]);
+  useEffect(() => {
+    const update = (held: boolean) => {
+      shiftHeld.current = held;
+      const ink = gesture.current?.ink;
+      if (!ink) return;
+      ink.setConstrained(held);
+      paintInk();
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Shift") update(event.shiftKey);
+    };
+    const blur = () => update(false);
+    window.addEventListener("keydown", key);
+    window.addEventListener("keyup", key);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("keydown", key);
+      window.removeEventListener("keyup", key);
+      window.removeEventListener("blur", blur);
+    };
+  }, [paintInk]);
   function pointerUp(event: PointerEvent) {
     strokeHold.cancel();
     const g = gesture.current;
@@ -639,6 +664,7 @@ export default function Canvas({
       );
     }
     if (g.kind === "pen" && g.ink && session.editable) {
+      g.ink.setConstrained(shiftHeld.current || event.shiftKey);
       g.ink.finish(worldPoint(pointer(), camera));
       const stroke = g.ink.element(
         uid(),

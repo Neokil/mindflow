@@ -24,6 +24,8 @@ export class InkStroke {
     return this.shape?.geometry.kind;
   }
 
+  private constrained = false;
+  private end: Point;
   private profile?: { fraction: number; pressure: number }[];
   constructor(
     readonly start: Point,
@@ -32,9 +34,16 @@ export class InkStroke {
     readonly zoom: number,
     pressure: number,
   ) {
+    this.end = start;
     this.samples = [{ ...start, pressure: validPressure(pressure) }];
   }
+  setConstrained(value: boolean) {
+    if (this.constrained === value) return;
+    this.constrained = value;
+    if (this.optimized) this.finish(this.end);
+  }
   add(point: Point, pressure: number) {
+    this.end = point;
     const value = validPressure(pressure);
     if (this.shape) {
       this.updateShape(point, value);
@@ -141,6 +150,7 @@ export class InkStroke {
     this.updateLine(end, pressures[pressures.length - 1]);
   }
   finish(point: Point) {
+    this.end = point;
     const last = this.samples[this.samples.length - 1];
     // pointerup reports zero pressure; preserve the last in-contact pressure.
     if (this.shape) {
@@ -204,7 +214,7 @@ export class InkStroke {
     );
     shape.pressures[shape.pressures.length - 1] = pressure;
     this.samples = shape.fractions.map((fraction, i) => {
-      const point = shape.geometry.pointAt(fraction);
+      const point = shape.geometry.pointAt(fraction, this.constrained);
       return {
         x: center.x + (point.x - center.x) * scale,
         y: center.y + (point.y - center.y) * scale,
@@ -218,6 +228,13 @@ export class InkStroke {
   }
   private updateLine(end: Point, pressure: number) {
     if (!this.profile) return;
+    if (this.constrained) {
+      const horizontal =
+        Math.abs(end.x - this.start.x) >= Math.abs(end.y - this.start.y);
+      end = horizontal
+        ? { x: end.x, y: this.start.y }
+        : { x: this.start.x, y: end.y };
+    }
     this.profile[this.profile.length - 1].pressure = pressure;
     this.samples = this.profile.map((p) => ({
       x: this.start.x + (end.x - this.start.x) * p.fraction,

@@ -218,3 +218,80 @@ test("holding Pencil and marker loops produces clean closed shapes with saved pr
   await expect(page.getByTestId("canvas")).toBeVisible();
   expect(await snapshot()).toEqual(saved);
 });
+
+test("Shift constrains held ink shapes and lines before release", async ({
+  page,
+}, info) => {
+  await login(page);
+  await create(page, `Shift assistance ${info.project.name}`);
+  const box = (await page.getByTestId("canvas").boundingBox())!;
+  const draw = async (points: { x: number; y: number }[]) => {
+    await page.mouse.move(box.x + points[0].x, box.y + points[0].y);
+    await page.mouse.down();
+    for (const point of points.slice(1))
+      await page.mouse.move(box.x + point.x, box.y + point.y);
+    await page.waitForTimeout(850);
+    // No pointer movement follows: the keyboard must update the held preview.
+    await page.keyboard.down("Shift");
+    await page.mouse.up();
+    await page.keyboard.up("Shift");
+    await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  };
+  await activate(
+    page,
+    page.getByRole("button", { name: "Pen (P)", exact: true }),
+  );
+  await draw(
+    Array.from({ length: 49 }, (_, i) => ({
+      x: 300 + 90 * Math.cos((i / 48) * Math.PI * 2),
+      y: 240 + 50 * Math.sin((i / 48) * Math.PI * 2),
+    })),
+  );
+  await activate(
+    page,
+    page.getByRole("button", { name: "Highlighter (M)", exact: true }),
+  );
+  const corners = [
+    [490, 330],
+    [690, 330],
+    [690, 440],
+    [490, 440],
+    [490, 330],
+  ];
+  await draw(
+    corners
+      .slice(0, -1)
+      .flatMap(([x, y], edge) =>
+        Array.from({ length: 10 }, (_, i) => ({
+          x: x + ((corners[edge + 1][0] - x) * i) / 10,
+          y: y + ((corners[edge + 1][1] - y) * i) / 10,
+        })),
+      )
+      .concat([{ x: 490, y: 330 }]),
+  );
+  await activate(
+    page,
+    page.getByRole("button", { name: "Pen (P)", exact: true }),
+  );
+  await draw([
+    { x: 160, y: 450 },
+    { x: 200, y: 465 },
+    { x: 245, y: 450 },
+    { x: 300, y: 480 },
+  ]);
+  const saved = (
+    await (
+      await page.request.get(
+        `/api/v1/pages/${page.url().split("/pages/")[1]}/document`,
+      )
+    ).json()
+  ).document as CanvasDocument;
+  expect(saved.elements).toHaveLength(3);
+  for (const shape of saved.elements.slice(0, 2))
+    expect(shape.width / shape.height).toBeCloseTo(1, 2);
+  const line = saved.elements[2];
+  expect(line.width).toBeGreaterThan(100);
+  expect(line.height).toBeLessThan(1);
+  for (let i = 1; i < line.points!.length; i += 2)
+    expect(line.points![i]).toBe(0);
+});

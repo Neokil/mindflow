@@ -58,3 +58,23 @@ it("leaves dots and nearly closed gestures freehand and bounds dense samples", (
   expect(dense.samples).toHaveLength(20000);
   expect(dense.samples.at(-1)?.x).toBe(21000);
 });
+
+it("snaps held lines to their nearest axis and restores the raw direction when Shift is released", () => {
+  const ink = new InkStroke({ x: 10, y: 20 }, true, "strong", 1, 0.2);
+  ink.add({ x: 50, y: 45 }, 0.5);
+  ink.add({ x: 110, y: 55 }, 0.8);
+  ink.setConstrained(true);
+  ink.optimize({ x: 110, y: 55 });
+  expect(ink.straight).toBe(true);
+  expect(ink.samples.every((point) => point.y === 20)).toBe(true);
+  ink.setConstrained(false);
+  expect(ink.samples.at(-1)).toMatchObject({ x: 110, y: 55, pressure: 0.8 });
+  ink.setConstrained(true);
+  ink.add({ x: 15, y: 160 }, 0.7);
+  expect(ink.samples.every((point) => point.x === 10)).toBe(true);
+  ink.finish({ x: 15, y: 170 });
+  expect(ink.samples.at(-1)).toMatchObject({ x: 10, y: 170, pressure: 0.7 });
+  ink.setConstrained(false);
+  expect(ink.samples.at(-1)).toMatchObject({ x: 15, y: 170 });
+  expect(ink.samples[0].pressure).toBe(0.2);
+});
