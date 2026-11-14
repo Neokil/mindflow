@@ -29,6 +29,21 @@ class WikiTests(unittest.TestCase):
             self.assertIn('wiki/guides-start', (target / '_Sidebar.md').read_text())
             self.assertIn('docs/', (target / 'Home.md').read_text())
 
+    def test_release_revision_pins_repository_links_and_generated_home(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            docs, target = root / 'repo/docs', root / 'wiki'
+            docs.mkdir(parents=True)
+            (docs / 'Guide.md').write_text('[Source](../README.md#install) ![Icon](../web/public/icon.png)\n')
+            repository = 'https://github.com/owner/repo'
+            for revision, encoded in [('v1.2.0', 'v1.2.0'), ('release/next', 'release%2Fnext')]:
+                with self.subTest(revision=revision):
+                    wiki.prepare(docs, target, repository, revision)
+                    text = (target / 'Guide.md').read_text()
+                    self.assertIn(f'{repository}/blob/{encoded}/README.md#install', text)
+                    self.assertIn(f'{repository}/raw/{encoded}/web/public/icon.png', text)
+                    self.assertIn(f'{repository}/tree/{encoded}/docs', (target / 'Home.md').read_text())
+
     def test_deletes_only_previous_managed_files_and_is_repeatable(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

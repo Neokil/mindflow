@@ -27,4 +27,4 @@ mindflow is a self-hosted infinite canvas for images, shapes, text, drawing, and
 - [Demo recording](developer-docs/demo.md): regenerating the README GIF.
 - [Wiki publishing](developer-docs/wiki.md): keeping this documentation synchronized with GitHub.
 
-The Markdown files in [`docs/`](https://github.com/Neokil/mindflow/tree/main/docs) are the source of truth. The wiki publishes them from `main`; edit the repository files rather than the generated wiki copies.
+The Markdown files in [`docs/`](https://github.com/Neokil/mindflow/tree/main/docs) are the source of truth. The wiki publishes them with each release or through a manual workflow run; edit the repository files rather than the generated wiki copies.

@@ -60,7 +60,7 @@ Tablet tests cover drag creation, pen strokes, concurrent fingers, two-finger na
 | [Quality](../../.github/workflows/quality.yml)     | Lint, unit/integration tests, generated-code checks, and dependency audits.                         |
 | [Browsers](../../.github/workflows/browsers.yml)   | Chrome, Firefox, HTTP, iPad WebKit, and tablet Chromium acceptance tests; upload failure artifacts. |
 | [Container](../../.github/workflows/container.yml) | Production image, TLS, and restore verification.                                                    |
-| [Release](../../.github/workflows/release.yml)     | Reuse all CI checks for the release commit, then publish its Docker image.                          |
+| [Release](../../.github/workflows/release.yml)     | Reuse all CI checks for the release commit, then publish its Docker image and wiki.                 |
 
 Docker publishing runs only on GitHub's [`release: published`](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#release) event. Push the release commit and a canonical version tag such as `v1.2.0`, then publish a GitHub release for that tag. Draft releases, release-note edits, branch pushes, and tag pushes do not publish images. The release workflow checks the tagged commit before publishing; checks receive no Docker Hub secrets. A failed publication can be retried through the workflow run.
 
@@ -68,4 +68,4 @@ Stable releases publish `neokil/mindflow:1.2.0` and update `latest`. Prereleases
 
 The Docker build injects `MINDFLOW_RELEASE` into the Go binary independently of the build fingerprint used for reload notices. Local builds show `unreleased`.
 
-The [wiki workflow](wiki.md) publishes docs on `main`. [Dependency maintenance](dependencies.md) describes `make upgrade`. [Demo recording](demo.md) describes the manual README GIF workflow; it is not a CI job. Keep [user operations](../user-docs/operations.md) current when deployment or storage behavior changes.
+The callable [wiki workflow](wiki.md) publishes the release commit’s docs after image publication, or the selected revision when run manually. [Dependency maintenance](dependencies.md) describes `make upgrade`. [Demo recording](demo.md) describes the manual README GIF workflow; it is not a CI job. Keep [user operations](../user-docs/operations.md) current when deployment or storage behavior changes.

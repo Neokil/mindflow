@@ -11,7 +11,7 @@ MANIFEST = '.mindflow-docs.json'
 LINK = re.compile(r'(!?\[[^\]\n]*\]\()([^\s)]+)([^\n)]*\))')
 
 
-def rewrite_links(text, source_file, source, repository, pages):
+def rewrite_links(text, source_file, source, repository, pages, revision='main'):
     def replace(match):
         target = urlsplit(match[2])
         if target.scheme or target.netloc or not target.path:
@@ -25,7 +25,7 @@ def rewrite_links(text, source_file, source, repository, pages):
         elif path.is_relative_to(source.parent):
             relative = quote(path.relative_to(source.parent).as_posix())
             kind = 'raw' if match[1].startswith('!') else 'blob'
-            address = f'{repository}/{kind}/main/{relative}'
+            address = f'{repository}/{kind}/{quote(revision, safe="")}/{relative}'
         else:
             return match[0]
         parsed = urlsplit(address)
@@ -55,7 +55,7 @@ def safe_target(destination, name):
     return target
 
 
-def prepare(source, destination, repository):
+def prepare(source, destination, repository, revision='main'):
     source, destination = source.resolve(), destination.resolve()
     if source == destination or destination.is_relative_to(source) or source.is_relative_to(destination):
         raise ValueError('Source and wiki destination must be separate directories')
@@ -79,12 +79,12 @@ def prepare(source, destination, repository):
         target = safe_target(destination, name)
         target.parent.mkdir(parents=True, exist_ok=True)
         if path in pages:
-            target.write_text(rewrite_links(path.read_text(), path, source, repository, pages))
+            target.write_text(rewrite_links(path.read_text(), path, source, repository, pages, revision))
         else:
             shutil.copyfile(path, target)
     navigation = '\n'.join(f'- [{title.replace("_", " ").replace("-", " ").title()}]({repository}/wiki/{quote(title)})' for title in pages.values() if title not in ('Home', '_Sidebar'))
     if 'Home.md' not in generated.values():
-        (destination / 'Home.md').write_text(f'# mindflow documentation\n\nPublished from [`docs/`]({repository}/tree/main/docs). Edit the source files in the main repository; wiki copies are updated automatically.\n\n{navigation}\n')
+        (destination / 'Home.md').write_text(f'# mindflow documentation\n\nPublished from [`docs/`]({repository}/tree/{quote(revision, safe="")}/docs). Edit the source files in the main repository; wiki copies are updated automatically.\n\n{navigation}\n')
     if '_Sidebar.md' not in generated.values():
         (destination / '_Sidebar.md').write_text(f'[Home]({repository}/wiki/Home)\n\n{navigation}\n')
     (destination / MANIFEST).write_text(json.dumps(sorted(names), indent=2) + '\n')
@@ -95,8 +95,9 @@ def main():
     parser.add_argument('--source', type=Path, default=Path('docs'))
     parser.add_argument('--destination', type=Path, required=True)
     parser.add_argument('--repository', required=True, help='Repository web URL')
+    parser.add_argument('--revision', default='main', help='Repository revision used for source-file links')
     options = parser.parse_args()
-    prepare(options.source, options.destination, options.repository.rstrip('/'))
+    prepare(options.source, options.destination, options.repository.rstrip('/'), options.revision)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-name: Publish release image
+name: Publish release
 on:
   release:
     types: [published]
@@ -61,3 +61,8 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+  wiki:
+    needs: image
+    permissions:
+      contents: write
+    uses: ./.github/workflows/wiki.yml
