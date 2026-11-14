@@ -337,7 +337,7 @@ export default function WorkspaceEditor({
                 title="Import pages"
                 onClick={() => setImporting(true)}
               >
-                <Upload size={17} />
+                <Download size={17} />
               </button>
             )}
             <button
@@ -346,7 +346,7 @@ export default function WorkspaceEditor({
               title="Export workspace"
               onClick={() => setExporting({})}
             >
-              <Download size={17} />
+              <Upload size={17} />
             </button>
           </div>
           <div
@@ -422,7 +422,7 @@ export default function WorkspaceEditor({
                           setExporting({ pageId: p.id });
                         }}
                       >
-                        <Download size={14} />
+                        <Upload size={14} />
                         Export page
                       </button>
                       <button

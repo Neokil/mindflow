@@ -5,7 +5,7 @@ import {
   Blocks,
   MessageCircle,
   ImagePlus,
-  FileUp,
+  FileDown,
   MousePointer2,
   Pencil,
   Highlighter,
@@ -102,7 +102,7 @@ export default function EditorToolbar({
           disabled={!editable}
           onClick={onPDF}
         >
-          <FileUp size={18} />
+          <FileDown size={18} />
         </button>
         <span className="toolbar-divider" />
         <button

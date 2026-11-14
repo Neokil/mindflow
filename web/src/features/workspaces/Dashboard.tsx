@@ -108,7 +108,7 @@ export default function Dashboard({
             Trash
           </button>
           <button className="secondary" onClick={() => setImporting(true)}>
-            <Upload size={17} />
+            <Download size={17} />
             Import workspace
           </button>
           <button className="primary" onClick={create}>
@@ -198,7 +198,7 @@ export default function Dashboard({
                               setExporting(w);
                             }}
                           >
-                            <Download size={14} />
+                            <Upload size={14} />
                             Export
                           </button>
                           <button
