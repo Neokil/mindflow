@@ -4396,6 +4396,97 @@
           }
         ]
       }
+    },
+    "/workspaces/{id}/ownership": {
+      "post": {
+        "summary": "Transfer workspace ownership to an active user; former owner retains full access",
+        "operationId": "transfer_workspace_ownership",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Membership updated"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userId",
+                  "revision",
+                  "confirm"
+                ],
+                "properties": {
+                  "userId": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer"
+                  },
+                  "confirm": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

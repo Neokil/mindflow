@@ -2204,3 +2204,9 @@ body {
   margin-top: 4px;
   font-size: 11px;
 }
+
+.ownership-section {
+  border-top: 1px solid var(--line);
+  margin-top: 20px;
+  padding-top: 12px;
+}

@@ -205,7 +205,7 @@ it("export waits for an in-flight save and refuses an unsaved offline draft", as
   const saving = session.flush();
   await Promise.resolve();
   await Promise.resolve();
-  const exporting = session.saveForExport();
+  const exporting = session.savePendingChanges();
   await vi.waitFor(() => expect(resolve).toBeTypeOf("function"));
   resolve({ revision: 1 });
   await saving;
@@ -213,5 +213,5 @@ it("export waits for an in-flight save and refuses an unsaved offline draft", as
   expect(session.unsaved).toBe(false);
   session.edit(emptyDocument());
   session.editable = false;
-  await expect(session.saveForExport()).rejects.toThrow("unsaved changes");
+  await expect(session.savePendingChanges()).rejects.toThrow("unsaved changes");
 });

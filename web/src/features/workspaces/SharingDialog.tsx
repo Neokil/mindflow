@@ -1,3 +1,4 @@
+import TransferOwnershipDialog from "./TransferOwnershipDialog";
 import SharingUserPicker from "./SharingUserPicker";
 import type { DirectoryUser } from "../../api";
 import Avatar from "../accounts/Avatar";
@@ -23,11 +24,14 @@ export default function SharingDialog({
   workspace,
   close,
   changed,
+  beforeTransfer,
 }: {
   workspace: Workspace;
   close: () => void;
   changed: () => Promise<void>;
+  beforeTransfer?: () => Promise<void>;
 }) {
+  const [transferring, setTransferring] = useState(false);
   const owner = !workspace.role || workspace.role === "owner";
   const [workspaceOwner, setWorkspaceOwner] = useState<Member>();
   const [members, setMembers] = useState<Member[]>([]),
@@ -194,6 +198,19 @@ export default function SharingDialog({
               ))
             )}
           </div>
+          <section className="ownership-section">
+            <h3>Ownership</h3>
+            <p className="muted">
+              Make another registered user the owner and keep full access.
+            </p>
+            <button
+              className="secondary"
+              disabled={busy || loadingUsers}
+              onClick={() => setTransferring(true)}
+            >
+              Transfer ownership
+            </button>
+          </section>
         </>
       ) : (
         <p>
@@ -205,6 +222,18 @@ export default function SharingDialog({
               : "read-only"}{" "}
           access. Only the workspace owner can manage sharing.
         </p>
+      )}
+      {transferring && (
+        <TransferOwnershipDialog
+          workspace={workspace}
+          users={users.filter((user) => user.id !== workspaceOwner?.userId)}
+          beforeTransfer={beforeTransfer}
+          close={() => setTransferring(false)}
+          transferred={async () => {
+            await changed();
+            close();
+          }}
+        />
       )}
       <ErrorMessage message={error} />
     </Modal>

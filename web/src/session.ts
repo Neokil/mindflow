@@ -218,14 +218,14 @@ export class PageSession {
     }
     return result;
   }
-  async saveForExport() {
+  async savePendingChanges() {
     const deadline = Date.now() + 30000;
     while (this.busy && Date.now() < deadline)
       await new Promise((resolve) => setTimeout(resolve, 50));
     if (!this.busy && this.dirty) await this.flush();
     if (this.unsaved || this.busy)
       throw new Error(
-        "Save or recover your unsaved changes before exporting. Check your connection and editor control.",
+        "Save or recover your unsaved changes before continuing. Check your connection and editor control.",
       );
   }
   async flush() {

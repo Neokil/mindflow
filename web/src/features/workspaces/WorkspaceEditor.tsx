@@ -599,7 +599,7 @@ export default function WorkspaceEditor({
           beforeExport={async (ids) => {
             for (const [id, current] of sessions.current)
               if (!ids.length || ids.includes(id))
-                await current.saveForExport();
+                await current.savePendingChanges();
           }}
         />
       )}
@@ -622,6 +622,10 @@ export default function WorkspaceEditor({
           workspace={workspace}
           close={() => setSharing(false)}
           changed={load}
+          beforeTransfer={async () => {
+            for (const current of sessions.current.values())
+              await current.savePendingChanges();
+          }}
         />
       )}
       {dialog && <NameDialog {...dialog} close={() => setDialog(undefined)} />}
