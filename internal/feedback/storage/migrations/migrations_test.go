@@ -5,6 +5,7 @@ import (
 	"mindflow/internal/feedback/storage/migrations"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite" // Register SQLite for real upgrade verification.
@@ -39,6 +40,7 @@ func TestLifecycleUpgradePreservesReportsCommentsAndMedia(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	upgradedAt := time.Now().Unix()
 	_, err = provider.Up(t.Context())
 	if err != nil {
 		t.Fatal(err)
@@ -46,12 +48,19 @@ func TestLifecycleUpgradePreservesReportsCommentsAndMedia(t *testing.T) {
 	for old, next := range map[string]string{"submitted": "created", acceptedState: acceptedState, "denied": closedState, closedState: closedState} {
 		var state string
 		var media int
-		err = database.QueryRowContext(t.Context(), "SELECT status,length(screenshot) FROM feedback_reports WHERE id=?", old).Scan(&state, &media)
+		var closedAt int64
+		err = database.QueryRowContext(t.Context(), "SELECT status,length(screenshot),closed_at FROM feedback_reports WHERE id=?", old).Scan(&state, &media, &closedAt)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if state != next || media != 4 {
 			t.Fatal("upgrade lost report state or media", old, state, media)
+		}
+		if next == closedState && closedAt < upgradedAt {
+			t.Fatal("existing closed report lost its fresh retention window", closedAt)
+		}
+		if next != closedState && closedAt != 0 {
+			t.Fatal("open report acquired a deletion deadline")
 		}
 		var events int
 		err = database.QueryRowContext(t.Context(), "SELECT count(*) FROM feedback_events WHERE report_id=?", old).Scan(&events)

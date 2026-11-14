@@ -24,11 +24,16 @@ type Accounts interface {
 type Service struct {
 	repository *storage.Repository
 	accounts   Accounts
+	now        func() time.Time
 }
 
 // NewService supplies private report storage and public account metadata.
-func NewService(repository *storage.Repository, accounts Accounts) *Service {
-	return &Service{repository: repository, accounts: accounts}
+func NewService(repository *storage.Repository, accounts Accounts, now func() time.Time) *Service {
+	if now == nil {
+		now = time.Now
+	}
+
+	return &Service{repository: repository, accounts: accounts, now: now}
 }
 
 // Report contains user-visible feedback metadata and discussion.
@@ -45,6 +50,8 @@ type Report struct {
 	HasScreenshot bool      `json:"hasScreenshot"`
 	CreatedAt     int64     `json:"createdAt"`
 	UpdatedAt     int64     `json:"updatedAt"`
+	ClosedAt      int64     `json:"closedAt"`
+	PurgeAt       int64     `json:"purgeAt"`
 	Comments      []Message `json:"comments"`
 	Unread        int64     `json:"unread"`
 	ReadThrough   int64     `json:"readThrough"`
@@ -70,7 +77,7 @@ type CreateCommand struct {
 
 // Create validates bounded text and normalizes optional screenshot content.
 func (a *Service) Create(ctx context.Context, actor account.User, command CreateCommand) (Report, error) {
-	if command.Kind != "bug" && command.Kind != "feature" {
+	if command.Kind != KindBug && command.Kind != KindFeature {
 		return Report{}, invalid("Choose bug or feature request.")
 	}
 	title, err := text(command.Title, titleLimit)
@@ -86,7 +93,7 @@ func (a *Service) Create(ctx context.Context, actor account.User, command Create
 		return Report{}, err
 	}
 	resourceID := rand.Text()
-	now := time.Now().Unix()
+	now := a.now().Unix()
 	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Report{}, err
@@ -110,7 +117,11 @@ func (a *Service) Create(ctx context.Context, actor account.User, command Create
 }
 
 // List returns only reports the actor is authorized to read.
-func (a *Service) List(ctx context.Context, actor account.User, all bool) ([]Report, error) {
+func (a *Service) List(ctx context.Context, actor account.User, all bool, search string) ([]Report, error) {
+	search = strings.TrimSpace(search)
+	if utf8.RuneCountInString(search) > searchLimit {
+		return nil, invalid("Use a search query up to 200 characters.")
+	}
 	admin := int64(0)
 	if all {
 		err := account.RequireAdministrator(actor)
@@ -119,13 +130,13 @@ func (a *Service) List(ctx context.Context, actor account.User, all bool) ([]Rep
 		}
 		admin = 1
 	}
-	rows, err := a.repository.FeedbackList(ctx, storage.FeedbackListParams{UserID: actor.ID, Administrator: admin})
+	rows, err := a.repository.FeedbackList(ctx, storage.FeedbackListParams{UserID: actor.ID, Administrator: admin, Search: search})
 	if err != nil {
 		return nil, err
 	}
 	result := make([]Report, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, Report{ID: row.ID, AuthorID: row.AuthorID, AuthorName: a.name(ctx, row.AuthorID), Kind: row.Kind, Title: row.Title, Status: row.Status, Release: row.ReleaseVersion, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Unread: row.Unread})
+		result = append(result, Report{ID: row.ID, AuthorID: row.AuthorID, AuthorName: a.name(ctx, row.AuthorID), Kind: row.Kind, Title: row.Title, Status: row.Status, Release: row.ReleaseVersion, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, ClosedAt: row.ClosedAt, PurgeAt: purgeAt(row.Status, row.ClosedAt), Unread: row.Unread})
 	}
 
 	return result, nil
@@ -162,7 +173,7 @@ func (a *Service) Find(ctx context.Context, actor account.User, resourceID strin
 		actions = availableActions(row.Status)
 	}
 
-	return Report{Actions: actions, ID: row.ID, AuthorID: row.AuthorID, AuthorName: a.name(ctx, row.AuthorID), Kind: row.Kind, Title: row.Title, Body: row.Body, Status: row.Status, Release: row.ReleaseVersion, ReleaseURL: notes, HasScreenshot: row.HasScreenshot != 0, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Comments: comments, ReadThrough: through}, nil
+	return Report{Actions: actions, ID: row.ID, AuthorID: row.AuthorID, AuthorName: a.name(ctx, row.AuthorID), Kind: row.Kind, Title: row.Title, Body: row.Body, Status: row.Status, Release: row.ReleaseVersion, ReleaseURL: notes, HasScreenshot: row.HasScreenshot != 0, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, ClosedAt: row.ClosedAt, PurgeAt: purgeAt(row.Status, row.ClosedAt), Comments: comments, ReadThrough: through}, nil
 }
 
 // Comment allows an author or administrator to continue a report's discussion.
@@ -181,7 +192,7 @@ func (a *Service) Comment(ctx context.Context, actor account.User, resourceID, b
 	}
 	defer func() { _ = transaction.Rollback() }()
 	queries := a.repository.Within(transaction)
-	now := time.Now().Unix()
+	now := a.now().Unix()
 	err = a.appendComment(ctx, transaction, resourceID, actor.ID, body, now)
 	if err != nil {
 		return Report{}, err
@@ -222,8 +233,12 @@ func (a *Service) Review(ctx context.Context, actor account.User, resourceID str
 	if err != nil {
 		return Report{}, err
 	}
-	now := time.Now().Unix()
-	err = queries.FeedbackReview(ctx, storage.FeedbackReviewParams{ID: resourceID, Status: decision.Status, ReleaseVersion: decision.Release, UpdatedAt: now})
+	now := a.now().Unix()
+	closedAt := int64(0)
+	if decision.Status == StateClosed {
+		closedAt = now
+	}
+	err = queries.FeedbackReview(ctx, storage.FeedbackReviewParams{ID: resourceID, Status: decision.Status, ReleaseVersion: decision.Release, UpdatedAt: now, ClosedAt: closedAt})
 	if err != nil {
 		return Report{}, err
 	}
@@ -290,6 +305,11 @@ func (a *Service) Screenshot(ctx context.Context, actor account.User, resourceID
 	}
 
 	return content, err
+}
+
+// Cleanup removes expired closed reports, including their media and dependent records.
+func (a *Service) Cleanup(ctx context.Context) error {
+	return a.repository.FeedbackDeleteExpired(ctx, a.now().Add(-reportRetention).Unix())
 }
 
 func (a *Service) name(ctx context.Context, userID string) string {
@@ -367,3 +387,22 @@ func (a *Service) appendComment(ctx context.Context, transaction *storage.Transa
 
 	return a.repository.EventWithin(ctx, transaction, reportID, actorID, "comment", resourceID)
 }
+
+func purgeAt(state string, closedAt int64) int64 {
+	if state != StateClosed {
+		return 0
+	}
+
+	return closedAt + int64(reportRetention/time.Second)
+}
+
+const (
+	reportRetention = 30 * 24 * time.Hour
+	searchLimit     = 200
+)
+
+// Supported report kinds.
+const (
+	KindBug     = "bug"
+	KindFeature = "feature"
+)

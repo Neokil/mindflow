@@ -24,7 +24,7 @@ func TestFeedbackIsPrivateAndSupportsDiscussionReviewAndDeletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	response := author.ok("POST", "/api/v1/feedback", feedback.CreateCommand{Kind: "bug", Title: "A visible problem", Body: "How to reproduce it", Screenshot: base64.StdEncoding.EncodeToString(screenshot.Bytes())})
+	response := author.ok("POST", "/api/v1/feedback", feedback.CreateCommand{Kind: feedback.KindBug, Title: "A visible problem", Body: "How to reproduce it", Screenshot: base64.StdEncoding.EncodeToString(screenshot.Bytes())})
 	var report feedback.Report
 	err = json.Unmarshal(response.Body.Bytes(), &report)
 	if err != nil {
@@ -74,11 +74,11 @@ func TestFeedbackRejectsInvalidAttachmentsAndPrematureClosure(t *testing.T) {
 	t.Parallel()
 	client := fixture(t)
 	client.setup()
-	invalid := feedback.CreateCommand{Kind: "bug", Title: "Broken", Body: "Details", Screenshot: base64.StdEncoding.EncodeToString([]byte("<svg/>"))}
+	invalid := feedback.CreateCommand{Kind: feedback.KindBug, Title: "Broken", Body: "Details", Screenshot: base64.StdEncoding.EncodeToString([]byte("<svg/>"))}
 	if client.request("POST", "/api/v1/feedback", invalid).Code != http.StatusBadRequest {
 		t.Fatal("invalid screenshot accepted")
 	}
-	response := client.ok("POST", "/api/v1/feedback", feedback.CreateCommand{Kind: "feature", Title: "A new tool", Body: "Useful for sketching"})
+	response := client.ok("POST", "/api/v1/feedback", feedback.CreateCommand{Kind: feedback.KindFeature, Title: "A new tool", Body: "Useful for sketching"})
 	var report feedback.Report
 	err := json.Unmarshal(response.Body.Bytes(), &report)
 	if err != nil {
@@ -98,7 +98,7 @@ func TestFeedbackUnreadIsPrivatePerReaderAndUsesDisplayedSnapshot(t *testing.T) 
 	stranger, _ := sharedUser(owner, "unread-stranger@example.com")
 	moderator, moderatorID := sharedUser(owner, "unread-admin@example.com")
 	owner.ok("PATCH", "/api/v1/admin/users/"+moderatorID, map[string]string{roleField: account.RoleAdmin})
-	created := author.ok("POST", "/api/v1/feedback", feedback.CreateCommand{Kind: "feature", Title: "Unread test", Body: "Please add this feature."})
+	created := author.ok("POST", "/api/v1/feedback", feedback.CreateCommand{Kind: feedback.KindFeature, Title: "Unread test", Body: "Please add this feature."})
 	var report feedback.Report
 	err := json.Unmarshal(created.Body.Bytes(), &report)
 	if err != nil {

@@ -52,6 +52,7 @@ type Config struct {
 
 // App serves the HTTP API and coordinates domain services.
 type App struct {
+	feedback       *feedback.Service
 	releases       *release.Service
 	inactivity     *inactivity.Service
 	trash          *trash.Service
@@ -127,7 +128,8 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	avatar.NewService(data.Accounts).RegisterHTTP(service)
 	service.accounts.RegisterHTTP(service)
 	subscriptions.RegisterHTTP(service)
-	feedback.NewService(data.Feedback, accounts).RegisterHTTP(service)
+	service.feedback = feedback.NewService(data.Feedback, accounts, config.Now)
+	service.feedback.RegisterHTTP(service)
 	service.authentication.RegisterHTTP(service)
 	service.installation.RegisterHTTP(service)
 	service.invitations.RegisterHTTP(service)
@@ -232,6 +234,10 @@ func (a *App) RunWorkers(ctx context.Context) {
 			_ = a.invitations.Cleanup(ctx)
 			_ = a.passwordResets.Cleanup(ctx)
 			_ = a.trash.Cleanup(ctx)
+			feedbackErr := a.feedback.Cleanup(ctx)
+			if feedbackErr != nil {
+				a.Log.Error("clean up closed reports", "error", feedbackErr)
+			}
 			_ = a.images.Cleanup(ctx)
 			_ = a.canvases.Cleanup(ctx)
 		}

@@ -14,7 +14,7 @@ type HTTP interface {
 // RegisterHTTP exposes private reports, discussion and explicit screenshot attachments.
 func (a *Service) RegisterHTTP(routes HTTP) {
 	routes.Endpoint("GET /api/v1/feedback", true, false, func(_ http.ResponseWriter, request *http.Request) (any, error) {
-		return a.List(request.Context(), routes.CurrentUser(request), request.URL.Query().Get("scope") == "all")
+		return a.List(request.Context(), routes.CurrentUser(request), request.URL.Query().Get("scope") == "all", request.URL.Query().Get("q"))
 	})
 	routes.Endpoint("GET /api/v1/feedback/unread", true, false, func(_ http.ResponseWriter, request *http.Request) (any, error) {
 		return a.Unread(request.Context(), routes.CurrentUser(request))

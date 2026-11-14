@@ -119,6 +119,15 @@ func (q *Queries) FeedbackDeleteAuthorReports(ctx context.Context, authorID stri
 	return err
 }
 
+const feedbackDeleteExpired = `-- name: FeedbackDeleteExpired :exec
+DELETE FROM feedback_reports WHERE status='closed' AND closed_at>0 AND closed_at<=?
+`
+
+func (q *Queries) FeedbackDeleteExpired(ctx context.Context, closedAt int64) error {
+	_, err := q.db.ExecContext(ctx, feedbackDeleteExpired, closedAt)
+	return err
+}
+
 const feedbackDeleteUserReads = `-- name: FeedbackDeleteUserReads :exec
 DELETE FROM feedback_reads WHERE user_id=?
 `
@@ -150,7 +159,7 @@ func (q *Queries) FeedbackEvent(ctx context.Context, arg FeedbackEventParams) er
 }
 
 const feedbackFind = `-- name: FeedbackFind :one
-SELECT id,author_id,kind,title,body,status,release_version,created_at,updated_at,CAST(screenshot IS NOT NULL AS INTEGER) AS has_screenshot FROM feedback_reports WHERE id=? AND (author_id=? OR CAST(?3 AS INTEGER)=1)
+SELECT id,author_id,kind,title,body,status,release_version,created_at,updated_at,closed_at,CAST(screenshot IS NOT NULL AS INTEGER) AS has_screenshot FROM feedback_reports WHERE id=? AND (author_id=? OR CAST(?3 AS INTEGER)=1)
 `
 
 type FeedbackFindParams struct {
@@ -169,6 +178,7 @@ type FeedbackFindRow struct {
 	ReleaseVersion string
 	CreatedAt      int64
 	UpdatedAt      int64
+	ClosedAt       int64
 	HasScreenshot  int64
 }
 
@@ -185,22 +195,28 @@ func (q *Queries) FeedbackFind(ctx context.Context, arg FeedbackFindParams) (Fee
 		&i.ReleaseVersion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ClosedAt,
 		&i.HasScreenshot,
 	)
 	return i, err
 }
 
 const feedbackList = `-- name: FeedbackList :many
-SELECT r.id,r.author_id,r.kind,r.title,r.status,r.release_version,r.created_at,r.updated_at,
+SELECT r.id,r.author_id,r.kind,r.title,r.status,r.release_version,r.created_at,r.updated_at,r.closed_at,
  (SELECT count(*) FROM feedback_events e WHERE e.report_id=r.id AND e.actor_id!=?1
  AND (CAST(?2 AS INTEGER)=1 OR e.kind='comment')
  AND e.id>COALESCE((SELECT through_event FROM feedback_reads WHERE report_id=r.id AND user_id=?1),0)) AS unread
- FROM feedback_reports r WHERE r.author_id=?1 OR CAST(?2 AS INTEGER)=1 ORDER BY r.updated_at DESC,(SELECT MAX(id) FROM feedback_events WHERE report_id=r.id) DESC,r.id
+ FROM feedback_reports r WHERE (r.author_id=?1 OR CAST(?2 AS INTEGER)=1)
+ AND (CAST(?3 AS TEXT)='' OR instr(lower(r.title),lower(CAST(?3 AS TEXT)))>0
+ OR instr(lower(r.body),lower(CAST(?3 AS TEXT)))>0
+ OR EXISTS(SELECT 1 FROM feedback_comments c WHERE c.report_id=r.id AND instr(lower(c.body),lower(CAST(?3 AS TEXT)))>0))
+ ORDER BY r.updated_at DESC,(SELECT MAX(id) FROM feedback_events WHERE report_id=r.id) DESC,r.id
 `
 
 type FeedbackListParams struct {
 	UserID        string
 	Administrator int64
+	Search        string
 }
 
 type FeedbackListRow struct {
@@ -212,11 +228,12 @@ type FeedbackListRow struct {
 	ReleaseVersion string
 	CreatedAt      int64
 	UpdatedAt      int64
+	ClosedAt       int64
 	Unread         int64
 }
 
 func (q *Queries) FeedbackList(ctx context.Context, arg FeedbackListParams) ([]FeedbackListRow, error) {
-	rows, err := q.db.QueryContext(ctx, feedbackList, arg.UserID, arg.Administrator)
+	rows, err := q.db.QueryContext(ctx, feedbackList, arg.UserID, arg.Administrator, arg.Search)
 	if err != nil {
 		return nil, err
 	}
@@ -233,6 +250,7 @@ func (q *Queries) FeedbackList(ctx context.Context, arg FeedbackListParams) ([]F
 			&i.ReleaseVersion,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ClosedAt,
 			&i.Unread,
 		); err != nil {
 			return nil, err
@@ -265,13 +283,14 @@ func (q *Queries) FeedbackMarkRead(ctx context.Context, arg FeedbackMarkReadPara
 }
 
 const feedbackReview = `-- name: FeedbackReview :exec
-UPDATE feedback_reports SET status=?,release_version=?,updated_at=? WHERE id=?
+UPDATE feedback_reports SET status=?,release_version=?,updated_at=?,closed_at=? WHERE id=?
 `
 
 type FeedbackReviewParams struct {
 	Status         string
 	ReleaseVersion string
 	UpdatedAt      int64
+	ClosedAt       int64
 	ID             string
 }
 
@@ -280,6 +299,7 @@ func (q *Queries) FeedbackReview(ctx context.Context, arg FeedbackReviewParams) 
 		arg.Status,
 		arg.ReleaseVersion,
 		arg.UpdatedAt,
+		arg.ClosedAt,
 		arg.ID,
 	)
 	return err
