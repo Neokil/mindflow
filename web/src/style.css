@@ -2336,15 +2336,14 @@ body {
   color: var(--muted);
   margin-top: 4px;
 }
-.screenshot-upload {
-  position: relative;
-  cursor: pointer;
+.feedback-attachment-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
-.screenshot-upload input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
+.feedback-attachment-input {
+  display: none;
 }
 .feedback-reports .form-actions {
   align-items: end;
@@ -2395,4 +2394,13 @@ body {
   top: -3px;
   right: -4px;
   border: 2px solid var(--panel);
+}
+
+.feedback-list-actions > label {
+  margin: 0;
+  max-width: 440px;
+}
+.feedback-list-actions > button {
+  margin-left: auto;
+  align-self: end;
 }

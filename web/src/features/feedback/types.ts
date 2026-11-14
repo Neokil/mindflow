@@ -14,6 +14,8 @@ export type Report = {
   hasScreenshot: boolean;
   createdAt: number;
   updatedAt: number;
+  closedAt: number;
+  purgeAt: number;
   comments: {
     id: string;
     authorId: string;

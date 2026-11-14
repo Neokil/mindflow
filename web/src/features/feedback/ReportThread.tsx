@@ -38,6 +38,12 @@ export default function ReportThread({
         {report.kind === "bug" ? "Bug" : "Feature request"} ·{" "}
         {statusLabel(report.status)} · {report.authorName}
       </p>
+      {report.status === "closed" && report.purgeAt > 0 && (
+        <p className="muted">
+          This report will be deleted on{" "}
+          {new Date(report.purgeAt * 1000).toLocaleDateString()}.
+        </p>
+      )}
       {report.releaseURL && (
         <a href={report.releaseURL} target="_blank" rel="noopener noreferrer">
           Fixed in {report.release}
@@ -53,7 +59,7 @@ export default function ReportThread({
           <img
             className="feedback-screenshot"
             src={`/api/v1/feedback/${report.id}/screenshot`}
-            alt="Report screenshot"
+            alt="Report image"
           />
         </a>
       )}

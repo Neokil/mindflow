@@ -50,8 +50,9 @@ export function Modal({
       aria-labelledby={titleId}
       className={wide ? "modal wide" : "modal"}
       onCancel={(e) => {
-        e.preventDefault();
         e.stopPropagation();
+        if (e.target !== e.currentTarget) return;
+        e.preventDefault();
         close();
       }}
       onClick={(e) => {

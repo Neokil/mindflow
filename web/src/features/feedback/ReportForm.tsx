@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { api } from "../../api";
 import { ErrorMessage } from "../../ui";
+import { imageAttachment } from "./imageAttachment";
 import { captureView } from "./capture";
 import type { Report } from "./types";
 export default function ReportForm({
@@ -10,12 +11,13 @@ export default function ReportForm({
   created: (report: Report) => void;
   cancel: () => void;
 }) {
-  const [kind, setKind] = useState<"bug" | "feature">(),
+  const [kind, setKind] = useState<"bug" | "feature">("bug"),
     [title, setTitle] = useState(""),
     [body, setBody] = useState(""),
     [screenshot, setScreenshot] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
   async function capture() {
     setBusy(true);
     setError("");
@@ -29,15 +31,15 @@ export default function ReportForm({
   }
   async function upload(file?: File) {
     if (!file) return;
+    setBusy(true);
     setError("");
-    if (file.type !== "image/png" || file.size > 5 * 1024 * 1024) {
-      setError("Choose a PNG up to 5 MB.");
-      return;
+    try {
+      setScreenshot(await imageAttachment(file));
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
     }
-    const reader = new FileReader();
-    reader.onload = () => setScreenshot(String(reader.result).split(",")[1]);
-    reader.onerror = () => setError("The screenshot could not be read.");
-    reader.readAsDataURL(file);
   }
   async function submit() {
     setBusy(true);
@@ -57,23 +59,6 @@ export default function ReportForm({
       setBusy(false);
     }
   }
-  if (!kind)
-    return (
-      <section>
-        <h3>What would you like to share?</h3>
-        <div className="form-actions">
-          <button className="secondary" onClick={() => setKind("bug")}>
-            Report a bug
-          </button>
-          <button className="secondary" onClick={() => setKind("feature")}>
-            Request a feature
-          </button>
-          <button className="secondary" onClick={cancel}>
-            Cancel
-          </button>
-        </div>
-      </section>
-    );
   return (
     <form
       onSubmit={(event) => {
@@ -81,7 +66,18 @@ export default function ReportForm({
         void submit();
       }}
     >
-      <h3>{kind === "bug" ? "Report a bug" : "Request a feature"}</h3>
+      <label>
+        Report type
+        <select
+          aria-label="Report type"
+          value={kind}
+          disabled={busy}
+          onChange={(event) => setKind(event.target.value as "bug" | "feature")}
+        >
+          <option value="bug">Bug</option>
+          <option value="feature">Feature request</option>
+        </select>
+      </label>
       <p className="muted">
         Private between you and the administrators of this mindflow instance.
       </p>
@@ -109,7 +105,7 @@ export default function ReportForm({
           }
         />
       </label>
-      <div className="form-actions">
+      <div className="feedback-attachment-actions">
         <button
           type="button"
           className="secondary"
@@ -118,28 +114,35 @@ export default function ReportForm({
         >
           Capture current view
         </button>
-        <label className="secondary screenshot-upload">
-          Upload PNG
-          <input
-            aria-label="Upload feedback screenshot"
-            type="file"
-            accept="image/png"
-            disabled={busy}
-            onChange={(event) => {
-              void upload(event.target.files?.[0]);
-              event.target.value = "";
-            }}
-          />
-        </label>
+        <button
+          type="button"
+          className="secondary"
+          disabled={busy}
+          onClick={() => fileInput.current?.click()}
+        >
+          Upload image
+        </button>
+        <input
+          ref={fileInput}
+          className="feedback-attachment-input"
+          aria-label="Upload feedback image"
+          type="file"
+          accept="image/*"
+          disabled={busy}
+          onChange={(event) => {
+            void upload(event.target.files?.[0]);
+            event.target.value = "";
+          }}
+        />
       </div>
       <p className="muted">
-        Review the screenshot before sending. It may contain private content.
-        Dialogs are excluded from automatic capture.
+        Review the image before sending. It may contain private content. Dialogs
+        are excluded from automatic capture.
       </p>
       {screenshot && (
         <figure className="feedback-preview">
           <img
-            alt="Screenshot preview"
+            alt="Image preview"
             src={`data:image/png;base64,${screenshot}`}
           />
           <button
@@ -147,7 +150,7 @@ export default function ReportForm({
             className="secondary"
             onClick={() => setScreenshot("")}
           >
-            Remove screenshot
+            Remove image
           </button>
         </figure>
       )}

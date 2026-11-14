@@ -3,7 +3,7 @@ export async function captureView(): Promise<string> {
   const target = document.querySelector<HTMLElement>(".app");
   if (!target)
     throw new Error(
-      "The current application view could not be captured. You can upload a PNG instead.",
+      "The current application view could not be captured. You can upload an image instead.",
     );
   const { default: html2canvas } = await import("html2canvas");
   const canvas = await html2canvas(target, {

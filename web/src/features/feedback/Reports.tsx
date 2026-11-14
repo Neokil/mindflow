@@ -10,8 +10,11 @@ export function Reports({ admin = false }: { admin?: boolean }) {
   const [reports, setReports] = useState<Report[]>([]),
     [selected, setSelected] = useState<Report>(),
     [creating, setCreating] = useState(false),
-    [error, setError] = useState("");
-  const endpoint = admin ? "/feedback?scope=all" : "/feedback";
+    [error, setError] = useState(""),
+    [search, setSearch] = useState("");
+  const endpoint = admin
+    ? `/feedback?scope=all&q=${encodeURIComponent(search)}`
+    : "/feedback";
   useEffect(() => {
     let disposed = false;
     const load = () => {
@@ -80,6 +83,7 @@ export function Reports({ admin = false }: { admin?: boolean }) {
   }
   function changed(report: Report) {
     setSelected(report);
+    if (creating) setSearch("");
     setReports((values) => [
       report,
       ...values.filter((value) => value.id !== report.id),
@@ -90,6 +94,18 @@ export function Reports({ admin = false }: { admin?: boolean }) {
   return (
     <section className="feedback-reports">
       <div className="feedback-list-actions">
+        {admin && (
+          <label>
+            Search tickets
+            <input
+              type="search"
+              maxLength={200}
+              value={search}
+              placeholder="Title, description, or comments"
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+        )}
         <button className="primary" onClick={() => setCreating(true)}>
           New report
         </button>
@@ -126,7 +142,11 @@ export function Reports({ admin = false }: { admin?: boolean }) {
           </span>
         </button>
       ))}
-      {reports.length === 0 && <p className="muted">No reports yet.</p>}
+      {reports.length === 0 && (
+        <p className="muted">
+          {search.trim() ? "No reports match your search." : "No reports yet."}
+        </p>
+      )}
       {creating && (
         <Modal
           title="New report"

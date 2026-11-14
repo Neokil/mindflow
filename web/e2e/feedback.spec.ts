@@ -21,10 +21,7 @@ test("reports use nested dialogs and enforce the review lifecycle", async ({
     list.getByRole("button", { name: "New report", exact: true }),
   );
   const form = page.getByRole("dialog", { name: "New report", exact: true });
-  await activate(
-    page,
-    form.getByRole("button", { name: "Report a bug", exact: true }),
-  );
+  await form.getByLabel("Report type", { exact: true }).selectOption("bug");
   await form
     .getByLabel("Title", { exact: true })
     .fill("Canvas feedback example");
@@ -35,7 +32,7 @@ test("reports use nested dialogs and enforce the review lifecycle", async ({
     page,
     form.getByRole("button", { name: "Capture current view", exact: true }),
   );
-  await expect(form.getByAltText("Screenshot preview")).toBeVisible();
+  await expect(form.getByAltText("Image preview")).toBeVisible();
   await activate(
     page,
     form.getByRole("button", { name: "Send report", exact: true }),
@@ -50,7 +47,7 @@ test("reports use nested dialogs and enforce the review lifecycle", async ({
       exact: true,
     }),
   ).toBeVisible();
-  await expect(ticket.getByAltText("Report screenshot")).toBeVisible();
+  await expect(ticket.getByAltText("Report image")).toBeVisible();
   await ticket
     .getByLabel("Add a comment", { exact: true })
     .fill("Additional steps for reproduction.");
@@ -154,6 +151,20 @@ test("reports use nested dialogs and enforce the review lifecycle", async ({
     ticket.getByRole("button", { name: "Back to reports", exact: true }),
   );
   await expect(admin).toBeVisible();
+  const search = admin.getByRole("searchbox", {
+    name: "Search tickets",
+    exact: true,
+  });
+  for (const query of ["CANVAS", "visual issue", "no longer reproducible"]) {
+    await search.fill(query);
+    await expect(
+      admin.getByRole("button", { name: /Canvas feedback example/ }),
+    ).toBeVisible();
+  }
+  await search.fill("not present in any ticket");
+  await expect(
+    admin.getByText("No reports match your search.", { exact: true }),
+  ).toBeVisible();
 });
 
 test("profile avoids an unsolicited close tooltip and keeps update consent inline", async ({
@@ -294,4 +305,99 @@ test("report activity badges clear independently for administrators and authors"
   } finally {
     await context.close();
   }
+});
+
+test("new report is one form with aligned image controls and file-picker cancellation preserves the draft", async ({
+  page,
+}) => {
+  await login(page);
+  await activate(
+    page,
+    page.getByRole("button", { name: "Feedback & Bugreport", exact: true }),
+  );
+  const list = page.getByRole("dialog", {
+    name: "Feedback & Bugreport",
+    exact: true,
+  });
+  await activate(
+    page,
+    list.getByRole("button", { name: "New report", exact: true }),
+  );
+  const form = page.getByRole("dialog", { name: "New report", exact: true });
+  await expect(form.getByLabel("Report type", { exact: true })).toHaveValue(
+    "bug",
+  );
+  await form
+    .getByLabel("Title", { exact: true })
+    .fill("Image attachment example");
+  await form
+    .getByLabel("Details", { exact: true })
+    .fill("Keep this draft when cancelling the image picker.");
+  const capture = form.getByRole("button", {
+    name: "Capture current view",
+    exact: true,
+  });
+  const upload = form.getByRole("button", {
+    name: "Upload image",
+    exact: true,
+  });
+  const a = (await capture.boundingBox())!,
+    b = (await upload.boundingBox())!;
+  expect(Math.abs(a.y + a.height / 2 - b.y - b.height / 2)).toBeLessThan(1);
+  expect(Math.abs(a.height - b.height)).toBeLessThan(1);
+  const input = form.getByLabel("Upload feedback image", { exact: true });
+  // Dispatch in the page realm, matching the native input cancel event.
+  await input.evaluate((element) =>
+    element.dispatchEvent(new Event("cancel", { bubbles: true })),
+  );
+  await expect(form).toBeVisible();
+  await expect(form.getByLabel("Title", { exact: true })).toHaveValue(
+    "Image attachment example",
+  );
+  for (const [type, extension] of [
+    ["image/jpeg", "jpg"],
+    ["image/webp", "webp"],
+  ]) {
+    const encoded = await page.evaluate((type) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 32;
+      canvas.height = 24;
+      const context = canvas.getContext("2d")!;
+      context.fillStyle = "#1b5e3b";
+      context.fillRect(0, 0, 32, 24);
+      return canvas.toDataURL(type).split(",")[1];
+    }, type);
+    const image = {
+      name: `example.${extension}`,
+      mimeType: type,
+      buffer: Buffer.from(encoded, "base64"),
+    };
+    if (extension === "jpg") {
+      const chooser = page.waitForEvent("filechooser");
+      await activate(page, upload);
+      await (await chooser).setFiles(image);
+    } else await input.setInputFiles(image);
+    await expect(form.getByAltText("Image preview")).toBeVisible();
+    await expect(form.getByAltText("Image preview")).toHaveAttribute(
+      "src",
+      /^data:image\/png;base64,/,
+    );
+    await expect(
+      form.getByRole("button", { name: "Send report", exact: true }),
+    ).toBeEnabled();
+  }
+  await form.getByLabel("Report type", { exact: true }).selectOption("feature");
+  await expect(form.getByLabel("Title", { exact: true })).toHaveValue(
+    "Image attachment example",
+  );
+  await activate(
+    page,
+    form.getByRole("button", { name: "Send report", exact: true }),
+  );
+  const ticket = page.getByRole("dialog", {
+    name: "Image attachment example",
+    exact: true,
+  });
+  await expect(ticket.getByText(/Feature request · Created/)).toBeVisible();
+  await expect(ticket.getByAltText("Report image")).toBeVisible();
 });
