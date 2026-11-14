@@ -53,6 +53,19 @@ Tablet tests cover drag creation, pen strokes, concurrent fingers, two-finger na
 
 ## CI and releases
 
-[CI](../../.github/workflows/ci.yml) runs quality, browser, and container jobs on changes and weekly. Actions are pinned to commit SHAs, and failed browser cases upload artifacts. After successful checks, only version-tag pushes (for example `v1.2.0`) publish images. Stable tags publish `neokil/mindflow:1.2.0` and update `latest`; prerelease tags publish their version without moving `latest`. Main-branch pushes test the latest unreleased build and do not publish images. The Docker build injects `MINDFLOW_RELEASE` into the Go binary independently of the build fingerprint used for reload notices. Local builds show `unreleased`. Images target Linux amd64/arm64 and include provenance/SBOM attestations. The publishing job uses `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`; pull requests do not publish.
+[CI](../../.github/workflows/ci.yml) is a short entry point for branch pushes, pull requests, manual runs, and weekly checks. It calls three focused reusable workflows:
+
+| Workflow                                           | Responsibility                                                                                      |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| [Quality](../../.github/workflows/quality.yml)     | Lint, unit/integration tests, generated-code checks, and dependency audits.                         |
+| [Browsers](../../.github/workflows/browsers.yml)   | Chrome, Firefox, HTTP, iPad WebKit, and tablet Chromium acceptance tests; upload failure artifacts. |
+| [Container](../../.github/workflows/container.yml) | Production image, TLS, and restore verification.                                                    |
+| [Release](../../.github/workflows/release.yml)     | Reuse all CI checks for the release commit, then publish its Docker image.                          |
+
+Docker publishing runs only on GitHub's [`release: published`](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#release) event. Push the release commit and a canonical version tag such as `v1.2.0`, then publish a GitHub release for that tag. Draft releases, release-note edits, branch pushes, and tag pushes do not publish images. The release workflow checks the tagged commit before publishing; checks receive no Docker Hub secrets. A failed publication can be retried through the workflow run.
+
+Stable releases publish `neokil/mindflow:1.2.0` and update `latest`. Prereleases publish their version without moving `latest`; releases marked as prereleases on GitHub also leave `latest` unchanged. Main-branch CI describes the latest unreleased build, and the existing README badge continues to track that entry point. Actions remain pinned to commit SHAs. Images target Linux amd64/arm64 and include provenance/SBOM attestations. The release workflow uses `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` only in the publishing job.
+
+The Docker build injects `MINDFLOW_RELEASE` into the Go binary independently of the build fingerprint used for reload notices. Local builds show `unreleased`.
 
 The [wiki workflow](wiki.md) publishes docs on `main`. [Dependency maintenance](dependencies.md) describes `make upgrade`. [Demo recording](demo.md) describes the manual README GIF workflow; it is not a CI job. Keep [user operations](../user-docs/operations.md) current when deployment or storage behavior changes.

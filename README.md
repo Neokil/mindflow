@@ -51,7 +51,7 @@ docker compose logs mindflow
 
 Route an HTTPS reverse proxy or Cloudflare Tunnel to the HTTP service on port **8080**. Open your public HTTPS URL, enter the one-time setup credential from the log, create the first administrator, and configure SMTP with TLS/STARTTLS for invitations and password recovery. If your tunnel runs in Docker, connect the containers through a private Docker network rather than the host's loopback binding.
 
-All accounts, canvases, and images are stored in the `/data` volume. The runtime uses `scratch` and runs as UID/GID **10001**. Images are published only for version tags. `latest` follows stable releases; pin a version tag for reproducible deployments. Main-branch CI tests the next unreleased build without publishing an image.
+All accounts, canvases, and images are stored in the `/data` volume. The runtime uses `scratch` and runs as UID/GID **10001**. Images are published only when a versioned GitHub release is published. `latest` follows stable releases; pin a version tag for reproducible deployments. Main-branch CI tests the next unreleased build without publishing an image.
 
 For TrueNAS Apps, use [the installation guide](docs/user-docs/installation.md) and [Custom App YAML](deploy/truenas.yaml). See [operations](docs/user-docs/operations.md) for snapshots, restore, and application updates. Read the [security notes](docs/SECURITY.md) before exposing your instance.
 
