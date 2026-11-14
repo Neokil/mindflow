@@ -6,12 +6,11 @@ The production image runs a statically linked binary as UID/GID 10001 in `scratc
 
 The application verifies active sessions, CSRF tokens, request origins, and workspace permissions on the server. Administrators cannot read other users' private workspaces. Passwords use Argon2id; invitation/reset tokens are single-use and expire. SMTP requires verified TLS or STARTTLS. Uploads and request bodies have size limits. Browser content is restricted by CSP and other security headers. Responses containing account or workspace data are not cached. Avatars are profile metadata visible to signed-in users; workspace images require workspace/asset permission.
 
-Follow the [release verification workflow](developer-docs/development.md#verification) before deployment. CI runs quality checks and dependency vulnerability scans on changes and weekly; published images include provenance and an SBOM. `govulncheck` checks reachable known Go vulnerabilities; npm audit checks known JavaScript dependency advisories. Neither proves the absence of vulnerabilities. Keep dependencies current, review changes, and restore-test your TrueNAS backups.
+Follow the [release verification workflow](developer-docs/development.md#verification) before deployment. CI runs quality checks and dependency vulnerability scans on pushes to `main`, pull requests, manual runs, and release verification; published images include provenance and an SBOM. `govulncheck` checks reachable known Go vulnerabilities; npm audit checks known JavaScript dependency advisories. Neither proves the absence of vulnerabilities. Keep dependencies current, review changes, and restore-test your TrueNAS backups.
 
 Report suspected security issues privately to the repository owner, including the affected version and a reproducible example without production credentials or private files.
 
 See [installation](user-docs/installation.md) for HTTPS/container configuration and [operations](user-docs/operations.md) for backup, restore, and upgrade procedures.
-
 
 PDF originals are opaque protected workspace assets served as attachments. PDF.js renders them locally with bounded file/page/image sizes; the in-app reader has no interactive PDF forms, script actions, or external links. Converted pages are ordinary image assets. PDF parsing remains a browser-side attack surface, so keep PDF.js current with the other dependencies. Passwords accept 8–128 characters; the optional suggester uses two or three randomly selected EFF words and random punctuation from Web Crypto, entirely locally, with suggestions constrained to 10–15 characters.
 

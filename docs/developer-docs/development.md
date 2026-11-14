@@ -53,7 +53,7 @@ Tablet tests cover drag creation, pen strokes, concurrent fingers, two-finger na
 
 ## CI and releases
 
-[CI](../../.github/workflows/ci.yml) is a short entry point for branch pushes, pull requests, manual runs, and weekly checks. It calls three focused reusable workflows:
+[CI](../../.github/workflows/ci.yml) is a short entry point for pushes to `main`, pull requests, manual runs, and calls from the release workflow. It calls three focused reusable workflows:
 
 | Workflow                                           | Responsibility                                                                                      |
 | -------------------------------------------------- | --------------------------------------------------------------------------------------------------- |

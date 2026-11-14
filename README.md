@@ -98,7 +98,7 @@ make test-e2e
 make verify-container
 ```
 
-Install browser binaries once with `cd web && npx playwright install chromium firefox webkit`. Container checks require Docker, Python 3, and OpenSSL. CI runs quality, security, browser, and container checks on changes and weekly.
+Install browser binaries once with `cd web && npx playwright install chromium firefox webkit`. Container checks require Docker, Python 3, and OpenSSL. CI runs quality, security, browser, and container checks on pushes to `main`, pull requests, manual runs, and release verification.
 
 Run `make generate` after editing SQL or migration packages and commit the generated files. See [project structure](docs/developer-docs/architecture.md), [data structures](docs/developer-docs/data-model.md), [canvas and saving](docs/developer-docs/canvas-and-sync.md), and the [API contract](api/openapi.yaml). `make upgrade` refreshes dependencies and pinned build references; see [upgrade instructions](docs/developer-docs/dependencies.md).
 
