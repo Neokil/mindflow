@@ -2,10 +2,11 @@ import BuildVersion from "./BuildVersion";
 import UpdateBanner from "./UpdateBanner";
 import { useCanvasFullscreen } from "./useCanvasFullscreen";
 import { useWorkspaceRoute } from "./navigation";
-import { Github, LogOut, Settings, SunMoon } from "lucide-react";
+import { Github, LogOut, MessageSquare, Settings, SunMoon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ServerEvent, User } from "./api";
 import { api, APIError, setCSRF } from "./api";
+import Feedback from "./features/feedback/Reports";
 import Profile from "./features/accounts/Profile";
 import Avatar from "./features/accounts/Avatar";
 import Admin from "./features/accounts/Admin";
@@ -35,6 +36,7 @@ export default function App() {
   const [initialized, setInitialized] = useState<boolean>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState(false);
   const [profile, setProfile] = useState(false);
   const [admin, setAdmin] = useState(false);
   const [headerCollapsed, setHeaderCollapsed] = useState(false);
@@ -202,6 +204,14 @@ export default function App() {
           </div>
           <div className="header-actions">
             <button
+              className="icon-button"
+              aria-label="Feedback & Bugreport"
+              data-tooltip="Feedback & Bugreport"
+              onClick={() => setFeedback(true)}
+            >
+              <MessageSquare size={18} />
+            </button>
+            <button
               className="account-profile"
               aria-label="Your profile"
               onClick={() => setProfile(true)}
@@ -294,6 +304,7 @@ export default function App() {
           )}
         </>
       </div>
+      {feedback && <Feedback close={() => setFeedback(false)} />}
       {profile && (
         <Profile
           user={user}

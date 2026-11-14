@@ -3,6 +3,7 @@ import { api } from "../../api";
 import type { User } from "../../api";
 import { ErrorMessage, Modal } from "../../ui";
 import Avatar from "./Avatar";
+import ProductUpdates from "./ProductUpdates";
 export default function Profile({
   user,
   changed,
@@ -124,6 +125,8 @@ export default function Profile({
       >
         Remove avatar
       </button>
+      <hr />
+      <ProductUpdates />
       <ErrorMessage message={error} />
     </Modal>
   );

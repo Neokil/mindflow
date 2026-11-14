@@ -1,3 +1,4 @@
+import { Reports } from "../feedback/Reports";
 import Avatar from "./Avatar";
 import {
   Mail,
@@ -75,6 +76,12 @@ export default function Admin({
           <SettingsIcon size={16} />
           Email & server
         </button>
+        <button
+          className={tab === "feedback" ? "active" : ""}
+          onClick={() => setTab("feedback")}
+        >
+          Feedback & bugs
+        </button>
       </div>
       <ErrorMessage message={error} />
       {message && (
@@ -82,7 +89,9 @@ export default function Admin({
           {message}
         </p>
       )}
-      {tab === "users" ? (
+      {tab === "feedback" ? (
+        <Reports admin />
+      ) : tab === "users" ? (
         <>
           <p className="muted">
             Manage accounts. Workspaces and files remain private to their

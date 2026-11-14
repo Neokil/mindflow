@@ -31,6 +31,7 @@ export default function Auth({
   const [email, setEmail] = useState(expectedEmail || "");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [productUpdates, setProductUpdates] = useState(false);
   const [credential, setCredential] = useState("");
   const [settings, setSettings] = useState<Settings>({
     publicURL: location.origin,
@@ -72,6 +73,7 @@ export default function Auth({
           email,
           password,
           settings,
+          productUpdates,
         });
         setMode("login");
         setMessage("All set. Sign in to your new space.");
@@ -84,7 +86,7 @@ export default function Auth({
         await api(`/auth/${mode}`, "POST", {
           token: initialHash.split("/")[1],
           password,
-          ...(mode === "accept-invite" ? { displayName } : {}),
+          ...(mode === "accept-invite" ? { displayName, productUpdates } : {}),
         });
         setMode("login");
         setPassword("");
@@ -156,6 +158,17 @@ export default function Auth({
                     : "Your ideas, sketches, and inspiration. All in one quiet place."}
           </p>
           <form onSubmit={submit}>
+            {(mode === "setup" || mode === "accept-invite") && (
+              <label className="consent-option">
+                <input
+                  type="checkbox"
+                  checked={productUpdates}
+                  onChange={(event) => setProductUpdates(event.target.checked)}
+                />
+                Email me when a new mindflow version is available. Unsubscribe
+                anytime.
+              </label>
+            )}
             {mode === "setup" && (
               <label>
                 Setup credential
