@@ -252,7 +252,10 @@ try {
   await drag(170, 190, 370, 230);
   await expect(page.getByTestId("element-count")).toHaveText("1 element");
   await caption("3. Frame your thoughts with shapes and text");
-  await page.getByRole("button", { name: "Rectangle", exact: true }).click();
+  await page.getByRole("button", { name: "Shapes", exact: true }).click();
+  await page
+    .getByRole("menuitemradio", { name: "Rectangle", exact: true })
+    .click();
   await drag(610, 200, 300, 180);
   await page.getByRole("button", { name: "Text (T)", exact: true }).click();
   await drag(625, 215, 270, 135);
@@ -268,7 +271,8 @@ try {
   await page
     .getByRole("button", { name: "Close settings", exact: true })
     .click();
-  await page.getByRole("button", { name: "Star", exact: true }).click();
+  await page.getByRole("button", { name: "Shapes", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "Star", exact: true }).click();
   await drag(940, 220, 90, 90);
   await page.getByRole("button", { name: "Pen (P)", exact: true }).click();
   await page.getByLabel("Pen color", { exact: true }).fill("#a4d65e");

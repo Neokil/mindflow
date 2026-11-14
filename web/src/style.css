@@ -2217,3 +2217,28 @@ body {
   background: var(--panel);
   margin: 12px 0;
 }
+
+.tool-slot {
+  display: contents;
+}
+.shape-tool {
+  position: relative;
+}
+.shape-tool > button {
+  position: relative;
+}
+.shape-chevron {
+  position: absolute;
+  bottom: 3px;
+  right: 2px;
+}
+.shape-menu.dropdown {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: 165px;
+}
+.shape-menu [aria-checked="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}

@@ -1,3 +1,4 @@
+import { selectTool } from "./helpers";
 import { expect, test } from "@playwright/test";
 import type { Locator } from "@playwright/test";
 import { activate as press, create, login } from "./helpers";
@@ -14,7 +15,7 @@ test("collapse navigation into an arrow without losing the active canvas", async
   const original = await canvas.elementHandle();
   const expanded = (await canvas.boundingBox())!;
   const expandedViewportHeight = await page.evaluate(() => innerHeight);
-  await activate(page.getByRole("button", { name: "Rectangle", exact: true }));
+  await selectTool(page, "Rectangle");
   if (isMobile)
     await page.touchscreen.tap(
       expanded.x + expanded.width / 2,

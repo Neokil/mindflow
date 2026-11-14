@@ -1,3 +1,4 @@
+import { selectTool } from "./helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { invite } from "./accounts";
 import { login, create } from "./helpers";
@@ -20,7 +21,7 @@ test("shares roles, discusses points and fences writers across users", async ({
   const self = await (await page.request.get("/api/v1/auth/me")).json();
   const name = `Shared ideas ${info.project.name} ${Date.now()}`;
   await create(page, name);
-  await page.getByRole("button", { name: "Rectangle", exact: true }).click();
+  await selectTool(page, "Rectangle");
   await canvasClick(page, 450, 300);
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
   const email = `guest-${info.project.name}-${Date.now()}@test.invalid`;
@@ -65,7 +66,7 @@ test("shares roles, discusses points and fences writers across users", async ({
       .getByRole("button", { name: "Close dialog", exact: true })
       .click();
     await expect(
-      page.getByRole("button", { name: "Rectangle", exact: true }),
+      page.getByRole("button", { name: "Shapes", exact: true }),
     ).toBeEnabled();
     await guest.goto(page.url());
     await expect(guest.getByTestId("element-count")).toHaveText("1 element");
@@ -84,7 +85,7 @@ test("shares roles, discusses points and fences writers across users", async ({
       .getByRole("button", { name: "Close dialog", exact: true })
       .click();
     await expect(
-      guest.getByRole("button", { name: "Rectangle", exact: true }),
+      guest.getByRole("button", { name: "Shapes", exact: true }),
     ).toBeDisabled();
     await expect(
       guest.getByRole("button", { name: "Add comment", exact: true }),
@@ -187,12 +188,12 @@ test("shares roles, discusses points and fences writers across users", async ({
       .click();
     await page.getByRole("button", { name: /^Accept \(\d+\)$/ }).click();
     await expect(
-      guest.getByRole("button", { name: "Circle", exact: true }),
+      guest.getByRole("button", { name: "Shapes", exact: true }),
     ).toBeEnabled();
     await expect(
-      page.getByRole("button", { name: "Rectangle", exact: true }),
+      page.getByRole("button", { name: "Shapes", exact: true }),
     ).toBeDisabled();
-    await guest.getByRole("button", { name: "Circle", exact: true }).click();
+    await selectTool(guest, "Circle");
     await canvasClick(guest, 800, 500);
     await expect(guest.getByTestId("save-status")).toHaveText("Saved");
     await expect(page.getByTestId("element-count")).toHaveText("2 elements");
@@ -213,7 +214,7 @@ test("shares roles, discusses points and fences writers across users", async ({
       .getByRole("button", { name: "Take control", exact: true })
       .click();
     await expect(
-      page.getByRole("button", { name: "Rectangle", exact: true }),
+      page.getByRole("button", { name: "Shapes", exact: true }),
     ).toBeEnabled();
     expect(errors).toEqual([]);
   } finally {

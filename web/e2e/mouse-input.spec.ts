@@ -1,3 +1,4 @@
+import { selectTool } from "./helpers";
 import { expect, test } from "@playwright/test";
 import { create, login } from "./helpers";
 import type { CanvasDocument } from "../src/model";
@@ -7,7 +8,7 @@ test("fast mouse releases use final coordinates even before a preview renders", 
 }) => {
   await login(page);
   await create(page, `Fast mouse ${Date.now()}`);
-  await page.getByRole("button", { name: "Rectangle", exact: true }).click();
+  await selectTool(page, "Rectangle");
   // All events run in one task, without a React render between move and release.
   await page.locator(".konvajs-content").evaluate((surface) => {
     const box = surface.getBoundingClientRect();
@@ -36,7 +37,7 @@ test("fast mouse releases use final coordinates even before a preview renders", 
     await (await page.request.get(`/api/v1/pages/${id}/document`)).json()
   ).document as CanvasDocument;
   expect(doc.elements[0]).toMatchObject({ width: 200, height: 120 });
-  await page.getByRole("button", { name: "Rectangle", exact: true }).click();
+  await selectTool(page, "Rectangle");
   await page.locator(".konvajs-content").evaluate((surface) => {
     const box = surface.getBoundingClientRect();
     for (const [type, x, y, buttons] of [
@@ -95,7 +96,7 @@ test("losing mouse capture preserves creation and an object drag", async ({
       if (!target) throw new Error("Expected a captured mouse pointer");
       target.releasePointerCapture(id);
     });
-  await page.getByRole("button", { name: "Rectangle", exact: true }).click();
+  await selectTool(page, "Rectangle");
   await rememberPointer();
   await page.mouse.move(box.x + 300, box.y + 220);
   await page.mouse.down();

@@ -1,3 +1,4 @@
+import { selectTool } from "./helpers";
 import { test, expect } from "@playwright/test";
 import { login, create } from "./helpers";
 
@@ -21,7 +22,7 @@ test("opens, edits and reopens a workspace over insecure HTTP", async ({
   });
   const name = `HTTP workspace ${Date.now()}`;
   await create(page, name);
-  await page.getByRole("button", { name: "Rectangle", exact: true }).click();
+  await selectTool(page, "Rectangle");
   const canvas = await page.getByTestId("canvas").boundingBox();
   if (!canvas) throw new Error("Canvas missing");
   await page.mouse.click(canvas.x + 450, canvas.y + 300);

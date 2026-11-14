@@ -55,3 +55,16 @@ export async function create(page: Page, name: string) {
   await expect(page.getByTestId("canvas")).toBeVisible();
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
 }
+
+export async function selectTool(page: Page, name: string) {
+  if (["Rectangle", "Circle", "Star"].includes(name)) {
+    await activate(
+      page,
+      page.getByRole("button", { name: "Shapes", exact: true }),
+    );
+    await activate(
+      page,
+      page.getByRole("menuitemradio", { name, exact: true }),
+    );
+  } else await activate(page, page.getByRole("button", { name, exact: true }));
+}

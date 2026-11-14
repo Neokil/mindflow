@@ -1,3 +1,4 @@
+import { selectTool } from "./helpers";
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { login, create } from "./helpers";
@@ -34,10 +35,10 @@ test("compose, transform, undo, and persist a private canvas", async ({
   await login(page);
   const name = `Ideas ${info.project.name} ${Date.now()}`;
   await create(page, name);
-  await page.getByRole("button", { name: "Rectangle", exact: true }).click();
+  await selectTool(page, "Rectangle");
   await clickCanvas(page, 480, 300);
   await expect(page.getByTestId("element-count")).toHaveText("1 element");
-  await page.getByRole("button", { name: "Circle", exact: true }).click();
+  await selectTool(page, "Circle");
   await clickCanvas(page, 760, 370);
   await expect(page.getByTestId("element-count")).toHaveText("2 elements");
   await page.getByRole("button", { name: "Text (T)", exact: true }).click();
@@ -108,7 +109,7 @@ test("takeover fences an offline editor and recovers local changes", async ({
   await login(page);
   const name = `Recovery ${info.project.name} ${Date.now()}`;
   await create(page, name);
-  await page.getByRole("button", { name: "Rectangle", exact: true }).click();
+  await selectTool(page, "Rectangle");
   await clickCanvas(page, 450, 350);
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
   const viewerContext = await browser.newContext({
@@ -124,7 +125,7 @@ test("takeover fences an offline editor and recovers local changes", async ({
     viewer.getByRole("button", { name: "Take control", exact: true }),
   ).toBeVisible();
   await page.context().setOffline(true);
-  await page.getByRole("button", { name: "Star", exact: true }).click();
+  await selectTool(page, "Star");
   await clickCanvas(page, 750, 430);
   await expect(page.getByTestId("element-count")).toHaveText("2 elements");
   cancelUnload = true;
@@ -140,7 +141,7 @@ test("takeover fences an offline editor and recovers local changes", async ({
   await expect(
     viewer.getByRole("button", { name: "Take control", exact: true }),
   ).toHaveCount(0, { timeout: 15000 });
-  await viewer.getByRole("button", { name: "Circle", exact: true }).click();
+  await selectTool(viewer, "Circle");
   await clickCanvas(viewer, 650, 350);
   await expect(viewer.getByTestId("save-status")).toHaveText("Saved");
   await page.context().setOffline(false);

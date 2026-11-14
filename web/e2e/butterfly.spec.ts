@@ -1,3 +1,4 @@
+import { selectTool } from "./helpers";
 import { test, expect } from "@playwright/test";
 import { resolve } from "node:path";
 import { login } from "./helpers";
@@ -149,7 +150,7 @@ test("imports Butterfly pages, embedded image, pen, shapes and white text", asyn
   await page.screenshot({
     path: `../.cache/e2e/butterfly-page2-${info.project.name}.png`,
   });
-  await page.getByRole("button", { name: "Rectangle", exact: true }).click();
+  await selectTool(page, "Rectangle");
   const bounds = (await page.getByTestId("canvas").boundingBox())!;
   await page.mouse.move(bounds.x + 150, bounds.y + 100);
   await page.mouse.down();

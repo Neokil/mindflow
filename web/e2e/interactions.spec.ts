@@ -1,3 +1,4 @@
+import { selectTool } from "./helpers";
 import { test, expect } from "@playwright/test";
 import { login, create } from "./helpers";
 import type { CanvasDocument } from "../src/model";
@@ -28,7 +29,7 @@ test("drag creation, separate inspectors, middle pan and profile avatars", async
   await create(page, name);
   const box = (await page.getByTestId("canvas").boundingBox())!;
   const from = { x: box.x + 700, y: box.y + 450 };
-  await page.getByRole("button", { name: "Rectangle", exact: true }).click();
+  await selectTool(page, "Rectangle");
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.evaluate(

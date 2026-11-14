@@ -1,3 +1,4 @@
+import { selectTool } from "./helpers";
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { create, login } from "./helpers";
@@ -48,7 +49,7 @@ test("finger creation, Pencil ink, palm rejection, cancellation and two-finger n
     "none",
   );
   await expect(page.locator("html")).toHaveCSS("overscroll-behavior-y", "none");
-  await page.getByRole("button", { name: "Rectangle", exact: true }).tap();
+  await selectTool(page, "Rectangle");
   await input.drag(point(250, 180), point(450, 320));
   await expect(page.getByTestId("element-count")).toHaveText("1 element");
   expect((await document()).elements[0]).toMatchObject({
@@ -57,7 +58,7 @@ test("finger creation, Pencil ink, palm rejection, cancellation and two-finger n
     height: 140,
   });
   // A pinch that starts during creation discards the unfinished preview.
-  await page.getByRole("button", { name: "Circle", exact: true }).tap();
+  await selectTool(page, "Circle");
   const first = point(300, 400),
     second = point(500, 400);
   await input.touch("down", 1, first.x, first.y);
@@ -129,7 +130,7 @@ test("touch moves and resizes objects, text has a Done button, and Pan works wit
     browserName,
     "Tablet editing",
   );
-  await page.getByRole("button", { name: "Rectangle", exact: true }).tap();
+  await selectTool(page, "Rectangle");
   await input.drag(point(250, 180), point(450, 320));
   await document();
   await page.getByRole("button", { name: "Select (V)", exact: true }).tap();
@@ -281,7 +282,7 @@ test("Pencil double taps open object properties beside the pen, including for te
     browserName,
     "Pencil properties",
   );
-  await page.getByRole("button", { name: "Rectangle", exact: true }).tap();
+  await selectTool(page, "Rectangle");
   await input.drag(point(250, 220), point(450, 340));
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
   const doubleTap = async (x: number, y: number) => {

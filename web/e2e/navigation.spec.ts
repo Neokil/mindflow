@@ -1,3 +1,4 @@
+import { selectTool } from "./helpers";
 import { test, expect } from "@playwright/test";
 import { login, create } from "./helpers";
 
@@ -58,10 +59,10 @@ test("page links survive sign-in and browser back/forward", async ({
       .getByRole("button", { name: "Force control", exact: true })
       .click();
     await expect(
-      guest.getByRole("button", { name: "Rectangle", exact: true }),
+      guest.getByRole("button", { name: "Shapes", exact: true }),
     ).toBeEnabled();
     await expect(
-      page.getByRole("button", { name: "Rectangle", exact: true }),
+      page.getByRole("button", { name: "Shapes", exact: true }),
     ).toBeDisabled();
     await expect(guest.getByRole("dialog")).toHaveCount(0);
   } finally {
@@ -88,7 +89,7 @@ test("new-build banner preserves the unsaved-changes reload guard", async ({
     ),
   ).toBeVisible();
   await page.context().setOffline(true);
-  await page.getByRole("button", { name: "Rectangle", exact: true }).click();
+  await selectTool(page, "Rectangle");
   const box = (await page.getByTestId("canvas").boundingBox())!;
   await page.mouse.click(box.x + 400, box.y + 300);
   await expect(page.getByTestId("element-count")).toHaveText("1 element");

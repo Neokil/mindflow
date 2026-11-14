@@ -1,3 +1,4 @@
+import { selectTool } from "./helpers";
 import { expect, test } from "@playwright/test";
 import { create, login } from "./helpers";
 import type { CanvasDocument } from "../src/model";
@@ -19,7 +20,7 @@ test("opaque object settings show real colors and canvas creation defaults persi
     ).document as CanvasDocument;
   };
   const add = async (tool: string, x: number, y: number) => {
-    await page.getByRole("button", { name: tool, exact: true }).click();
+    await selectTool(page, tool);
     await page.mouse.click(box.x + x, box.y + y);
   };
   const text = async (value: string, x: number, y: number) => {

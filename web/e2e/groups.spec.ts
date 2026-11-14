@@ -1,3 +1,4 @@
+import { selectTool } from "./helpers";
 import { test, expect } from "@playwright/test";
 import { create, login } from "./helpers";
 
@@ -8,7 +9,7 @@ test("locked groups resist movement, editing and deletion until unlocked", async
   await login(page);
   await create(page, `Locked groups ${Date.now()}`);
   const box = (await page.getByTestId("canvas").boundingBox())!;
-  await page.getByRole("button", { name: "Rectangle", exact: true }).click();
+  await selectTool(page, "Rectangle");
   await page.mouse.click(box.x + 450, box.y + 300);
   await page.getByRole("button", { name: "Text (T)", exact: true }).click();
   await page.mouse.click(box.x + 700, box.y + 300);
@@ -50,7 +51,7 @@ test("locked groups resist movement, editing and deletion until unlocked", async
     .getByRole("button", { name: "Force control", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "Rectangle", exact: true }),
+    page.getByRole("button", { name: "Shapes", exact: true }),
   ).toBeEnabled();
   await page.keyboard.press("Control+a");
   await page.keyboard.press("Delete");

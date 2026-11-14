@@ -1,6 +1,6 @@
+import ShapeTool from "./ShapeTool";
 import type { ReactNode } from "react";
 import {
-  Circle,
   Hand,
   Blocks,
   MessageCircle,
@@ -10,8 +10,6 @@ import {
   Pencil,
   Highlighter,
   Redo2,
-  Square,
-  Star,
   Type,
   Undo2,
 } from "lucide-react";
@@ -34,9 +32,6 @@ type Props = {
 const tools = [
   { id: "pan", icon: Hand, label: "Pan (H)" },
   { id: "select", icon: MousePointer2, label: "Select (V)" },
-  { id: "rectangle", icon: Square, label: "Rectangle" },
-  { id: "circle", icon: Circle, label: "Circle" },
-  { id: "star", icon: Star, label: "Star" },
   { id: "text", icon: Type, label: "Text (T)" },
   { id: "pen", icon: Pencil, label: "Pen (P)" },
   { id: "highlighter", icon: Highlighter, label: "Highlighter (M)" },
@@ -61,21 +56,30 @@ export default function EditorToolbar({
     <div className="canvas-toolbar" aria-label="Drawing tools">
       <div className="canvas-tools">
         {tools.map(({ id, icon: Icon, label }) => (
-          <button
-            key={id}
-            className={`tool ${tool === id && !placing ? "active" : ""}`}
-            title={label}
-            aria-label={label}
-            aria-pressed={tool === id}
-            disabled={
-              id === "comment"
-                ? !canComment
-                : !editable && id !== "select" && id !== "pan"
-            }
-            onClick={() => onTool(id)}
-          >
-            <Icon size={18} strokeWidth={1.7} />
-          </button>
+          <div className="tool-slot" key={id}>
+            {id === "text" && (
+              <ShapeTool
+                tool={tool}
+                placing={placing}
+                disabled={!editable}
+                onTool={onTool}
+              />
+            )}
+            <button
+              className={`tool ${tool === id && !placing ? "active" : ""}`}
+              title={label}
+              aria-label={label}
+              aria-pressed={tool === id}
+              disabled={
+                id === "comment"
+                  ? !canComment
+                  : !editable && id !== "select" && id !== "pan"
+              }
+              onClick={() => onTool(id)}
+            >
+              <Icon size={18} strokeWidth={1.7} />
+            </button>
+          </div>
         ))}
         <button
           className="tool"

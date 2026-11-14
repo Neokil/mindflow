@@ -1,3 +1,4 @@
+import { selectTool } from "./helpers";
 import { TabletInput } from "./tablet-input";
 import { test, expect } from "@playwright/test";
 import { activate, create, login } from "./helpers";
@@ -22,10 +23,7 @@ test("align objects and navigate an element link across pages", async ({
   await create(page, `Navigation ${info.project.name}`);
   const box = (await page.getByTestId("canvas").boundingBox())!;
   const draw = async (x: number, y: number) => {
-    await activate(
-      page,
-      page.getByRole("button", { name: "Rectangle", exact: true }),
-    );
+    await selectTool(page, "Rectangle");
     await page.mouse.move(box.x + x, box.y + y);
     await page.mouse.down();
     await page.mouse.move(box.x + x + 90, box.y + y + 60);
