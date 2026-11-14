@@ -41,10 +41,19 @@ func IsNotFound(err error) bool { return errors.Is(err, sql.ErrNoRows) }
 
 // DeleteOwnerWithin removes reports and authored comments when an account is deleted.
 func (a *Repository) DeleteOwnerWithin(ctx context.Context, transactionValue *Transaction, userID string) error {
-	err := a.Within(transactionValue).FeedbackDeleteAuthorComments(ctx, userID)
+	err := a.Within(transactionValue).FeedbackDeleteUserReads(ctx, userID)
+	if err != nil {
+		return err
+	}
+	err = a.Within(transactionValue).FeedbackDeleteAuthorComments(ctx, userID)
 	if err != nil {
 		return err
 	}
 
 	return a.Within(transactionValue).FeedbackDeleteAuthorReports(ctx, userID)
+}
+
+// EventWithin records report activity in the same transaction as its report or comment.
+func (a *Repository) EventWithin(ctx context.Context, transactionValue *Transaction, reportID, actorID, kind, commentID string) error {
+	return a.Within(transactionValue).FeedbackEvent(ctx, FeedbackEventParams{ReportID: reportID, ActorID: actorID, Kind: kind, CommentID: sql.NullString{String: commentID, Valid: commentID != ""}})
 }

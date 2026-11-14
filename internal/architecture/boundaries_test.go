@@ -105,7 +105,7 @@ func TestSQLReadsWritesAndForeignKeysStayWithinDomain(t *testing.T) {
 		"email":        {"mail_jobs", "mail_deliveries"},
 		"installation": {"app_settings"},
 		"release":      {"release_state"},
-		"feedback":     {"feedback_reports", "feedback_comments"},
+		"feedback":     {"feedback_reports", "feedback_comments", "feedback_events", "feedback_reads"},
 	}
 	tableReference := regexp.MustCompile(`(?i)\b(?:FROM|JOIN|UPDATE|INTO|REFERENCES|CREATE TABLE(?: IF NOT EXISTS)?)\s+(\w+)`)
 	for domain, tables := range ownership {

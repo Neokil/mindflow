@@ -46,6 +46,9 @@ type Report struct {
 	CreatedAt     int64     `json:"createdAt"`
 	UpdatedAt     int64     `json:"updatedAt"`
 	Comments      []Message `json:"comments"`
+	Unread        int64     `json:"unread"`
+	ReadThrough   int64     `json:"readThrough"`
+	Actions       []string  `json:"actions"`
 }
 
 // Message is a discussion reply.
@@ -63,12 +66,6 @@ type CreateCommand struct {
 	Title      string `json:"title"`
 	Body       string `json:"body"`
 	Screenshot string `json:"screenshot"`
-}
-
-// ReviewCommand records an administrative decision and the release fixing a bug.
-type ReviewCommand struct {
-	Status  string `json:"status"`
-	Release string `json:"release"`
 }
 
 // Create validates bounded text and normalizes optional screenshot content.
@@ -90,23 +87,45 @@ func (a *Service) Create(ctx context.Context, actor account.User, command Create
 	}
 	resourceID := rand.Text()
 	now := time.Now().Unix()
-	err = a.repository.FeedbackCreate(ctx, storage.FeedbackCreateParams{ID: resourceID, AuthorID: actor.ID, Kind: command.Kind, Title: title, Body: body, Screenshot: screenshot, CreatedAt: now, UpdatedAt: now})
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Report{}, err
+	}
+	defer func() { _ = transaction.Rollback() }()
+	err = a.repository.Within(transaction).FeedbackCreate(ctx, storage.FeedbackCreateParams{ID: resourceID, AuthorID: actor.ID, Kind: command.Kind, Title: title, Body: body, Screenshot: screenshot, CreatedAt: now, UpdatedAt: now})
+	if err != nil {
+		return Report{}, err
+	}
+
+	err = a.repository.EventWithin(ctx, transaction, resourceID, actor.ID, "report", "")
+	if err != nil {
+		return Report{}, err
+	}
+	err = transaction.Commit()
+	if err != nil {
+		return Report{}, wrap("create feedback report", err)
 	}
 
 	return a.Find(ctx, actor, resourceID)
 }
 
 // List returns only reports the actor is authorized to read.
-func (a *Service) List(ctx context.Context, actor account.User) ([]Report, error) {
-	rows, err := a.repository.FeedbackList(ctx, storage.FeedbackListParams{AuthorID: actor.ID, Administrator: administrator(actor)})
+func (a *Service) List(ctx context.Context, actor account.User, all bool) ([]Report, error) {
+	admin := int64(0)
+	if all {
+		err := account.RequireAdministrator(actor)
+		if err != nil {
+			return nil, err
+		}
+		admin = 1
+	}
+	rows, err := a.repository.FeedbackList(ctx, storage.FeedbackListParams{UserID: actor.ID, Administrator: admin})
 	if err != nil {
 		return nil, err
 	}
 	result := make([]Report, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, Report{ID: row.ID, AuthorID: row.AuthorID, AuthorName: a.name(ctx, row.AuthorID), Kind: row.Kind, Title: row.Title, Status: row.Status, Release: row.ReleaseVersion, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt})
+		result = append(result, Report{ID: row.ID, AuthorID: row.AuthorID, AuthorName: a.name(ctx, row.AuthorID), Kind: row.Kind, Title: row.Title, Status: row.Status, Release: row.ReleaseVersion, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Unread: row.Unread})
 	}
 
 	return result, nil
@@ -118,6 +137,10 @@ func (a *Service) Find(ctx context.Context, actor account.User, resourceID strin
 	if storage.IsNotFound(err) {
 		return Report{}, unavailable()
 	}
+	if err != nil {
+		return Report{}, err
+	}
+	through, err := a.repository.FeedbackThrough(ctx, resourceID)
 	if err != nil {
 		return Report{}, err
 	}
@@ -134,7 +157,12 @@ func (a *Service) Find(ctx context.Context, actor account.User, resourceID strin
 		notes = release.NotesURL(row.ReleaseVersion)
 	}
 
-	return Report{ID: row.ID, AuthorID: row.AuthorID, AuthorName: a.name(ctx, row.AuthorID), Kind: row.Kind, Title: row.Title, Body: row.Body, Status: row.Status, Release: row.ReleaseVersion, ReleaseURL: notes, HasScreenshot: row.HasScreenshot != 0, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Comments: comments}, nil
+	actions := []string{}
+	if administrator(actor) == 1 {
+		actions = availableActions(row.Status)
+	}
+
+	return Report{Actions: actions, ID: row.ID, AuthorID: row.AuthorID, AuthorName: a.name(ctx, row.AuthorID), Kind: row.Kind, Title: row.Title, Body: row.Body, Status: row.Status, Release: row.ReleaseVersion, ReleaseURL: notes, HasScreenshot: row.HasScreenshot != 0, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Comments: comments, ReadThrough: through}, nil
 }
 
 // Comment allows an author or administrator to continue a report's discussion.
@@ -154,10 +182,11 @@ func (a *Service) Comment(ctx context.Context, actor account.User, resourceID, b
 	defer func() { _ = transaction.Rollback() }()
 	queries := a.repository.Within(transaction)
 	now := time.Now().Unix()
-	err = queries.FeedbackComment(ctx, storage.FeedbackCommentParams{ID: rand.Text(), ReportID: resourceID, AuthorID: actor.ID, Body: body, CreatedAt: now})
+	err = a.appendComment(ctx, transaction, resourceID, actor.ID, body, now)
 	if err != nil {
 		return Report{}, err
 	}
+
 	err = queries.FeedbackTouch(ctx, storage.FeedbackTouchParams{ID: resourceID, UpdatedAt: now})
 	if err != nil {
 		return Report{}, err
@@ -170,32 +199,87 @@ func (a *Service) Comment(ctx context.Context, actor account.User, resourceID, b
 	return a.Find(ctx, actor, resourceID)
 }
 
-// Review permits administrative decisions; closing a bug requires a tagged release.
+// Review enforces state transitions and records the decision and comment atomically.
 func (a *Service) Review(ctx context.Context, actor account.User, resourceID string, command ReviewCommand) (Report, error) {
 	err := account.RequireAdministrator(actor)
 	if err != nil {
 		return Report{}, err
 	}
-	report, err := a.Find(ctx, actor, resourceID)
+	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return Report{}, err
 	}
-	switch command.Status {
-	case "submitted", "accepted", "denied":
-		command.Release = ""
-	case "closed":
-		if report.Kind != "bug" || !release.Valid(command.Release) {
-			return Report{}, invalid("Closing a bug requires its release version, such as v1.2.0.")
-		}
-	default:
-		return Report{}, invalid("Invalid report status.")
+	defer func() { _ = transaction.Rollback() }()
+	queries := a.repository.Within(transaction)
+	report, err := queries.FeedbackFind(ctx, storage.FeedbackFindParams{ID: resourceID, AuthorID: actor.ID, Administrator: 1})
+	if storage.IsNotFound(err) {
+		return Report{}, unavailable()
 	}
-	err = a.repository.FeedbackReview(ctx, storage.FeedbackReviewParams{ID: resourceID, Status: command.Status, ReleaseVersion: command.Release, UpdatedAt: time.Now().Unix()})
 	if err != nil {
 		return Report{}, err
+	}
+	decision, err := Decide(report.Status, command)
+	if err != nil {
+		return Report{}, err
+	}
+	now := time.Now().Unix()
+	err = queries.FeedbackReview(ctx, storage.FeedbackReviewParams{ID: resourceID, Status: decision.Status, ReleaseVersion: decision.Release, UpdatedAt: now})
+	if err != nil {
+		return Report{}, err
+	}
+	err = a.appendComment(ctx, transaction, resourceID, actor.ID, decision.Comment, now)
+	if err != nil {
+		return Report{}, err
+	}
+	err = transaction.Commit()
+	if err != nil {
+		return Report{}, wrap("review feedback report", err)
 	}
 
 	return a.Find(ctx, actor, resourceID)
+}
+
+// UnreadCounts separates administrative activity from replies on the actor's own reports.
+type UnreadCounts struct {
+	Reports int64 `json:"reports"`
+	Replies int64 `json:"replies"`
+}
+
+// Unread returns counts without granting access to other authors' reports.
+func (a *Service) Unread(ctx context.Context, actor account.User) (UnreadCounts, error) {
+	counts, err := a.repository.FeedbackUnread(ctx, storage.FeedbackUnreadParams{UserID: actor.ID, Administrator: administrator(actor)})
+
+	return UnreadCounts(counts), err
+}
+
+// MarkRead advances only this reader's cursor through the snapshot displayed by their client.
+func (a *Service) MarkRead(ctx context.Context, actor account.User, resourceID string, through int64) error {
+	transaction, err := a.repository.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = transaction.Rollback() }()
+	queries := a.repository.Within(transaction)
+	_, err = queries.FeedbackFind(ctx, storage.FeedbackFindParams{ID: resourceID, AuthorID: actor.ID, Administrator: administrator(actor)})
+	if storage.IsNotFound(err) {
+		return unavailable()
+	}
+	if err != nil {
+		return err
+	}
+	latest, err := queries.FeedbackThrough(ctx, resourceID)
+	if err != nil {
+		return err
+	}
+	if through < 0 || through > latest {
+		return invalid("Invalid read position.")
+	}
+	err = queries.FeedbackMarkRead(ctx, storage.FeedbackMarkReadParams{ReportID: resourceID, UserID: actor.ID, ThroughEvent: through})
+	if err != nil {
+		return err
+	}
+
+	return wrap("mark feedback read", transaction.Commit())
 }
 
 // Screenshot returns a normalized PNG only to the author or an administrator.
@@ -273,3 +357,13 @@ const (
 	maxDimension    = 8192
 	maxPixels       = 16_000_000
 )
+
+func (a *Service) appendComment(ctx context.Context, transaction *storage.Transaction, reportID, actorID, body string, now int64) error {
+	resourceID := rand.Text()
+	err := a.repository.Within(transaction).FeedbackComment(ctx, storage.FeedbackCommentParams{ID: resourceID, ReportID: reportID, AuthorID: actorID, Body: body, CreatedAt: now})
+	if err != nil {
+		return err
+	}
+
+	return a.repository.EventWithin(ctx, transaction, reportID, actorID, "comment", resourceID)
+}

@@ -7,6 +7,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 )
 
 const feedbackComment = `-- name: FeedbackComment :exec
@@ -33,7 +34,7 @@ func (q *Queries) FeedbackComment(ctx context.Context, arg FeedbackCommentParams
 }
 
 const feedbackComments = `-- name: FeedbackComments :many
-SELECT id,author_id,body,created_at FROM feedback_comments WHERE report_id=? ORDER BY created_at,id
+SELECT c.id,c.author_id,c.body,c.created_at FROM feedback_comments c JOIN feedback_events e ON e.comment_id=c.id WHERE c.report_id=? ORDER BY e.id
 `
 
 type FeedbackCommentsRow struct {
@@ -118,8 +119,37 @@ func (q *Queries) FeedbackDeleteAuthorReports(ctx context.Context, authorID stri
 	return err
 }
 
+const feedbackDeleteUserReads = `-- name: FeedbackDeleteUserReads :exec
+DELETE FROM feedback_reads WHERE user_id=?
+`
+
+func (q *Queries) FeedbackDeleteUserReads(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, feedbackDeleteUserReads, userID)
+	return err
+}
+
+const feedbackEvent = `-- name: FeedbackEvent :exec
+INSERT INTO feedback_events(report_id,actor_id,kind,comment_id) VALUES(?,?,?,?)
+`
+
+type FeedbackEventParams struct {
+	ReportID  string
+	ActorID   string
+	Kind      string
+	CommentID sql.NullString
+}
+
+func (q *Queries) FeedbackEvent(ctx context.Context, arg FeedbackEventParams) error {
+	_, err := q.db.ExecContext(ctx, feedbackEvent,
+		arg.ReportID,
+		arg.ActorID,
+		arg.Kind,
+		arg.CommentID,
+	)
+	return err
+}
+
 const feedbackFind = `-- name: FeedbackFind :one
-;
 SELECT id,author_id,kind,title,body,status,release_version,created_at,updated_at,CAST(screenshot IS NOT NULL AS INTEGER) AS has_screenshot FROM feedback_reports WHERE id=? AND (author_id=? OR CAST(?3 AS INTEGER)=1)
 `
 
@@ -161,11 +191,15 @@ func (q *Queries) FeedbackFind(ctx context.Context, arg FeedbackFindParams) (Fee
 }
 
 const feedbackList = `-- name: FeedbackList :many
-SELECT id,author_id,kind,title,status,release_version,created_at,updated_at FROM feedback_reports WHERE author_id=? OR CAST(?2 AS INTEGER)=1 ORDER BY updated_at DESC
+SELECT r.id,r.author_id,r.kind,r.title,r.status,r.release_version,r.created_at,r.updated_at,
+ (SELECT count(*) FROM feedback_events e WHERE e.report_id=r.id AND e.actor_id!=?1
+ AND (CAST(?2 AS INTEGER)=1 OR e.kind='comment')
+ AND e.id>COALESCE((SELECT through_event FROM feedback_reads WHERE report_id=r.id AND user_id=?1),0)) AS unread
+ FROM feedback_reports r WHERE r.author_id=?1 OR CAST(?2 AS INTEGER)=1 ORDER BY r.updated_at DESC,(SELECT MAX(id) FROM feedback_events WHERE report_id=r.id) DESC,r.id
 `
 
 type FeedbackListParams struct {
-	AuthorID      string
+	UserID        string
 	Administrator int64
 }
 
@@ -178,10 +212,11 @@ type FeedbackListRow struct {
 	ReleaseVersion string
 	CreatedAt      int64
 	UpdatedAt      int64
+	Unread         int64
 }
 
 func (q *Queries) FeedbackList(ctx context.Context, arg FeedbackListParams) ([]FeedbackListRow, error) {
-	rows, err := q.db.QueryContext(ctx, feedbackList, arg.AuthorID, arg.Administrator)
+	rows, err := q.db.QueryContext(ctx, feedbackList, arg.UserID, arg.Administrator)
 	if err != nil {
 		return nil, err
 	}
@@ -198,6 +233,7 @@ func (q *Queries) FeedbackList(ctx context.Context, arg FeedbackListParams) ([]F
 			&i.ReleaseVersion,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Unread,
 		); err != nil {
 			return nil, err
 		}
@@ -210,6 +246,22 @@ func (q *Queries) FeedbackList(ctx context.Context, arg FeedbackListParams) ([]F
 		return nil, err
 	}
 	return items, nil
+}
+
+const feedbackMarkRead = `-- name: FeedbackMarkRead :exec
+INSERT INTO feedback_reads(report_id,user_id,through_event) VALUES(?,?,?)
+ON CONFLICT(report_id,user_id) DO UPDATE SET through_event=MAX(feedback_reads.through_event,excluded.through_event)
+`
+
+type FeedbackMarkReadParams struct {
+	ReportID     string
+	UserID       string
+	ThroughEvent int64
+}
+
+func (q *Queries) FeedbackMarkRead(ctx context.Context, arg FeedbackMarkReadParams) error {
+	_, err := q.db.ExecContext(ctx, feedbackMarkRead, arg.ReportID, arg.UserID, arg.ThroughEvent)
+	return err
 }
 
 const feedbackReview = `-- name: FeedbackReview :exec
@@ -250,6 +302,17 @@ func (q *Queries) FeedbackScreenshot(ctx context.Context, arg FeedbackScreenshot
 	return screenshot, err
 }
 
+const feedbackThrough = `-- name: FeedbackThrough :one
+SELECT CAST(COALESCE(MAX(id),0) AS INTEGER) AS through_event FROM feedback_events WHERE report_id=?
+`
+
+func (q *Queries) FeedbackThrough(ctx context.Context, reportID string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, feedbackThrough, reportID)
+	var through_event int64
+	err := row.Scan(&through_event)
+	return through_event, err
+}
+
 const feedbackTouch = `-- name: FeedbackTouch :exec
 UPDATE feedback_reports SET updated_at=? WHERE id=?
 `
@@ -262,4 +325,31 @@ type FeedbackTouchParams struct {
 func (q *Queries) FeedbackTouch(ctx context.Context, arg FeedbackTouchParams) error {
 	_, err := q.db.ExecContext(ctx, feedbackTouch, arg.UpdatedAt, arg.ID)
 	return err
+}
+
+const feedbackUnread = `-- name: FeedbackUnread :one
+SELECT
+ (SELECT count(*) FROM feedback_events e JOIN feedback_reports r ON r.id=e.report_id
+ WHERE CAST(?1 AS INTEGER)=1 AND e.actor_id!=?2
+ AND e.id>COALESCE((SELECT through_event FROM feedback_reads WHERE report_id=r.id AND user_id=?2),0)) AS reports,
+ (SELECT count(*) FROM feedback_events e JOIN feedback_reports r ON r.id=e.report_id
+ WHERE r.author_id=?2 AND e.kind='comment' AND e.actor_id!=?2
+ AND e.id>COALESCE((SELECT through_event FROM feedback_reads WHERE report_id=r.id AND user_id=?2),0)) AS replies
+`
+
+type FeedbackUnreadParams struct {
+	Administrator int64
+	UserID        string
+}
+
+type FeedbackUnreadRow struct {
+	Reports int64
+	Replies int64
+}
+
+func (q *Queries) FeedbackUnread(ctx context.Context, arg FeedbackUnreadParams) (FeedbackUnreadRow, error) {
+	row := q.db.QueryRowContext(ctx, feedbackUnread, arg.Administrator, arg.UserID)
+	var i FeedbackUnreadRow
+	err := row.Scan(&i.Reports, &i.Replies)
+	return i, err
 }

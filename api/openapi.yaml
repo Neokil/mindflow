@@ -4692,7 +4692,22 @@
           "429": {
             "description": "Rate limit exceeded"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mine",
+                "all"
+              ],
+              "default": "mine"
+            },
+            "description": "all requires administrator privileges; mine lists only the current author\u2019s reports."
+          }
+        ]
       },
       "post": {
         "summary": "List authorized private reports or submit feedback",
@@ -4824,7 +4839,8 @@
               "type": "string"
             }
           }
-        ]
+        ],
+        "description": "Private report with discussion, current allowed administrative actions, and a readThrough event cursor for explicit read acknowledgement."
       },
       "patch": {
         "summary": "Read private discussion or record an administrator decision",
@@ -4877,7 +4893,7 @@
             }
           }
         ],
-        "description": "Administrator only.",
+        "description": "Administrator only. Created permits accept or deny; accepted permits close_release or close_comment; closed permits only reopen. Changes and their explanation are atomic.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4885,21 +4901,23 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "status"
+                  "action"
                 ],
                 "properties": {
-                  "status": {
+                  "action": {
                     "type": "string",
                     "enum": [
-                      "submitted",
-                      "accepted",
-                      "denied",
-                      "closed"
+                      "accept",
+                      "deny",
+                      "close_release",
+                      "close_comment",
+                      "reopen"
                     ]
                   },
-                  "release": {
+                  "comment": {
                     "type": "string",
-                    "description": "Required canonical version tag when closing a bug. Features cannot be closed."
+                    "maxLength": 5000,
+                    "description": "Required for deny and both closing actions. close_release extracts a canonical version tag from this comment."
                   }
                 }
               }
@@ -5041,6 +5059,139 @@
             }
           }
         ]
+      }
+    },
+    "/feedback/unread": {
+      "get": {
+        "summary": "Count unread administrative report activity and replies on own reports",
+        "operationId": "get_feedback_unread",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Counts scoped to the authenticated reader",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reports": {
+                      "type": "integer"
+                    },
+                    "replies": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Rate limit exceeded"
+          }
+        }
+      }
+    },
+    "/feedback/{id}/read": {
+      "post": {
+        "summary": "Acknowledge only the activity displayed in a report snapshot",
+        "operationId": "post_feedback_id_read",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated or expired session"
+          },
+          "403": {
+            "description": "Origin, CSRF, or administrator permission failure"
+          },
+          "404": {
+            "description": "Resource missing or not owned by the caller"
+          },
+          "409": {
+            "description": "Revision conflict or editor control lost"
+          },
+          "413": {
+            "description": "Upload/document limit exceeded"
+          },
+          "429": {
+            "description": "Too many submissions; retry later."
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "through"
+                ],
+                "properties": {
+                  "through": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "readThrough from the report response. Cannot exceed current report activity."
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   },

@@ -14,8 +14,24 @@ type HTTP interface {
 // RegisterHTTP exposes private reports, discussion and explicit screenshot attachments.
 func (a *Service) RegisterHTTP(routes HTTP) {
 	routes.Endpoint("GET /api/v1/feedback", true, false, func(_ http.ResponseWriter, request *http.Request) (any, error) {
-		return a.List(request.Context(), routes.CurrentUser(request))
+		return a.List(request.Context(), routes.CurrentUser(request), request.URL.Query().Get("scope") == "all")
 	})
+	routes.Endpoint("GET /api/v1/feedback/unread", true, false, func(_ http.ResponseWriter, request *http.Request) (any, error) {
+		return a.Unread(request.Context(), routes.CurrentUser(request))
+	})
+	routes.Endpoint("POST /api/v1/feedback/{id}/read", true, false, func(writer http.ResponseWriter, request *http.Request) (any, error) {
+		var command struct {
+			Through int64 `json:"through"`
+		}
+		err := routes.Decode(writer, request, &command)
+		if err != nil {
+			return nil, err
+		}
+		err = a.MarkRead(request.Context(), routes.CurrentUser(request), request.PathValue("id"), command.Through)
+
+		return map[string]bool{"ok": err == nil}, err
+	})
+
 	routes.Endpoint("POST /api/v1/feedback", true, false, func(writer http.ResponseWriter, request *http.Request) (any, error) {
 		actor := routes.CurrentUser(request)
 		if routes.Limited(request, "feedback-create:"+actor.ID) {
