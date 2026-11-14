@@ -4732,7 +4732,7 @@
             "description": "Upload/document limit exceeded"
           },
           "429": {
-            "description": "Rate limit exceeded"
+            "description": "Too many submissions; retry later."
           }
         },
         "requestBody": {
@@ -4947,7 +4947,7 @@
             "description": "Upload/document limit exceeded"
           },
           "429": {
-            "description": "Rate limit exceeded"
+            "description": "Too many submissions; retry later."
           }
         },
         "parameters": [

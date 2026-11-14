@@ -19,7 +19,7 @@ func (a *Service) RegisterHTTP(routes HTTP) {
 	routes.Endpoint("POST /api/v1/feedback", true, false, func(writer http.ResponseWriter, request *http.Request) (any, error) {
 		actor := routes.CurrentUser(request)
 		if routes.Limited(request, "feedback-create:"+actor.ID) {
-			return nil, &Error{code: "rate_limited", message: "Please wait before sending another report."}
+			return nil, &Error{code: "rate_limit", message: "Please wait before sending another report."}
 		}
 		var command CreateCommand
 		err := routes.Decode(writer, request, &command)
@@ -35,7 +35,7 @@ func (a *Service) RegisterHTTP(routes HTTP) {
 	routes.Endpoint("POST /api/v1/feedback/{id}/comments", true, false, func(writer http.ResponseWriter, request *http.Request) (any, error) {
 		actor := routes.CurrentUser(request)
 		if routes.Limited(request, "feedback-comment:"+actor.ID) {
-			return nil, &Error{code: "rate_limited", message: "Please wait before sending another comment."}
+			return nil, &Error{code: "rate_limit", message: "Please wait before sending another comment."}
 		}
 		var command struct {
 			Body string `json:"body"`
