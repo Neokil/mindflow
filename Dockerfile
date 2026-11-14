@@ -6,6 +6,7 @@ COPY web/ ./
 RUN npm run build
 
 FROM golang:1.26.11-alpine AS backend
+ARG MINDFLOW_RELEASE=dev
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
@@ -13,7 +14,7 @@ COPY cmd/ ./cmd/
 COPY internal/ ./internal/
 COPY web/embed.go ./web/embed.go
 COPY --from=frontend /app/web/dist/ ./web/dist/
-RUN go run ./cmd/genmigrations -check && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /mindflow ./cmd/mindflow
+RUN go run ./cmd/genmigrations -check && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.releaseVersion=${MINDFLOW_RELEASE}" -o /mindflow ./cmd/mindflow
 
 FROM alpine:3.23 AS certificates
 RUN apk add --no-cache ca-certificates && mkdir -p /runtime/data /runtime/tmp && chown 10001:10001 /runtime/data && chmod 1777 /runtime/tmp

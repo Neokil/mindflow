@@ -2,12 +2,14 @@
   <img src="web/public/banner.png" alt="mindflow banner" width="960" />
 </p>
 
+<p align="center"><a href="https://github.com/Neokil/mindflow/releases/latest"><img src="https://img.shields.io/github/v/release/Neokil/mindflow?label=Latest%20release" alt="Latest stable release" /></a> · <a href="https://github.com/Neokil/mindflow/releases/latest">Release notes</a></p>
+
 <h1 align="center">mindflow</h1>
 
 <p align="center">A little space for your thoughts.</p>
 
 <p align="center">
-  <a href="https://github.com/Neokil/mindflow/actions/workflows/ci.yml"><img src="https://github.com/Neokil/mindflow/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  Latest unreleased build (main): <a href="https://github.com/Neokil/mindflow/actions/workflows/ci.yml"><img src="https://github.com/Neokil/mindflow/actions/workflows/ci.yml/badge.svg?branch=main&amp;event=push" alt="Latest unreleased build CI (main)" /></a>
   <a href="https://github.com/Neokil/mindflow/wiki">Wiki</a> · <a href="https://github.com/Neokil/mindflow/issues">Report an issue</a>
 </p>
 
@@ -22,7 +24,7 @@ Run mindflow with Docker Compose:
 ```yaml
 services:
   mindflow:
-    image: neokil/mindflow:edge
+    image: neokil/mindflow:latest
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
@@ -49,7 +51,7 @@ docker compose logs mindflow
 
 Route an HTTPS reverse proxy or Cloudflare Tunnel to the HTTP service on port **8080**. Open your public HTTPS URL, enter the one-time setup credential from the log, create the first administrator, and configure SMTP with TLS/STARTTLS for invitations and password recovery. If your tunnel runs in Docker, connect the containers through a private Docker network rather than the host's loopback binding.
 
-All accounts, canvases, and images are stored in the `/data` volume. The runtime uses `scratch` and runs as UID/GID **10001**. `edge` follows the main branch; release builds use version tags.
+All accounts, canvases, and images are stored in the `/data` volume. The runtime uses `scratch` and runs as UID/GID **10001**. Images are published only for version tags. `latest` follows stable releases; pin a version tag for reproducible deployments. Main-branch CI tests the next unreleased build without publishing an image.
 
 For TrueNAS Apps, use [the installation guide](docs/user-docs/installation.md) and [Custom App YAML](deploy/truenas.yaml). See [operations](docs/user-docs/operations.md) for snapshots, restore, and application updates. Read the [security notes](docs/SECURITY.md) before exposing your instance.
 
@@ -69,7 +71,7 @@ For TrueNAS Apps, use [the installation guide](docs/user-docs/installation.md) a
 
 Scroll to zoom. Cmd/Ctrl + drag or hold the middle mouse button to pan. Hold Shift while creating an element for equal width and height. On tablets, drag with one finger or Pencil and use two fingers to pan/pinch to zoom. The editor's keyboard button lists more controls.
 
-Choose **Import workspace** on the workspace list to import a Butterfly version-13 export. See the [user guide](docs/user-docs/using-mindflow.md#import-from-butterfly) for supported content and conversion limits. Canvas export is planned for later.
+Choose **Import workspace** on the workspace list to import a Butterfly version-13 export. See the [user guide](docs/user-docs/using-mindflow.md#import-from-butterfly) for supported content and conversion limits.
 
 ## License
 

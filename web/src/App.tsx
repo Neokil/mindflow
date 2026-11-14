@@ -1,3 +1,4 @@
+import BuildVersion from "./BuildVersion";
 import UpdateBanner from "./UpdateBanner";
 import { useCanvasFullscreen } from "./useCanvasFullscreen";
 import { useWorkspaceRoute } from "./navigation";
@@ -184,7 +185,10 @@ export default function App() {
       <div className="app-content">
         <header className="app-header" id="app-header">
           <div className="app-brand">
-            <Brand small />
+            <div className="brand-version">
+              <Brand small />
+              <BuildVersion />
+            </div>
             <a
               className="icon-button"
               href="https://github.com/Neokil/mindflow"

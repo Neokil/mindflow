@@ -11,7 +11,7 @@ docker compose -f deploy/compose.yaml up --build -d
 docker compose -f deploy/compose.yaml logs mindflow
 ```
 
-The image defaults to UID/GID `10001:10001` in `scratch`, with a read-only root filesystem, a writable data volume, and temporary `/tmp`. The TrueNAS configuration overrides the user to `568:568` (`apps`). Its health check is built into the application. Use a version tag or digest for stable deployments; `neokil/mindflow:edge` follows the main branch. Availability of a tag depends on a successful image publishing run.
+The image defaults to UID/GID `10001:10001` in `scratch`, with a read-only root filesystem, a writable data volume, and temporary `/tmp`. The TrueNAS configuration overrides the user to `568:568` (`apps`). Its health check is built into the application. Use a version tag or digest for stable deployments; `neokil/mindflow:latest` follows the main branch. Availability of a tag depends on a successful image publishing run.
 
 ## HTTPS and network configuration
 

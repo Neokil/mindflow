@@ -1,7 +1,7 @@
 # Create this dataset and grant UID/GID 568:568 read/write access.
 # Shared settings keep the server and migration job on the same image and data.
 x-mindflow: &mindflow
-  image: neokil/mindflow:edge
+  image: neokil/mindflow:latest
   user: "568:568"
   pull_policy: always
   volumes:

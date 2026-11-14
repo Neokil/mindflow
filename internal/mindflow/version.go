@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/fs"
+	"mindflow/internal/release"
 	"net/http"
 	"strings"
 )
@@ -24,7 +25,11 @@ func (a *App) registerAssets(assets fs.FS) error {
 	index = bytes.Replace(index, []byte("</head>"), []byte(`<meta name="mindflow-version" content="`+version+`"/></head>`), 1)
 	a.Mux.HandleFunc("GET /api/v1/version", func(writer http.ResponseWriter, _ *http.Request) {
 		writer.Header().Set("Cache-Control", "no-store")
-		writeJSON(writer, http.StatusOK, map[string]string{"version": version})
+		versionLabel := a.Config.Release
+		if !release.Valid(versionLabel) {
+			versionLabel = "unreleased"
+		}
+		writeJSON(writer, http.StatusOK, map[string]string{"version": version, "release": versionLabel, "releaseNotesURL": release.NotesURL(versionLabel)})
 	})
 	a.Mux.HandleFunc("GET /", func(writer http.ResponseWriter, request *http.Request) {
 		if strings.HasPrefix(request.URL.Path, "/api/") {

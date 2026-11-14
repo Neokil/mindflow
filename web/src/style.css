@@ -2259,3 +2259,21 @@ body {
   pointer-events: none;
   z-index: 1000;
 }
+
+.brand-version {
+  position: relative;
+}
+.build-version {
+  position: absolute;
+  left: 40px;
+  top: calc(100% - 4px);
+  font-size: 9px;
+  line-height: 1;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.build-version:hover {
+  color: var(--accent);
+}
+

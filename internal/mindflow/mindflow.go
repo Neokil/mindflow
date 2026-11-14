@@ -39,6 +39,7 @@ import (
 
 // Config supplies development mode and the one-time setup credential.
 type Config struct {
+	Release string
 	Version   string
 	Now       func() time.Time
 	Dev       bool

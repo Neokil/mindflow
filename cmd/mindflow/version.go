@@ -8,6 +8,11 @@ import (
 	"os"
 )
 
+// Set by the release build using -ldflags -X.
+//
+//nolint:gochecknoglobals // A linker-injected release identifier must be a package variable.
+var releaseVersion = "dev"
+
 func applicationVersion() (string, error) {
 	path, err := os.Executable()
 	if err != nil {

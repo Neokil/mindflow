@@ -33,12 +33,12 @@ Commit migrations, SQL, sqlc bindings, and the generated migration catalog toget
 
 ## Verification
 
-| Command | Coverage |
-| --- | --- |
-| `make lint` | Go linters/formatting, migration/sqlc freshness, ESLint/hooks, Prettier, workflow validation, and Python syntax. |
-| `make test` | Frontend build, Go race tests with real temporary SQLite databases, frontend unit tests, and script tests. |
-| `make audit` | Go module integrity, reachable known Go vulnerabilities, and npm advisories. |
-| `make test-e2e` | Desktop Chrome/Firefox, insecure HTTP, and iPad WebKit/tablet Chromium interaction workflows. |
+| Command                 | Coverage                                                                                                          |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `make lint`             | Go linters/formatting, migration/sqlc freshness, ESLint/hooks, Prettier, workflow validation, and Python syntax.  |
+| `make test`             | Frontend build, Go race tests with real temporary SQLite databases, frontend unit tests, and script tests.        |
+| `make audit`            | Go module integrity, reachable known Go vulnerabilities, and npm advisories.                                      |
+| `make test-e2e`         | Desktop Chrome/Firefox, insecure HTTP, and iPad WebKit/tablet Chromium interaction workflows.                     |
 | `make verify-container` | Scratch runtime, migrations, HTTPS cookies/SSE, TLS mail, persistence, restore, and non-root/read-only operation. |
 
 The Playwright `firefox` project tests desktop Firefox. The `ipad-webkit` project emulates an iPad in Playwright WebKit; it does not run the Firefox iPad app or reproduce that app’s browser-level restrictions. Fullscreen tests cover native desktop Chrome/Firefox and simulated permission/failure cases. Physical-device checks are required for browser-specific iPad behavior. Firefox for iOS currently restricts fullscreen for non-video content; track [Mozilla issue #33992](https://github.com/mozilla-mobile/firefox-ios/issues/33992).
@@ -53,6 +53,6 @@ Tablet tests cover drag creation, pen strokes, concurrent fingers, two-finger na
 
 ## CI and releases
 
-[CI](../../.github/workflows/ci.yml) runs quality, browser, and container jobs on changes and weekly. Actions are pinned to commit SHAs, and failed browser cases upload artifacts. After successful checks, pushes to `main` publish `neokil/mindflow:edge` plus a commit tag; semantic version tags publish versioned images. Images target Linux amd64/arm64 and include provenance/SBOM attestations. The publishing job uses `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`; pull requests do not publish.
+[CI](../../.github/workflows/ci.yml) runs quality, browser, and container jobs on changes and weekly. Actions are pinned to commit SHAs, and failed browser cases upload artifacts. After successful checks, only version-tag pushes (for example `v1.2.0`) publish images. Stable tags publish `neokil/mindflow:1.2.0` and update `latest`; prerelease tags publish their version without moving `latest`. Main-branch pushes test the latest unreleased build and do not publish images. The Docker build injects `MINDFLOW_RELEASE` into the Go binary independently of the build fingerprint used for reload notices. Local builds show `unreleased`. Images target Linux amd64/arm64 and include provenance/SBOM attestations. The publishing job uses `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`; pull requests do not publish.
 
 The [wiki workflow](wiki.md) publishes docs on `main`. [Dependency maintenance](dependencies.md) describes `make upgrade`. [Demo recording](demo.md) describes the manual README GIF workflow; it is not a CI job. Keep [user operations](../user-docs/operations.md) current when deployment or storage behavior changes.

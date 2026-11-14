@@ -123,7 +123,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	service, err := mindflow.New(ctx, connection, mindflow.Config{Version: version, Dev: os.Getenv("MINDFLOW_DEV") == "1", Bootstrap: bootstrap})
+	service, err := mindflow.New(ctx, connection, mindflow.Config{Release: releaseVersion, Version: version, Dev: os.Getenv("MINDFLOW_DEV") == "1", Bootstrap: bootstrap})
 	if err != nil {
 		return err
 	}
