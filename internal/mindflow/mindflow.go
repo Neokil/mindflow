@@ -76,8 +76,8 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	}
 	service.accounts = accounts
 	service.sessions = session.NewService(data.Accounts)
-	service.installation = installation.NewService(data.Installation, accounts, installation.Config{Dev: config.Dev, Bootstrap: config.Bootstrap})
-	service.mail = email.NewService(data.Email, service.installation, linkAuthorization{data: data})
+	service.installation = installation.NewService(data.Installation, accounts, installation.Config{Dev: config.Dev, Bootstrap: config.Bootstrap}, email.NewOutbox(data.Email))
+	service.mail = email.NewService(data.Email, service.installation, linkAuthorization{data: data, accounts: accounts})
 	service.invitations = invitation.NewService(data.Accounts, accounts, service.mail, service.installation)
 	service.passwordResets = passwordreset.NewService(data.Accounts, accounts, service.mail, service.installation)
 	service.authentication = authentication.NewService(accounts, service.sessions, config.Dev)

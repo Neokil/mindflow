@@ -2,10 +2,8 @@ package email
 
 import (
 	"context"
-	"encoding/json"
 	"mindflow/internal/account"
 	"mindflow/internal/email/storage"
-	"time"
 )
 
 // Configuration supplies the operator's persisted SMTP settings.
@@ -15,11 +13,14 @@ type Configuration interface {
 
 // Authorization prevents delivery of revoked or consumed credential links.
 type Authorization interface {
+	CanDeliverNotice(ctx context.Context, userID string) (bool, error)
 	CanDeliver(ctx context.Context, tokenHash string) (bool, error)
 }
 
 // Service owns SMTP delivery, queue retries and cancellation.
 type Service struct {
+	*Outbox
+
 	repository    *storage.Repository
 	configuration Configuration
 	authorization Authorization
@@ -27,26 +28,11 @@ type Service struct {
 
 // NewService supplies explicit configuration and credential-link authorization.
 func NewService(repository *storage.Repository, configuration Configuration, authorization Authorization) *Service {
-	return &Service{repository: repository, configuration: configuration, authorization: authorization}
+	return &Service{Outbox: NewOutbox(repository), repository: repository, configuration: configuration, authorization: authorization}
 }
 
 // Process delivers one due message.
 func (a *Service) Process(ctx context.Context) { a.runMail(ctx) }
-
-// QueueWithin replaces a superseded message and queues the new credential link atomically.
-func (a *Service) QueueWithin(ctx context.Context, transaction *storage.Transaction, userID, purpose, to, subject, body, tokenHash string) error {
-	_, err := a.repository.Within(transaction).EmailDeletePurposeMail(ctx, storage.EmailDeletePurposeMailParams{UserID: userID, DedupKey: userID + ":" + purpose})
-	if err != nil {
-		return err
-	}
-	payload, err := json.Marshal(mailJob{To: to, Subject: subject, Body: body, TokenHash: tokenHash})
-	if err != nil {
-		return wrap("encode credential email", err)
-	}
-	_, err = a.repository.Within(transaction).EmailQueueMail(ctx, storage.EmailQueueMailParams{ID: newID(), UserID: userID, DedupKey: userID + ":" + purpose, Payload: string(payload), RunAt: time.Now().Unix()})
-
-	return err
-}
 
 // Test sends a test message using saved operator settings.
 func (a *Service) Test(ctx context.Context, actor account.User) error {

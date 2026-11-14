@@ -2,6 +2,7 @@ package installation
 
 import (
 	"context"
+	"encoding/json"
 	"mindflow/internal/account"
 	"mindflow/internal/email"
 	"mindflow/internal/installation/storage"
@@ -15,14 +16,15 @@ type Config struct {
 
 // Service owns installation state and operator configuration.
 type Service struct {
+	welcome    *email.Outbox
 	repository *storage.Repository
 	Config     Config
 	accounts   *account.Service
 }
 
 // NewService supplies the account creator used by first-run setup.
-func NewService(repository *storage.Repository, accounts *account.Service, config Config) *Service {
-	return &Service{repository: repository, accounts: accounts, Config: config}
+func NewService(repository *storage.Repository, accounts *account.Service, config Config, welcome *email.Outbox) *Service {
+	return &Service{repository: repository, accounts: accounts, Config: config, welcome: welcome}
 }
 
 // Settings returns the saved operator configuration.
@@ -48,4 +50,16 @@ func repositoryError(err error) error {
 	}
 
 	return err
+}
+
+// PublicAddressWithin reads link configuration without opening a nested database connection.
+func (a *Service) PublicAddressWithin(ctx context.Context, transaction *storage.Transaction) (string, error) {
+	raw, err := a.repository.Within(transaction).InstallationSettings(ctx)
+	if err != nil {
+		return "", err
+	}
+	var settings Settings
+	err = json.Unmarshal([]byte(raw), &settings)
+
+	return settings.PublicURL, wrap("decode transactional settings", err)
 }

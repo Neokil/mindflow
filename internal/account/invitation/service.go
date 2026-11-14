@@ -11,6 +11,7 @@ import (
 // LinkConfiguration supplies the configured public URL for credential links.
 type LinkConfiguration interface {
 	PublicAddress(ctx context.Context) (string, error)
+	PublicAddressWithin(ctx context.Context, transaction *storage.Transaction) (string, error)
 }
 
 // Service owns invite links and their account/email workflow.
@@ -76,6 +77,19 @@ func (a *Service) Redeem(ctx context.Context, command RedeemCommand) (Completed,
 		if err != nil {
 			return Completed{}, err
 		}
+	}
+
+	user, err = a.accounts.FindWithin(ctx, transaction, user.ID)
+	if err != nil {
+		return Completed{}, err
+	}
+	publicURL, err := a.configuration.PublicAddressWithin(ctx, transaction)
+	if err != nil {
+		return Completed{}, err
+	}
+	err = a.email.QueueWelcomeWithin(ctx, transaction, user, publicURL)
+	if err != nil {
+		return Completed{}, err
 	}
 
 	return Completed{OK: true}, wrap("commit invite redemption", transaction.Commit())

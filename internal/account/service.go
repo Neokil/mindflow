@@ -71,19 +71,20 @@ func (a *Service) ActiveIDByEmail(ctx context.Context, address string) (string, 
 }
 
 // CreateAdministratorWithin creates the first active administrator during installation.
-func (a *Service) CreateAdministratorWithin(ctx context.Context, transaction *storage.Transaction, address, displayName, hash string) error {
+func (a *Service) CreateAdministratorWithin(ctx context.Context, transaction *storage.Transaction, address, displayName, hash string) (User, error) {
 	if displayName == "" {
 		displayName = defaultDisplayName(address)
 	}
 	name, err := NormalizeDisplayName(displayName)
 	if err != nil {
-		return err
+		return User{}, err
 	}
 	displayName = name
 
-	_, err = a.repository.Within(transaction).AccountCreateAdministrator(ctx, storage.AccountCreateAdministratorParams{ID: newID(), Email: address, PasswordHash: hash, CreatedAt: time.Now().Unix(), DisplayName: displayName})
+	user := User{ID: newID(), Email: address, DisplayName: displayName, Role: RoleAdmin, Status: StatusActive}
+	_, err = a.repository.Within(transaction).AccountCreateAdministrator(ctx, storage.AccountCreateAdministratorParams{ID: user.ID, Email: address, PasswordHash: hash, CreatedAt: time.Now().Unix(), DisplayName: displayName})
 
-	return err
+	return user, err
 }
 
 // CreateInvitedWithin creates an unactivated account in an invitation transaction.
@@ -105,7 +106,7 @@ func (a *Service) CreateInvitedWithin(ctx context.Context, transaction *storage.
 	if count > 0 {
 		return User{}, failure("email_exists", "That email already has an account.")
 	}
-	user := User{ID: newID(), Email: normalized, Role: role, Status: StatusInvited, Appearance: "system", DisplayName: defaultDisplayName(normalized)}
+	user := User{ID: newID(), Email: normalized, Role: role, Status: StatusInvited, DisplayName: defaultDisplayName(normalized)}
 	_, err = a.repository.Within(transaction).AccountCreateInvitedUser(ctx, storage.AccountCreateInvitedUserParams{ID: user.ID, Email: user.Email, Role: user.Role, CreatedAt: time.Now().Unix(), DisplayName: user.DisplayName})
 
 	return user, err

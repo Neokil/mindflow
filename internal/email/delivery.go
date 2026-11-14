@@ -26,6 +26,8 @@ type Config struct {
 }
 
 type mailJob struct {
+	UserID    string `json:"userId,omitempty"`
+	Purpose   string `json:"purpose,omitempty"`
 	To        string `json:"to"`
 	Subject   string `json:"subject"`
 	Body      string `json:"body"`
@@ -121,7 +123,7 @@ func (a *Service) runMail(ctx context.Context) {
 
 		return
 	}
-	valid, err := a.authorization.CanDeliver(ctx, job.TokenHash)
+	valid, err := a.canDeliver(ctx, job)
 	if err != nil {
 		return
 	}
@@ -156,3 +158,11 @@ var (
 	errTLSRequired = errors.New("SMTP TLS or STARTTLS is required")
 	errMailHeader  = errors.New("invalid email header")
 )
+
+func (a *Service) canDeliver(ctx context.Context, job mailJob) (bool, error) {
+	if job.Purpose == "welcome" {
+		return a.authorization.CanDeliverNotice(ctx, job.UserID)
+	}
+
+	return a.authorization.CanDeliver(ctx, job.TokenHash)
+}

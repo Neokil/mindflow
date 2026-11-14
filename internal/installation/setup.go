@@ -92,7 +92,7 @@ func (a *Service) Setup(ctx context.Context, _ account.User, command SetupComman
 	if init != 0 {
 		return Completed{}, failure("initialized", "Setup is already complete.")
 	}
-	err = a.accounts.CreateAdministratorWithin(ctx, transaction, address, command.DisplayName, hash)
+	administrator, err := a.accounts.CreateAdministratorWithin(ctx, transaction, address, command.DisplayName, hash)
 	if err != nil {
 		return Completed{}, err
 	}
@@ -101,6 +101,11 @@ func (a *Service) Setup(ctx context.Context, _ account.User, command SetupComman
 		return Completed{}, wrap("encode settings", err)
 	}
 	_, err = a.repository.Within(transaction).InstallationCompleteSetup(ctx, string(raw))
+	if err != nil {
+		return Completed{}, err
+	}
+
+	err = a.welcome.QueueWelcomeWithin(ctx, transaction, administrator, command.Settings.PublicURL)
 	if err != nil {
 		return Completed{}, err
 	}

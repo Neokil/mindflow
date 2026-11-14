@@ -65,3 +65,17 @@ func TestMessageContainsEscapedHTMLAndClickableLinks(t *testing.T) {
 		t.Fatal("missing inline icon")
 	}
 }
+
+func TestLabeledWelcomeLinksAreEscapedAndDistinct(t *testing.T) {
+	t.Parallel()
+	value, err := email.FormatMessage(email.Config{From: "mindflow@example.com", Name: "mindflow"}, "friend@example.com", "Welcome <Simon>!", "Open mindflow\thttps://mindflow.example/\nView patch notes\thttps://github.com/Neokil/mindflow/releases\nReport an error\thttps://github.com/Neokil/mindflow/issues")
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded := strings.ReplaceAll(strings.ReplaceAll(value, "=\r\n", ""), "=3D", "=")
+	for _, label := range []string{"Open mindflow", "View patch notes", "Report an error", "Welcome &lt;Simon&gt;!"} {
+		if !strings.Contains(decoded, label) {
+			t.Fatal("missing escaped welcome content", label)
+		}
+	}
+}
