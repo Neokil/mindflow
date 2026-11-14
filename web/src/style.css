@@ -674,6 +674,8 @@ select {
   overflow: hidden;
 }
 .workspace-preview-content {
+  /* Thumbnail loading must not replace the target of an in-progress click. */
+  pointer-events: none;
   position: absolute;
   inset: 14px 22px;
   display: block;

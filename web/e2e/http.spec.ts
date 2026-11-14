@@ -28,10 +28,35 @@ test("opens, edits and reopens a workspace over insecure HTTP", async ({
   await page.mouse.click(canvas.x + 450, canvas.y + 300);
   await expect(page.getByTestId("element-count")).toHaveText("1 element");
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
-  await page
-    .getByRole("button", { name: "Back to workspaces", exact: true })
-    .click();
-  await page.getByRole("button", { name: `Open ${name}`, exact: true }).click();
-  await expect(page.getByTestId("element-count")).toHaveText("1 element");
+  // A thumbnail may finish loading between pressing and releasing its button.
+  // Keep that timing deterministic: the control must still receive the click.
+  let releasePreview!: () => void;
+  const pendingPreview = new Promise<void>((resolve) => {
+    releasePreview = resolve;
+  });
+  await page.route("**/api/v1/pages/*/document", async (route) => {
+    await pendingPreview;
+    await route.continue();
+  });
+  try {
+    await page
+      .getByRole("button", { name: "Back to workspaces", exact: true })
+      .click();
+    const preview = page.getByRole("button", {
+      name: `Open ${name}`,
+      exact: true,
+    });
+    const loading = preview.getByText("Loading preview…", { exact: true });
+    await expect(loading).toBeVisible();
+    await preview.hover();
+    await page.mouse.down();
+    releasePreview();
+    await expect(preview.getByRole("img")).toBeVisible();
+    await page.mouse.up();
+    await expect(page.getByTestId("element-count")).toHaveText("1 element");
+  } finally {
+    releasePreview();
+    await page.mouse.up();
+  }
   expect(errors).toEqual([]);
 });
