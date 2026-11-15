@@ -47,7 +47,7 @@ export default function ExportDialog({
       await beforeExport?.(selection.pageIds);
       setProgress("Preparing export…");
       let file: { blob: Blob; name: string };
-      if (format === "mindflow" || format === "butterfly") {
+      if (["mindflow", "butterfly", "one", "onepkg"].includes(format)) {
         file = {
           blob: await apiFile(
             `/workspaces/${workspace.id}/export`,
@@ -58,8 +58,14 @@ export default function ExportDialog({
             },
             setNotes,
           ),
-          name: `${safeFilename(workspace.name)}.${format === "butterfly" ? "bfly" : "mindflow"}`,
+          name: `${safeFilename(workspace.name)}.${format === "butterfly" ? "bfly" : format}`,
         };
+      } else if (format === "goodnotes") {
+        const converted = await (
+          await import("./goodnotes/convert")
+        ).exportGoodnotes(workspace.id, selection, setProgress);
+        file = converted;
+        setNotes(converted.warnings);
       } else {
         const { visualExport } = await import("./exportFiles");
         const snapshot = await api<import("./exportFiles").Snapshot>(
@@ -157,6 +163,11 @@ export default function ExportDialog({
             >
               <option value="mindflow">mindflow (.mindflow)</option>
               <option value="butterfly">Butterfly (.bfly)</option>
+              <option value="goodnotes">
+                Goodnotes (.goodnotes, experimental)
+              </option>
+              <option value="onepkg">OneNote notebook (.onepkg)</option>
+              <option value="one">OneNote section (.one)</option>
               <option value="pdf">PDF (.pdf)</option>
               <option value="png">PNG images (.png / .zip)</option>
             </select>
@@ -179,12 +190,13 @@ export default function ExportDialog({
                 details stay in this workspace.
               </p>
             </>
-          ) : format === "butterfly" ? (
+          ) : ["butterfly", "one", "onepkg", "goodnotes"].includes(format) ? (
             <p className="muted">
-              Exports supported elements for Butterfly format version 13. Text
-              layout and ink styling may differ. Group locks, templates, and
-              element links are omitted; embedded PDFs become preview images.
-              Conversion notes appear after exporting.
+              Exports supported editable elements. Shapes and rotated text in
+              OneNote become individual images. Text layout and ink styling may
+              differ. Group locks, templates, and element links are omitted;
+              embedded PDFs become preview images. Conversion notes appear after
+              exporting.
             </p>
           ) : (
             <>

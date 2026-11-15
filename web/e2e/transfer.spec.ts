@@ -250,13 +250,11 @@ test("exports Butterfly notebooks that can be imported again", async ({
     page,
     page.getByRole("button", { name: "Import workspace", exact: true }),
   );
-  await page
-    .getByLabel("Workspace export", { exact: true })
-    .setInputFiles({
-      name: file.name,
-      mimeType: "application/zip",
-      buffer: file.raw,
-    });
+  await page.getByLabel("Workspace export", { exact: true }).setInputFiles({
+    name: file.name,
+    mimeType: "application/zip",
+    buffer: file.raw,
+  });
   await activate(
     page,
     page.getByRole("button", { name: "Import", exact: true }),

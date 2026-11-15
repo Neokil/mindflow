@@ -8,11 +8,11 @@ export type ImportResult = {
   elementCount: number;
   warnings: string[];
 };
-export const IMPORT_EXTENSIONS = ".mindflow,.bfly,.pdf";
+export const IMPORT_EXTENSIONS = ".mindflow,.bfly,.pdf,.one,.onepkg,.goodnotes";
 export function importName(file: File) {
   return (
     file.name
-      .replace(/\.(mindflow|bfly|pdf)$/i, "")
+      .replace(/\.(mindflow|bfly|pdf|one|onepkg|goodnotes)$/i, "")
       .trim()
       .slice(0, 180) || "Imported workspace"
   );
@@ -24,8 +24,14 @@ export async function importFile(
   progress: (message: string) => void,
 ): Promise<ImportResult> {
   const extension = file.name.split(".").pop()?.toLowerCase();
-  if (!["mindflow", "bfly", "pdf"].includes(extension || ""))
-    throw new Error("Choose a .mindflow, .bfly, or PDF file.");
+  if (
+    !["mindflow", "bfly", "pdf", "one", "onepkg", "goodnotes"].includes(
+      extension || "",
+    )
+  )
+    throw new Error(
+      "Choose a mindflow, Butterfly, Goodnotes, OneNote, or PDF file.",
+    );
   if (file.size > (extension === "pdf" ? MAX_PDF_BYTES : 64 * 1024 * 1024))
     throw new Error(
       "File exceeds the import size limit (PDF: 50 MiB; other files: 64 MiB).",
@@ -35,7 +41,14 @@ export async function importFile(
       "Import Butterfly files as new workspaces from the overview.",
     );
   const form = new FormData();
-  if (extension === "pdf")
+  let warnings: string[] = [];
+  if (extension === "goodnotes") {
+    const converted = await (
+      await import("./goodnotes/convert")
+    ).importGoodnotes(file, name, progress);
+    warnings = converted.warnings;
+    form.append("file", converted.blob, "import.mindflow");
+  } else if (extension === "pdf")
     form.append(
       "file",
       await pdfBundle(file, name, progress),
@@ -44,13 +57,14 @@ export async function importFile(
   else form.append("file", file);
   form.append("name", name);
   progress("Saving imported workspace…");
-  return api<ImportResult>(
+  const result = await api<ImportResult>(
     workspaceId
-      ? `/workspaces/${workspaceId}/import/mindflow`
-      : `/workspaces/import/${extension === "bfly" ? "butterfly" : "mindflow"}`,
+      ? `/workspaces/${workspaceId}/import/${extension === "one" || extension === "onepkg" ? "onenote" : "mindflow"}`
+      : `/workspaces/import/${extension === "bfly" ? "butterfly" : extension === "one" || extension === "onepkg" ? "onenote" : "mindflow"}`,
     "POST",
     form,
   );
+  return { ...result, warnings: [...warnings, ...result.warnings] };
 }
 async function pdfBundle(
   file: File,
