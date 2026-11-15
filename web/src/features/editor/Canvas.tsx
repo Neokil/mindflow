@@ -1094,6 +1094,20 @@ export default function Canvas({
           <button
             className="icon-button"
             aria-label="Selection properties"
+            onPointerUp={(event) => {
+              if (event.pointerType === "mouse") return;
+              const box = event.currentTarget.getBoundingClientRect();
+              // Touch/pen activation must survive compatibility-click suppression
+              // after a canvas drag. Ignore a release outside the control.
+              if (
+                event.clientX >= box.left &&
+                event.clientX <= box.right &&
+                event.clientY >= box.top &&
+                event.clientY <= box.bottom
+              ) {
+                setObjectSettingsAnchor({ x: box.left, y: box.top });
+              }
+            }}
             onClick={(event) => {
               const box = event.currentTarget.getBoundingClientRect();
               setObjectSettingsAnchor({ x: box.left, y: box.top });

@@ -258,6 +258,18 @@ test("image upload, object properties and comments work without a mouse", async 
       }),
     )
     .toBe(true);
+  // Suppress the compatibility click deliberately: the actual touch release
+  // still needs to open this control after a drawing gesture.
+  await properties.evaluate((button) =>
+    button.addEventListener(
+      "click",
+      (event) => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      },
+      { capture: true, once: true },
+    ),
+  );
   await input.tap(properties);
   await expect(
     page.getByLabel("Object properties", { exact: true }),
