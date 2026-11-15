@@ -105,7 +105,8 @@ test("align objects and navigate an element link across pages", async ({
     sourceY = bounds.y + camera.y + source.y * camera.zoom;
   await input.pen("down", sourceX, sourceY);
   await input.pen("up", sourceX, sourceY);
-  await page.waitForTimeout(350);
+  // Stay comfortably within Konva's double-click window on loaded CI runners.
+  await page.waitForTimeout(100);
   await input.pen("down", sourceX, sourceY);
   await input.pen("up", sourceX, sourceY);
   await expect(

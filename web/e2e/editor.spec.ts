@@ -570,13 +570,17 @@ test("large page remains interactive with 3000 elements and image placements", a
   ).toBeVisible();
   await page.getByRole("button", { name: "Take control", exact: true }).click();
   await expect(page.getByTestId("element-count")).toHaveText("3000 elements");
-  const imageReady = page.waitForResponse(
-    (response) =>
-      response.url().includes(`/assets/${asset.id}`) &&
-      response.request().resourceType() === "image",
-  );
   await page.getByRole("button", { name: "Fit content", exact: true }).click();
-  await (await imageReady).finished();
+  // A saved thumbnail may already have decoded this immutable asset. A cache
+  // hit must not leave the performance check waiting for another request.
+  expect(
+    await page.evaluate(async (id) => {
+      const image = new Image();
+      image.src = `/api/v1/assets/${id}`;
+      await image.decode();
+      return image.naturalWidth > 0;
+    }, asset.id),
+  ).toBe(true);
   // Exclude initial transfer/decoding: the design's frame target is for loaded content.
   await page.evaluate(
     () =>
