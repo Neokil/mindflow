@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import fixture from "./fixture.json";
 import { readGoodnotes } from "./read";
 import { writeGoodnotes } from "./write";
+import { exportBounds } from "../exportGeometry";
 import {
   concat,
   field,
@@ -63,6 +64,12 @@ describe("Goodnotes native conversion", () => {
     imported.pages[0].document.elements =
       imported.pages[0].document.elements.filter((e) => !pdfs.has(e.assetId!));
     imported.assets = imported.assets.filter((a) => !pdfs.has(a.id));
+    const originalText = imported.pages[0].document.elements.find(
+      (e) => e.type === "text",
+    )!;
+    expect(originalText.x).toBe(250);
+    expect(originalText.y).toBe(102.5);
+    const bounds = exportBounds(imported.pages[0].document);
     const exported = await writeGoodnotes(imported);
     const restored = readGoodnotes(exported.data);
     expect(restored.pages).toHaveLength(1);
@@ -73,6 +80,11 @@ describe("Goodnotes native conversion", () => {
       restored.pages[0].document.elements.find((e) => e.type === "stroke")
         ?.points,
     ).toHaveLength(12);
+    const restoredText = restored.pages[0].document.elements.find(
+      (e) => e.type === "text",
+    )!;
+    expect(restoredText.x).toBeCloseTo(originalText.x - bounds.x, 3);
+    expect(restoredText.y).toBeCloseTo(originalText.y - bounds.y, 3);
     expect(restored.assets.find((a) => a.mime === "image/png")?.data).toEqual(
       imported.assets[0].data,
     );

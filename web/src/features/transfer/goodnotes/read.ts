@@ -73,8 +73,8 @@ function readText(record: Message, lz4: LZ4): CanvasElement | undefined {
   return {
     id: uid(),
     type: "text",
-    x: position.x,
-    y: position.y,
+    x: position.x + Math.max(0.1, size.x + inset.x * 2) / 2,
+    y: position.y + Math.max(0.1, size.y + inset.y * 2) / 2,
     width: Math.max(0.1, size.x + inset.x * 2),
     height: Math.max(0.1, size.y + inset.y * 2),
     rotation: 0,
