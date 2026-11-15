@@ -45,21 +45,21 @@ func (c *converter) text(source sourceElement) (canvas.Element, error) {
 		height = math.Max(height, source.Constraint.Length)
 	}
 	align := paragraph.Alignment
-	if align != "left" && align != "center" && align != "right" {
+	if align != "left" && align != alignCenter && align != "right" {
 		align = "left"
 	}
 	vertical := source.Area.AreaProperty.Alignment
-	if vertical == "center" {
-		vertical = "middle"
+	if vertical == alignCenter {
+		vertical = alignMiddle
 	}
-	if vertical != "middle" && vertical != "bottom" {
+	if vertical != alignMiddle && vertical != "bottom" {
 		vertical = "top"
 	}
 	bold := style.FontWeight != nil && *style.FontWeight >= boldFontWeight
 	italic := style.Italic != nil && *style.Italic
 	c.warn("Text uses one style per element and mindflow's font metrics; mixed formatting and advanced text layout are flattened.")
 
-	return canvas.Element{Type: "text", X: source.Position.X + width/2, Y: source.Position.Y + height/2, Width: width, Height: height, Text: text, FontSize: size, Color: color, Align: align, VerticalAlign: vertical, Bold: bold, Italic: italic}, nil
+	return canvas.Element{Type: elementText, X: source.Position.X + width/2, Y: source.Position.Y + height/2, Width: width, Height: height, Text: text, FontSize: size, Color: color, Align: align, VerticalAlign: vertical, Bold: bold, Italic: italic}, nil
 }
 
 const (

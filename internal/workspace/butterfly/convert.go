@@ -62,13 +62,13 @@ func (c *converter) element(source sourceElement) (canvas.Element, bool, error) 
 	var element canvas.Element
 	var err error
 	switch source.Type {
-	case "pen":
+	case elementPen:
 		element, err = c.stroke(source)
-	case "shape":
+	case elementShape:
 		element, err = c.shape(source)
 	case elementImage:
 		element, err = c.image(source)
-	case "text":
+	case elementText:
 		element, err = c.text(source)
 	default:
 		kind := source.Type
@@ -117,7 +117,7 @@ func (c *converter) shape(source sourceElement) (canvas.Element, error) {
 	left, top := math.Min(source.FirstPosition.X, source.SecondPosition.X), math.Min(source.FirstPosition.Y, source.SecondPosition.Y)
 	width, height := math.Abs(source.SecondPosition.X-source.FirstPosition.X), math.Abs(source.SecondPosition.Y-source.FirstPosition.Y)
 
-	return canvas.Element{Type: "shape", Shape: kind, X: left + width/2, Y: top + height/2, Width: math.Max(minDimension, width), Height: math.Max(minDimension, height), Fill: fill, Border: border, BorderWidth: number(source.Property.StrokeWidth, defaultPenWidth)}, nil
+	return canvas.Element{Type: elementShape, Shape: kind, X: left + width/2, Y: top + height/2, Width: math.Max(minDimension, width), Height: math.Max(minDimension, height), Fill: fill, Border: border, BorderWidth: number(source.Property.StrokeWidth, defaultPenWidth)}, nil
 }
 
 func (c *converter) stroke(source sourceElement) (canvas.Element, error) {
@@ -241,7 +241,7 @@ func (c *converter) background(source sourcePage) (canvas.Settings, error) {
 		c.warn("Only the first page background is imported.")
 	}
 	background := source.Backgrounds[0]
-	if background.Type != "texture" || background.Texture.BoxColor == nil {
+	if background.Type != backgroundTexture || background.Texture.BoxColor == nil {
 		c.warn("Unsupported page backgrounds were replaced by the default canvas background.")
 
 		return settings, nil

@@ -26,6 +26,7 @@ Account passwords must contain 8–128 characters. Setup, invitation acceptance,
 Choose **Export workspace** beside the save status, **Export** in a workspace card's menu, or **Export page** in a page tab's menu. Choose the whole workspace or tick individual pages, then choose a format:
 
 - **mindflow (.mindflow)** keeps elements editable and includes original media. Optionally include reusable templates. Use this format to move work between mindflow instances or share a copy with another person.
+- **Butterfly (.bfly)** exports a version-13 notebook with editable images, shapes, text, and strokes. Stars become closed pen paths; lists become plain text. Crops are baked into the exported images and embedded PDFs become their first-page preview. Text wrapping, pressure ink, and highlight blending can differ. Group locks, element links, and templates are omitted. Review the conversion notes after exporting.
 - **PDF** creates one PDF page per selected canvas page, in tab order.
 - **PNG images** creates one image per canvas page. A single page downloads as PNG; multiple pages download together in a ZIP.
 

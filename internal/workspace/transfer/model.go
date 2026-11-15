@@ -67,6 +67,7 @@ type Bundle struct {
 
 // Selection chooses pages in workspace order; an empty list means all pages.
 type Selection struct {
+	Format           string   `json:"format,omitempty"`
 	PageIDs          []string `json:"pageIds"`
 	IncludeTemplates bool     `json:"includeTemplates"`
 }

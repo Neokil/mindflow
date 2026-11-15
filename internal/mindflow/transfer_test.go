@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"mime/multipart"
+	"mindflow/internal/workspace/butterfly"
 	"mindflow/internal/workspace/page/canvas"
 	"mindflow/internal/workspace/template"
 	"mindflow/internal/workspace/transfer"
@@ -216,3 +217,33 @@ func TestNativeImportRollsBackAndRejectsMalformedFiles(t *testing.T) {
 }
 
 const nativePagesKind = "pages"
+
+func TestButterflyExportRoundTripAndAccess(t *testing.T) {
+	t.Parallel()
+	owner := fixture(t)
+	owner.setup()
+	workspaceID, _ := nativeSample(t, owner)
+	path := "/api/v1/workspaces/" + workspaceID + "/export"
+	response := owner.ok("POST", path, transfer.Selection{Format: "butterfly"})
+	if response.Header().Get("X-Mindflow-Conversion-Notes") == "" {
+		t.Fatal("missing conversion notes")
+	}
+	archive, err := butterfly.Read(response.Body.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(archive.Pages) != 2 || len(archive.Images) != 1 || len(archive.Pages[0].Document.Elements) != 3 {
+		t.Fatal("Butterfly export lost supported content")
+	}
+	imported := decoded[transfer.Result](t, importButterfly(owner, response.Body.Bytes(), owner.csrf))
+	if imported.PageCount != 2 || imported.ElementCount != 6 {
+		t.Fatal("Butterfly roundtrip", imported)
+	}
+	other, _ := sharedUser(owner, "butterfly-outsider@example.com")
+	if other.request("POST", path, transfer.Selection{Format: "butterfly"}).Code != 404 {
+		t.Fatal("export granted private access")
+	}
+	if owner.request("POST", path, transfer.Selection{Format: "unknown"}).Code != 400 {
+		t.Fatal("unknown export format was accepted")
+	}
+}

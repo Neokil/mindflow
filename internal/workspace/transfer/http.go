@@ -1,6 +1,7 @@
 package transfer
 
 import (
+	"encoding/json"
 	"fmt"
 	"mime"
 	"mindflow/internal/account/session"
@@ -33,12 +34,30 @@ func (h *handler) export(writer http.ResponseWriter, request *http.Request) (any
 	if err != nil {
 		return nil, err
 	}
-	data, err := h.service.Export(request.Context(), h.routes.CurrentSession(request), request.PathValue("id"), selection)
+	var data []byte
+	var notes []string
+	filename, contentType := "workspace.mindflow", "application/vnd.mindflow+zip"
+	switch selection.Format {
+	case "", "mindflow":
+		data, err = h.service.Export(request.Context(), h.routes.CurrentSession(request), request.PathValue("id"), selection)
+	case "butterfly":
+		data, notes, err = h.service.ExportButterfly(request.Context(), h.routes.CurrentSession(request), request.PathValue("id"), selection)
+		filename, contentType = "workspace.bfly", "application/zip"
+	default:
+		return nil, invalid("Unsupported export format.")
+	}
 	if err != nil {
 		return nil, err
 	}
-	writer.Header().Set("Content-Type", "application/vnd.mindflow+zip")
-	writer.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": "workspace.mindflow"}))
+	writer.Header().Set("Content-Type", contentType)
+	writer.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": filename}))
+	if len(notes) > 0 {
+		encoded, marshalErr := json.Marshal(notes)
+		if marshalErr != nil {
+			return nil, fmt.Errorf("encode conversion notes: %w", marshalErr)
+		}
+		writer.Header().Set("X-Mindflow-Conversion-Notes", string(encoded))
+	}
 	writer.Header().Set("Cache-Control", "no-store")
 	_, err = writer.Write(data) //nolint:gosec // G705: ZIP attachment with a fixed binary Content-Type; never served as HTML.
 	if err != nil {

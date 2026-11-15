@@ -20,6 +20,7 @@ export default function ExportDialog({
   const [scope, setScope] = useState(pageId ? "selected" : "all");
   const [selected, setSelected] = useState<string[]>(pageId ? [pageId] : []);
   const [format, setFormat] = useState("mindflow");
+  const [notes, setNotes] = useState<string[]>([]);
   const [templates, setTemplates] = useState(!pageId);
   const [resolution, setResolution] = useState(2048);
   const [background, setBackground] = useState(true),
@@ -35,6 +36,7 @@ export default function ExportDialog({
   }, [initialPages, workspace.id]);
   async function submit() {
     setError("");
+    setNotes([]);
     setReady(undefined);
     setProgress("Saving changes…");
     try {
@@ -45,10 +47,18 @@ export default function ExportDialog({
       await beforeExport?.(selection.pageIds);
       setProgress("Preparing export…");
       let file: { blob: Blob; name: string };
-      if (format === "mindflow") {
+      if (format === "mindflow" || format === "butterfly") {
         file = {
-          blob: await apiFile(`/workspaces/${workspace.id}/export`, selection),
-          name: `${safeFilename(workspace.name)}.mindflow`,
+          blob: await apiFile(
+            `/workspaces/${workspace.id}/export`,
+            {
+              ...selection,
+              format,
+              includeTemplates: format === "mindflow" && templates,
+            },
+            setNotes,
+          ),
+          name: `${safeFilename(workspace.name)}.${format === "butterfly" ? "bfly" : "mindflow"}`,
         };
       } else {
         const { visualExport } = await import("./exportFiles");
@@ -146,6 +156,7 @@ export default function ExportDialog({
               }}
             >
               <option value="mindflow">mindflow (.mindflow)</option>
+              <option value="butterfly">Butterfly (.bfly)</option>
               <option value="pdf">PDF (.pdf)</option>
               <option value="png">PNG images (.png / .zip)</option>
             </select>
@@ -168,6 +179,13 @@ export default function ExportDialog({
                 details stay in this workspace.
               </p>
             </>
+          ) : format === "butterfly" ? (
+            <p className="muted">
+              Exports supported elements for Butterfly format version 13. Text
+              layout and ink styling may differ. Group locks, templates, and
+              element links are omitted; embedded PDFs become preview images.
+              Conversion notes appear after exporting.
+            </p>
           ) : (
             <>
               <label>
@@ -216,6 +234,16 @@ export default function ExportDialog({
           )}
         </fieldset>
         <ErrorMessage message={error} />
+        {notes.length > 0 && (
+          <>
+            <h3>Conversion notes</h3>
+            <ul className="import-notes">
+              {notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          </>
+        )}
         {progress && (
           <p role="status">
             <Spinner /> {progress}

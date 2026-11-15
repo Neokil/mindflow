@@ -213,3 +213,58 @@ test("PDF and PNG outputs contain each rendered canvas page", async ({
   expect((await download(page)).name).toMatch(/^Page[ _]2\.png$/);
   expect(errors).toEqual([]);
 });
+
+test("exports Butterfly notebooks that can be imported again", async ({
+  page,
+}, info) => {
+  await example(page, `Butterfly export ${info.project.name}`);
+  await activate(
+    page,
+    page.getByRole("button", { name: "Export workspace", exact: true }),
+  );
+  await page
+    .getByLabel("Export format", { exact: true })
+    .selectOption("butterfly");
+  const file = await download(page);
+  expect(file.name).toMatch(/\.bfly$/);
+  const entries = unzipSync(file.raw);
+  expect(
+    JSON.parse(new TextDecoder().decode(entries["META-INF/butterfly.json"]))
+      .fileVersion,
+  ).toBe(13);
+  expect(
+    Object.keys(entries).filter((name) => name.startsWith("BFLY/pages/")),
+  ).toHaveLength(2);
+  await expect(
+    page.getByRole("heading", { name: "Conversion notes", exact: true }),
+  ).toBeVisible();
+  await activate(
+    page,
+    page.getByRole("button", { name: "Close", exact: true }),
+  );
+  await activate(
+    page,
+    page.getByRole("button", { name: "Back to workspaces", exact: true }),
+  );
+  await activate(
+    page,
+    page.getByRole("button", { name: "Import workspace", exact: true }),
+  );
+  await page
+    .getByLabel("Workspace export", { exact: true })
+    .setInputFiles({
+      name: file.name,
+      mimeType: "application/zip",
+      buffer: file.raw,
+    });
+  await activate(
+    page,
+    page.getByRole("button", { name: "Import", exact: true }),
+  );
+  await expect(
+    page.getByText(
+      "Imported 2 pages and 6 elements into a private workspace.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+});

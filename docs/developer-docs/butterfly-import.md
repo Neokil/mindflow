@@ -1,4 +1,4 @@
-# Butterfly workspace import
+# Butterfly import and export
 
 `internal/workspace/butterfly` is a workspace subdomain with explicit workspace, page, and image collaborators. It owns archive parsing and conversion; all SQL and schema ownership remain in `workspace/storage`. No database migration or runtime dependency is added.
 
@@ -45,3 +45,9 @@ Parser tests cover conversion, ordering, unsafe paths, version checks, missing i
 To verify another equivalent two-page sample manually, set `MINDFLOW_IMPORT_SAMPLE` to its absolute path when running that Playwright spec. Normal CI uses the committed synthetic fixture.
 
 Format mapping follows the upstream [Butterfly repository](https://github.com/LinwoodDev/Butterfly), especially the API models for [elements](https://github.com/LinwoodDev/Butterfly/blob/develop/api/lib/src/models/element.dart), [pages](https://github.com/LinwoodDev/Butterfly/blob/develop/api/lib/src/models/page.dart), and [text](https://github.com/LinwoodDev/Butterfly/blob/develop/api/lib/src/models/text.dart). This is a bounded converter, not a complete Butterfly renderer.
+
+## Export
+
+The transfer service first obtains its normal authorized, consistent native snapshot, then passes its validated page documents and embedded media to `butterfly.Write`. The writer emits file-format version 13, ordered page entries, a minimal tool palette, and embedded images. It defines no storage or cross-domain queries. The HTTP export selection accepts `format: "butterfly"`; conversion notes accompany the ZIP in `X-Mindflow-Conversion-Notes`.
+
+Rectangles, circles, images, text, and constant-width strokes map to editable Butterfly elements. Stars become closed, filled pen paths. List markers become text; text metrics, pressure width, and multiply-blended highlighting can differ. Image crops are baked into PNG media; embedded PDFs use their retained first-page preview. Repeated identical media/crops share an archive entry. Sharing, comments, templates, links, locks, and mindflow-specific settings are omitted. Export bounds remain 64 MiB compressed and 128 MiB expanded. Round-trip tests cover API authorization, page/media counts, and reimport through the normal Butterfly parser.

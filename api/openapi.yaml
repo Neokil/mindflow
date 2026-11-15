@@ -3991,7 +3991,7 @@
     },
     "/workspaces/{id}/export": {
       "post": {
-        "summary": "Download selected saved content as an editable .mindflow archive",
+        "summary": "Export authorized workspace pages as a native mindflow or Butterfly archive",
         "operationId": "workspaces_id_export",
         "security": [
           {
@@ -4021,6 +4021,20 @@
                 "schema": {
                   "type": "string",
                   "format": "binary"
+                }
+              },
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "X-Mindflow-Conversion-Notes": {
+                "description": "JSON array of conversion notes for external formats.",
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -5843,6 +5857,15 @@
           "includeTemplates": {
             "type": "boolean",
             "default": false
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "mindflow",
+              "butterfly"
+            ],
+            "default": "mindflow",
+            "description": "Native archive format; snapshot requests ignore this field."
           }
         }
       },

@@ -49,8 +49,15 @@ export async function api<T = unknown>(
 ): Promise<T> {
   return (await request(path, method, body)).json().catch(() => ({}));
 }
-export async function apiFile(path: string, body: unknown): Promise<Blob> {
-  return (await request(path, "POST", body)).blob();
+export async function apiFile(
+  path: string,
+  body: unknown,
+  onNotes?: (notes: string[]) => void,
+): Promise<Blob> {
+  const response = await request(path, "POST", body);
+  const notes = response.headers.get("X-Mindflow-Conversion-Notes");
+  if (notes && onNotes) onNotes(JSON.parse(notes));
+  return response.blob();
 }
 export type User = {
   displayName: string;
