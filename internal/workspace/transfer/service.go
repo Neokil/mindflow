@@ -7,6 +7,7 @@ import (
 	"mindflow/internal/account/session"
 	"mindflow/internal/workspace"
 	imageasset "mindflow/internal/workspace/image"
+	"mindflow/internal/workspace/onenote"
 	"mindflow/internal/workspace/page"
 	"mindflow/internal/workspace/page/canvas"
 	"mindflow/internal/workspace/pdf"
@@ -17,19 +18,21 @@ import (
 
 // Service composes permission-aware parent storage, media, page and template domains.
 type Service struct {
-	repository *storage.Repository
-	workspaces *workspace.Service
-	pages      *page.Service
-	images     *imageasset.Service
-	pdfs       *pdf.Service
-	templates  *template.Service
-	publish    func(string, string, string)
-	processing sync.Mutex
+	onenote            *onenote.Codec
+	repository         *storage.Repository
+	workspaces         *workspace.Service
+	pages              *page.Service
+	images             *imageasset.Service
+	pdfs               *pdf.Service
+	templates          *template.Service
+	publish            func(string, string, string)
+	processing         sync.Mutex
+	externalProcessing sync.Mutex
 }
 
 // NewService supplies the explicit collaborators used by atomic transfers.
-func NewService(repository *storage.Repository, workspaces *workspace.Service, pages *page.Service, images *imageasset.Service, pdfs *pdf.Service, templates *template.Service, publish func(string, string, string)) *Service {
-	return &Service{repository: repository, workspaces: workspaces, pages: pages, images: images, pdfs: pdfs, templates: templates, publish: publish}
+func NewService(repository *storage.Repository, workspaces *workspace.Service, pages *page.Service, images *imageasset.Service, pdfs *pdf.Service, templates *template.Service, publish func(string, string, string), codecPath string) *Service {
+	return &Service{onenote: onenote.NewCodec(codecPath), repository: repository, workspaces: workspaces, pages: pages, images: images, pdfs: pdfs, templates: templates, publish: publish}
 }
 
 func busy() error {

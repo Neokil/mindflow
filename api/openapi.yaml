@@ -3991,7 +3991,7 @@
     },
     "/workspaces/{id}/export": {
       "post": {
-        "summary": "Export authorized workspace pages as a native mindflow or Butterfly archive",
+        "summary": "Export authorized workspace pages as mindflow, Butterfly, or native OneNote files",
         "operationId": "workspaces_id_export",
         "security": [
           {
@@ -4024,6 +4024,12 @@
                 }
               },
               "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/octet-stream": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
@@ -5216,6 +5222,142 @@
           }
         }
       }
+    },
+    "/workspaces/import/onenote": {
+      "post": {
+        "summary": "Import a native OneNote section or notebook package as a private workspace",
+        "operationId": "import_onenote_workspace",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid content, unsupported version, or exceeded transfer limits."
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "CSRF failure or insufficient workspace role."
+          },
+          "404": {
+            "description": "Workspace unavailable."
+          },
+          "409": {
+            "description": "Another native transfer is running; retry shortly."
+          },
+          "200": {
+            "description": "Successful transfer. New imports are private; appends preserve existing pages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeImportResult"
+                }
+              }
+            }
+          }
+        },
+        "description": "Requires session-bound X-CSRF-Token. Multipart file name must end in .one or .onepkg. Native conversion is bounded to 64 MiB input/output, 128 MiB expanded, 100 pages, 20 MiB per image and a one-minute deadline. Converted content is validated and committed atomically; warnings describe conversion limits.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "Optional name for a new workspace; ignored for append."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/import/onenote": {
+      "post": {
+        "summary": "Append native OneNote section or notebook pages",
+        "operationId": "append_onenote_pages",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Invalid content, unsupported version, or exceeded transfer limits."
+          },
+          "401": {
+            "description": "Authentication required."
+          },
+          "403": {
+            "description": "CSRF failure or insufficient workspace role."
+          },
+          "404": {
+            "description": "Workspace unavailable."
+          },
+          "409": {
+            "description": "Another native transfer is running; retry shortly."
+          },
+          "200": {
+            "description": "Successful transfer. New imports are private; appends preserve existing pages.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NativeImportResult"
+                }
+              }
+            }
+          }
+        },
+        "description": "Requires session-bound X-CSRF-Token. Multipart file name must end in .one or .onepkg. Native conversion is bounded to 64 MiB input/output, 128 MiB expanded, 100 pages, 20 MiB per image and a one-minute deadline. Converted content is validated and committed atomically; warnings describe conversion limits.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "description": "Optional name for a new workspace; ignored for append."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5862,7 +6004,9 @@
             "type": "string",
             "enum": [
               "mindflow",
-              "butterfly"
+              "butterfly",
+              "one",
+              "onepkg"
             ],
             "default": "mindflow",
             "description": "Native archive format; snapshot requests ignore this field."

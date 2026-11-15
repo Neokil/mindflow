@@ -31,6 +31,7 @@ const (
 	entriesPerAsset     = 2
 	multipartMemory     = 1 << 20
 	templateBaseLength  = 180
+	mediaPNG            = "image/png"
 	mediaPDF            = "application/pdf"
 )
 

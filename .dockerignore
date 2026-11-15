@@ -7,3 +7,6 @@ web/test-results
 web/playwright-report
 *.sqlite*
 .DS_Store
+
+internal/workspace/onenote/codec/bin
+internal/workspace/onenote/codec/obj

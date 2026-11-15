@@ -215,7 +215,7 @@ func validateAssets(entries []Asset) (map[string]Asset, error) {
 			return nil, invalid("Invalid or duplicate portable asset identity.")
 		}
 		switch asset.MIME {
-		case "image/png", "image/jpeg", "image/webp":
+		case mediaPNG, "image/jpeg", "image/webp":
 			if asset.Preview {
 				return nil, invalid("Only retained PDFs have separate previews.")
 			}

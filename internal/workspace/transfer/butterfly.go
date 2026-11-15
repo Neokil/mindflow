@@ -14,6 +14,11 @@ import (
 
 // ExportButterfly reuses the authorized atomic snapshot and exports only its media.
 func (a *Service) ExportButterfly(ctx context.Context, actor session.Principal, workspaceID string, selection Selection) ([]byte, []string, error) {
+	if !a.externalProcessing.TryLock() {
+		return nil, nil, busy()
+	}
+	defer a.externalProcessing.Unlock()
+	selection.IncludeTemplates = false
 	raw, err := a.Export(ctx, actor, workspaceID, selection)
 	if err != nil {
 		return nil, nil, err

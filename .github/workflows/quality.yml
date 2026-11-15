@@ -20,6 +20,9 @@ jobs:
           node-version: 26.13.1
           cache: npm
           cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.404
       - run: npm ci
         working-directory: web
       - run: make tools

@@ -10,6 +10,7 @@ import (
 	"mindflow/internal/workspace/page/canvas"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -35,7 +36,7 @@ func fixture(t *testing.T) *testClient {
 	}
 	t.Cleanup(func() { _ = dbValue.Close() })
 	clock := &atomic.Int64{}
-	application, err := mindflow.New(t.Context(), dbValue, mindflow.Config{Dev: true, Bootstrap: "operator-secret", Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Millisecond) }})
+	application, err := mindflow.New(t.Context(), dbValue, mindflow.Config{Dev: true, OneNoteCodec: os.Getenv("MINDFLOW_ONENOTE_CODEC"), Bootstrap: "operator-secret", Now: func() time.Time { return time.Now().Add(time.Duration(clock.Load()) * time.Millisecond) }})
 	if err != nil {
 		t.Fatal(err)
 	}

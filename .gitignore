@@ -14,3 +14,5 @@ test-results/
 
 __pycache__/
 *.pyc
+
+/mindflow-onenote

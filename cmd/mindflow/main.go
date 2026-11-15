@@ -123,7 +123,15 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	service, err := mindflow.New(ctx, connection, mindflow.Config{Release: releaseVersion, Version: version, Dev: os.Getenv("MINDFLOW_DEV") == "1", Bootstrap: bootstrap})
+	codecPath := os.Getenv("MINDFLOW_ONENOTE_CODEC")
+	if codecPath == "" {
+		executable, executableErr := os.Executable()
+		if executableErr != nil {
+			return fmt.Errorf("locate native codecs: %w", executableErr)
+		}
+		codecPath = filepath.Join(filepath.Dir(executable), "mindflow-onenote")
+	}
+	service, err := mindflow.New(ctx, connection, mindflow.Config{OneNoteCodec: codecPath, Release: releaseVersion, Version: version, Dev: os.Getenv("MINDFLOW_DEV") == "1", Bootstrap: bootstrap})
 	if err != nil {
 		return err
 	}

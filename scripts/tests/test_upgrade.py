@@ -26,3 +26,25 @@ class UpgradeTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class NativeUpgradeTests(unittest.TestCase):
+    def test_codec_updates_sdk_checksums_runtime_and_package_together(self):
+        metadata = {'latest-sdk': '10.0.999', 'latest-release': '10.0.99', 'releases': [{
+            'release-version': '10.0.99', 'runtime': {'version': '10.0.99'},
+            'sdk': {'version': '10.0.999', 'files': [
+                {'rid': 'linux-musl-x64', 'hash': 'a' * 128},
+                {'rid': 'linux-musl-arm64', 'hash': 'b' * 128},
+            ]},
+        }]}
+        dockerfile = upgrade.ROOT / 'Dockerfile'
+        workflow = upgrade.ROOT / '.github/workflows/quality.yml'
+        changes = {dockerfile: dockerfile.read_text(), workflow: workflow.read_text()}
+        with patch.object(upgrade, 'fetch', side_effect=[(metadata, {}), ({'versions': ['3.6.0', '4.0.0-beta.1', '3.10.0']}, {})]):
+            upgrade.native_updates(changes)
+        self.assertIn('/Sdk/10.0.999/dotnet-sdk-10.0.999-', changes[dockerfile])
+        self.assertIn('rid=x64; checksum=' + 'a' * 128, changes[dockerfile])
+        self.assertIn('rid=arm64; checksum=' + 'b' * 128, changes[dockerfile])
+        self.assertIn('dotnet-version: 10.0.999', changes[workflow])
+        project = changes[upgrade.ROOT / 'internal/workspace/onenote/codec/OneNoteCodec.csproj']
+        self.assertIn('<RuntimeFrameworkVersion>10.0.99</RuntimeFrameworkVersion>', project)
+        self.assertIn('Version="3.10.0"', project)

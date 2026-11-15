@@ -12,8 +12,8 @@ GOLANGCI := $(CURDIR)/.cache/tools/golangci-lint/$(GOLANGCI_VERSION)/golangci-li
 
 .PHONY: dev frontend frontend-build build lint lint-go lint-web test test-e2e verify-container tools generate check-generated audit upgrade
 
-dev:
-	MINDFLOW_DEV=1 go run ./cmd/mindflow
+dev: native-codec
+	MINDFLOW_DEV=1 MINDFLOW_ONENOTE_CODEC="$(CURDIR)/.cache/e2e/mindflow-onenote" go run ./cmd/mindflow
 
 frontend:
 	cd web && npm run dev
@@ -21,10 +21,11 @@ frontend:
 frontend-build:
 	cd web && npm run build
 
-build: frontend-build
+build: frontend-build native-codec
 	go build -trimpath -o mindflow ./cmd/mindflow
+	cp .cache/e2e/mindflow-onenote ./mindflow-onenote
 
-lint: lint-go lint-web $(ACTIONLINT)
+lint: lint-go lint-web lint-codec $(ACTIONLINT)
 	$(ACTIONLINT)
 	python3 -m py_compile scripts/*.py tests/container/server.py
 
@@ -34,12 +35,12 @@ lint-go: $(GOLANGCI) check-generated
 lint-web:
 	cd web && npm run lint && npm run format:check
 
-test: frontend-build
-	go test -race ./cmd/... ./internal/...
+test: frontend-build native-codec
+	MINDFLOW_ONENOTE_CODEC="$(CURDIR)/.cache/e2e/mindflow-onenote" go test -race ./cmd/... ./internal/...
 	cd web && npm test
 	python3 -m unittest discover -s scripts/tests
 
-test-e2e: frontend-build
+test-e2e: frontend-build native-codec
 	mkdir -p .cache/e2e
 	go build -o .cache/e2e/mindflow ./cmd/mindflow
 	cd web && for project in $(E2E_PROJECTS); do shard=1; while [ "$$shard" -le "$(E2E_SHARDS)" ]; do npm run test:e2e -- --project="$$project" --shard="$$shard/$(E2E_SHARDS)" || exit $$?; shard=$$((shard + 1)); done; done
@@ -75,6 +76,7 @@ audit: $(GOVULNCHECK)
 	go mod verify
 	$(GOVULNCHECK) ./cmd/... ./internal/...
 	cd web && npm audit --audit-level=low
+	python3 scripts/audit-native.py
 
 upgrade:
 	python3 scripts/upgrade.py $(UPGRADE_FLAGS)
@@ -116,3 +118,11 @@ guide-images: frontend-build
 	mkdir -p .cache/demo
 	go build -o .cache/demo/mindflow ./cmd/mindflow
 	node web/scripts/record-demo.mjs --guide
+
+.PHONY: native-codec
+native-codec:
+	bash scripts/build-onenote.sh
+
+.PHONY: lint-codec
+lint-codec:
+	DOTNET_CLI_HOME="$(CURDIR)/.cache/dotnet-home" dotnet format whitespace internal/workspace/onenote/codec --folder --include Program.cs --verify-no-changes
