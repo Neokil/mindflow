@@ -64,7 +64,7 @@ func TestLeaseFencingIdempotencyAndRecovery(t *testing.T) {
 		t.Fatal("multiple writers acquired control")
 	}
 	doc := emptyDocument()
-	doc.Elements = append(doc.Elements, canvas.Element{ID: "rectangle", Type: "shape", X: 10, Y: 20, Width: 100, Height: 80, Shape: "rectangle", Fill: "#ffffff", Border: "#000000", BorderWidth: 1})
+	doc.Elements = append(doc.Elements, canvas.Element{ID: "rectangle", Type: transferShapeType, X: 10, Y: 20, Width: 100, Height: 80, Shape: transferRectangleShape, Fill: "#ffffff", Border: "#000000", BorderWidth: 1})
 	req := canvas.SaveDocumentCommand{BaseRevision: 0, Epoch: first.Epoch, ClientID: "first-tab", MutationID: "mutation-1", Document: doc}
 	client.ok("PUT", "/api/v1/pages/"+page+"/document", req)
 	// A lost acknowledgment can be retried without increasing the revision.

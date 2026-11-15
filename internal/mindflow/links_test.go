@@ -19,7 +19,7 @@ func TestElementLinksStayWithinWorkspaceAndFollowCopies(t *testing.T) {
 	target.Elements = []canvas.Element{{ID: linkTargetID, Type: "text", Text: "Destination", FontSize: 24, Align: "center", Color: linkTestColor, Width: 200, Height: 100}}
 	saveLinkedDocument(owner, second.ID, "target-editor", target, 0)
 	source := canvas.NewDocument()
-	source.Elements = []canvas.Element{{ID: "source", Type: "shape", Shape: "circle", Fill: linkTestColor, Border: linkTestColor, Width: 100, Height: 100, Link: &canvas.ElementLink{PageID: second.ID, ElementID: linkTargetID}}}
+	source.Elements = []canvas.Element{{ID: "source", Type: transferShapeType, Shape: "circle", Fill: linkTestColor, Border: linkTestColor, Width: 100, Height: 100, Link: &canvas.ElementLink{PageID: second.ID, ElementID: linkTargetID}}}
 	saveLinkedDocument(owner, firstID, "source-editor", source, 0)
 	// An unchanged dangling link is retained through edits and becomes usable on restore.
 	owner.ok("DELETE", "/api/v1/pages/"+second.ID, page.DeletePageCommand{Revision: 1, Confirm: true})

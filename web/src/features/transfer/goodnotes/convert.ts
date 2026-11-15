@@ -101,14 +101,30 @@ export async function exportGoodnotes(
     includeTemplates: false,
   });
   const files = readZip(new Uint8Array(await raw.arrayBuffer()));
-  const notebook = fromNative(new Uint8Array(await raw.arrayBuffer()));
+  const notebook = fromNative(files);
   const notes = new Set<string>();
+  let generatedBytes = 0;
+  const deadline = Date.now() + 120000;
+  const retain = (asset: Notebook["assets"][number]) => {
+    generatedBytes += asset.data.length;
+    if (
+      notebook.assets.length >= 1000 ||
+      generatedBytes > 100 * 1024 * 1024 ||
+      Date.now() > deadline
+    )
+      throw new Error(
+        "Goodnotes conversion exceeds its media or time limit. Export fewer pages.",
+      );
+    notebook.assets.push(asset);
+  };
   for (const page of notebook.pages)
     for (let index = 0; index < page.document.elements.length; index++) {
+      if (Date.now() > deadline)
+        throw new Error("Goodnotes conversion timed out. Export fewer pages.");
       const element = page.document.elements[index];
       if (element.type === "pdf") {
         const id = `preview-${notebook.assets.length}`;
-        notebook.assets.push({
+        retain({
           id,
           mime: "image/png",
           data: files[`assets/${element.assetId}.png`],
@@ -125,7 +141,8 @@ export async function exportGoodnotes(
           "Converting unsupported Goodnotes objects to individual images…",
         );
         const document: CanvasDocument = {
-          ...clone(page.document),
+          ...page.document,
+          settings: { ...page.document.settings },
           elements: [clone(element)],
         };
         const region = (await import("../exportGeometry")).exportBounds(
@@ -141,7 +158,7 @@ export async function exportGoodnotes(
           backgroundColor: "transparent",
         });
         const id = `raster-${notebook.assets.length}`;
-        notebook.assets.push({
+        retain({
           id,
           mime: "image/png",
           data: new Uint8Array(await blob.arrayBuffer()),

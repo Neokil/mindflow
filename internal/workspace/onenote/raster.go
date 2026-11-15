@@ -43,6 +43,9 @@ const (
 // RasterFallback preserves visual objects which have no supported native OneNote representation.
 // Text and ink normally bypass this path and remain editable in the destination.
 func RasterFallback(ctx context.Context, element canvas.Element, media []byte) ([]byte, canvas.Element, error) {
+	if ctx.Err() != nil {
+		return nil, element, fmt.Errorf("prepare OneNote image: %w", ctx.Err())
+	}
 	sine, cosine := math.Sincos(element.Rotation)
 	padding := 0.0
 	if element.Type == "shape" {
@@ -59,7 +62,7 @@ func RasterFallback(ctx context.Context, element canvas.Element, media []byte) (
 	case "shape":
 		err = rasterShape(ctx, target, element, scale, sine, cosine)
 	case "text":
-		err = rasterText(target, element, scale, sine, cosine)
+		err = rasterText(ctx, target, element, scale, sine, cosine)
 	default:
 		return nil, element, invalid("This object cannot be represented in OneNote.")
 	}
@@ -181,7 +184,7 @@ func rasterColor(value string) color.NRGBA {
 	return color.NRGBA{R: uint8((raw >> redShift) & colorMask), G: uint8((raw >> greenShift) & colorMask), B: uint8((raw >> byteBits) & colorMask), A: uint8(raw & colorMask)}
 }
 
-func rasterText(target *image.NRGBA, element canvas.Element, scale, sine, cosine float64) error {
+func rasterText(ctx context.Context, target *image.NRGBA, element canvas.Element, scale, sine, cosine float64) error {
 	data := goregular.TTF
 	if element.Bold {
 		data = gobold.TTF
@@ -207,6 +210,9 @@ func rasterText(target *image.NRGBA, element canvas.Element, scale, sine, cosine
 		top = float64(local.Bounds().Dy()) - float64(len(lines))*lineHeight
 	}
 	for index, line := range lines {
+		if ctx.Err() != nil {
+			return fmt.Errorf("render OneNote text: %w", ctx.Err())
+		}
 		localX := 0.0
 		switch element.Align {
 		case "center":
@@ -215,9 +221,40 @@ func rasterText(target *image.NRGBA, element canvas.Element, scale, sine, cosine
 			localX = float64(local.Bounds().Dx()) - float64(drawer.MeasureString(line))/fixedUnits
 		}
 		drawer.Dot = fixed.P(int(localX), int(top+float64(index)*lineHeight+element.FontSize*scale))
-		drawer.DrawString(line)
+		drawErr := drawVisibleText(ctx, &drawer, line)
+		if drawErr != nil {
+			return drawErr
+		}
 	}
 	affineImage(target, local, local.Bounds(), element.Width*scale, element.Height*scale, sine, cosine)
+
+	return nil
+}
+
+// Skip off-canvas glyphs before rasterizing them; large clipped text remains bounded.
+func drawVisibleText(ctx context.Context, drawer *font.Drawer, text string) error {
+	pen := drawer.Dot
+	previous := rune(-1)
+	metrics := drawer.Face.Metrics()
+	if (pen.Y+metrics.Descent).Ceil() < drawer.Dst.Bounds().Min.Y || (pen.Y-metrics.Ascent).Floor() > drawer.Dst.Bounds().Max.Y {
+		return nil
+	}
+	for _, current := range text {
+		if ctx.Err() != nil {
+			return fmt.Errorf("render OneNote glyph: %w", ctx.Err())
+		}
+		if previous >= 0 {
+			pen.X += drawer.Face.Kern(previous, current)
+		}
+		bounds, advance, _ := drawer.Face.GlyphBounds(current)
+		visible := image.Rect((pen.X + bounds.Min.X).Floor(), (pen.Y + bounds.Min.Y).Floor(), (pen.X + bounds.Max.X).Ceil(), (pen.Y + bounds.Max.Y).Ceil()).Intersect(drawer.Dst.Bounds())
+		if !visible.Empty() {
+			drawer.Dot = pen
+			drawer.DrawString(string(current))
+		}
+		pen.X += advance
+		previous = current
+	}
 
 	return nil
 }

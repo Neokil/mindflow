@@ -1,7 +1,7 @@
 import { PDFDocument, rgb } from "pdf-lib";
 import { clone, uid, type CanvasElement } from "../../../model";
 import { exportSize } from "../exportGeometry";
-import { readZip, writeZip, type Notebook } from "./archive";
+import { writeZip, type Notebook } from "./archive";
 import { colorFields, writeInk } from "./ink";
 import { concat, field, frame, lz4Encode, real } from "./wire";
 const id = () => uid().toUpperCase();
@@ -282,9 +282,8 @@ function metadata(id: string, type: number, z: number, revision: Uint8Array) {
     ]),
   );
 }
-export function fromNative(raw: Uint8Array): Notebook {
-  const files = readZip(raw),
-    manifest = JSON.parse(new TextDecoder().decode(files["manifest.json"]));
+export function fromNative(files: Record<string, Uint8Array>): Notebook {
+  const manifest = JSON.parse(new TextDecoder().decode(files["manifest.json"]));
   if (manifest.format !== "mindflow" || manifest.version !== 1)
     throw new Error("Unsupported mindflow transfer format.");
   return {

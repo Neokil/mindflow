@@ -102,3 +102,19 @@ func repositoryError(err error) error {
 }
 func assetPath(resourceID string) string   { return "assets/" + resourceID + ".bin" }
 func previewPath(resourceID string) string { return "assets/" + resourceID + ".png" }
+
+// mediaBudget bounds retained conversion results before archive encoding begins.
+type mediaBudget struct {
+	count int
+	bytes int
+}
+
+func (budget *mediaBudget) add(data []byte) error {
+	budget.count++
+	budget.bytes += len(data)
+	if budget.count > maxAssets || budget.bytes > maxExpandedBytes {
+		return invalid("Generated export media exceeds 1,000 assets or 128 MiB. Export fewer pages.")
+	}
+
+	return nil
+}

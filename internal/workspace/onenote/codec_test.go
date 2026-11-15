@@ -2,6 +2,7 @@ package onenote //nolint:testpackage // Exercises the private bounded process-ou
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"image/color"
 	"image/png"
@@ -48,5 +49,15 @@ func TestShapeFallbackKeepsRotationBoundsAndFill(t *testing.T) {
 	fill := color.NRGBAModel.Convert(picture.At(picture.Bounds().Dx()/2, picture.Bounds().Dy()/2))
 	if fill != (color.NRGBA{R: 27, G: 94, B: 59, A: 255}) {
 		t.Fatal("fallback fill changed", fill)
+	}
+}
+
+func TestCancelledRasterPreparationStopsBeforeRendering(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, _, err := RasterFallback(ctx, canvas.Element{Type: "text", Text: "clipped text", Width: 2, Height: 2, FontSize: 2000}, nil)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatal("cancelled preparation was not stopped", err)
 	}
 }

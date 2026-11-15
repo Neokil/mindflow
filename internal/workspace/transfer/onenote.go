@@ -10,6 +10,7 @@ import (
 	"mindflow/internal/workspace/page/canvas"
 	"slices"
 	"strings"
+	"time"
 )
 
 // ImportOneNote converts external bytes, then applies the same validation and atomic import as native files.
@@ -40,6 +41,8 @@ func (a *Service) ExportOneNote(ctx context.Context, actor session.Principal, wo
 		return nil, nil, busy()
 	}
 	defer a.externalProcessing.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
 	selection.IncludeTemplates = false
 	raw, err := a.Export(ctx, actor, workspaceID, selection)
 	if err != nil {
@@ -66,6 +69,7 @@ func prepareOneNote(ctx context.Context, raw []byte) ([]byte, []string, error) {
 	}
 	used := map[string]bool{}
 	notes := []string{}
+	budget := mediaBudget{}
 	for pageIndex := range bundle.Pages {
 		for elementIndex := range bundle.Pages[pageIndex].Document.Elements {
 			element := &bundle.Pages[pageIndex].Document.Elements[elementIndex]
@@ -85,10 +89,11 @@ func prepareOneNote(ctx context.Context, raw []byte) ([]byte, []string, error) {
 			}
 			fallback := element.Type == "shape" || (element.Type == "text" && element.Rotation != 0) || (element.Type == elementImage && (element.Rotation != 0 || element.Crop != nil))
 			if fallback {
-				data, replacement, renderErr := onenote.RasterFallback(ctx, *element, contents[assetPath(element.AssetID)])
+				data, replacement, renderErr := prepareOneNoteFallback(ctx, *element, contents[assetPath(element.AssetID)], &budget)
 				if renderErr != nil {
 					return nil, nil, renderErr
 				}
+
 				id := fmt.Sprintf("raster-%d-%d", pageIndex, elementIndex)
 				replacement.AssetID = id
 				*element = replacement
@@ -145,4 +150,17 @@ func normalizeOneNoteList(element *canvas.Element) bool {
 	element.Checked = nil
 
 	return true
+}
+
+func prepareOneNoteFallback(ctx context.Context, element canvas.Element, media []byte, budget *mediaBudget) ([]byte, canvas.Element, error) {
+	data, replacement, err := onenote.RasterFallback(ctx, element, media)
+	if err != nil {
+		return nil, element, err
+	}
+	err = budget.add(data)
+	if err != nil {
+		return nil, element, err
+	}
+
+	return data, replacement, nil
 }

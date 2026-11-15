@@ -3,6 +3,7 @@ package mindflow_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math"
 	"mime/multipart"
 	"mindflow/internal/workspace/butterfly"
@@ -12,7 +13,13 @@ import (
 	"net/http/httptest"
 	"os"
 	"slices"
+	"strings"
 	"testing"
+)
+
+const (
+	transferShapeType      = "shape"
+	transferRectangleShape = "rectangle"
 )
 
 func importNative(client *testClient, raw []byte, target, csrf string) *httptest.ResponseRecorder {
@@ -322,5 +329,25 @@ func TestOneNoteNativeRoundTripAndPermissions(t *testing.T) {
 		if counts["stroke"] != 1 || counts["image"] != 1 || counts["text"] != 1 {
 			t.Fatal("ink should remain editable and shapes should use individual image fallback", counts)
 		}
+	}
+}
+
+func TestOneNoteRejectsTooManyGeneratedImagesBeforeLaunchingCodec(t *testing.T) {
+	t.Parallel()
+	owner := fixture(t)
+	owner.setup()
+	workspaceID, _ := nativeSample(t, owner)
+	pages := decoded[[]struct {
+		ID string `json:"id"`
+	}](t, owner.ok("GET", "/api/v1/workspaces/"+workspaceID+"/pages", nil))
+	document := canvas.NewDocument()
+	for index := range 1001 {
+		document.Elements = append(document.Elements, canvas.Element{ID: fmt.Sprintf("shape-%d", index), Type: transferShapeType, Width: 2, Height: 2, Shape: transferRectangleShape, Fill: "#1b5e3b", Border: "#d9a441"})
+	}
+	lease := owner.acquire(pages[0].ID, "bounded-export", "acquire")
+	owner.ok("PUT", "/api/v1/pages/"+pages[0].ID+"/document", canvas.SaveDocumentCommand{Epoch: lease.Epoch, ClientID: "bounded-export", MutationID: "bounded-save", Document: document})
+	response := owner.request("POST", "/api/v1/workspaces/"+workspaceID+"/export", transfer.Selection{Format: "onepkg"})
+	if response.Code != 400 || !strings.Contains(response.Body.String(), "Generated export media exceeds") {
+		t.Fatal("generated media budget was not enforced before native conversion", response.Code, response.Body.String())
 	}
 }

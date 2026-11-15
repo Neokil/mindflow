@@ -156,7 +156,9 @@ export class LZ4 {
     const output: Uint8Array[] = [];
     let position = 0;
     let history = new Uint8Array(0);
+    let blocks = 0;
     while (position + 4 <= data.length) {
+      if (++blocks > 4096) invalid();
       const magic = String.fromCharCode(
         ...data.subarray(position, position + 4),
       );
@@ -169,6 +171,7 @@ export class LZ4 {
         stored = view.getUint32(4, true);
       position += 8;
       if (
+        size === 0 ||
         size > this.remaining ||
         size > 16 * 1024 * 1024 ||
         stored > data.length - position
