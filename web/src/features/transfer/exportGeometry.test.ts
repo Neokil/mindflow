@@ -42,3 +42,16 @@ it("uses finite bounds for an empty canvas and safe portable filenames", () => {
   expect(safeFilename("../ a/b:*")).toBe("_ a_b__");
   expect(safeFilename("...")).toBe("workspace");
 });
+it("exports exactly the requested region without fitting or adding a margin", () => {
+  const region = { x: -100, y: 50, width: 400, height: 200 };
+  expect(exportSize(emptyDocument(), 800, region)).toEqual({
+    bounds: region,
+    scale: 2,
+    width: 800,
+    height: 400,
+  });
+  expect(() =>
+    exportSize(emptyDocument(), 800, { ...region, width: 0 }),
+  ).toThrow();
+  expect(() => exportSize(emptyDocument(), Infinity, region)).toThrow();
+});

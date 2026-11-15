@@ -23,9 +23,30 @@ export function exportBounds(doc: CanvasDocument) {
     height: bottom - top + 64,
   };
 }
-export function exportSize(doc: CanvasDocument, resolution: number) {
-  const bounds = exportBounds(doc),
-    scale = resolution / Math.max(bounds.width, bounds.height);
+export type ExportRegion = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+export function exportSize(
+  doc: CanvasDocument,
+  resolution: number,
+  region?: ExportRegion,
+) {
+  const bounds = region || exportBounds(doc);
+  if (
+    !Object.values(bounds).every(Number.isFinite) ||
+    bounds.width <= 0 ||
+    bounds.height <= 0 ||
+    !Number.isFinite(resolution) ||
+    resolution <= 0 ||
+    resolution > 4096
+  )
+    throw new Error(
+      "Choose a valid export area and resolution up to 4,096 pixels.",
+    );
+  const scale = resolution / Math.max(bounds.width, bounds.height);
   return {
     bounds,
     scale,

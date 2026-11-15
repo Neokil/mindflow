@@ -5,8 +5,9 @@ import type Konva from "konva";
 import ElementContent from "../editor/CanvasElement";
 import type { CanvasDocument } from "../../model";
 import { getAssetMetadata, getDecodedImage } from "../../media";
-import { exportSize } from "./exportGeometry";
+import { exportSize, type ExportRegion } from "./exportGeometry";
 export type RenderOptions = {
+  region?: ExportRegion;
   resolution: number;
   background: boolean;
   grid: boolean;
@@ -16,7 +17,11 @@ export async function renderPage(
   doc: CanvasDocument,
   options: RenderOptions,
 ): Promise<Blob> {
-  const { bounds, scale, width, height } = exportSize(doc, options.resolution);
+  const { bounds, scale, width, height } = exportSize(
+    doc,
+    options.resolution,
+    options.region,
+  );
   const images = new Map<string, HTMLImageElement>();
   let decodedPixels = 0;
   // Prefer an existing display variant only when it satisfies the export resolution.

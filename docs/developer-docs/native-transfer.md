@@ -80,3 +80,7 @@ Background and dot-grid inclusion are independent options; the current appearanc
 ## Portable element links
 
 Pages may have an optional bundle-local `id` (up to 128 characters, unique when present). New exports use `p1`, `p2`, etc.; older files without page IDs remain supported. An element's optional `link` names another page/element in the bundle. Export strips missing or unselected targets, including template links to omitted pages. Import allocates every destination page and element identity first, then remaps all included links, including template targets, before creating content. Duplicate page identities are rejected. No link can grant access to another workspace or trigger a URL fetch. Visual PDF/PNG exports remain flattened and do not contain interactive canvas links.
+
+## Canvas region screenshots
+
+`ScreenshotExport` captures a bounded screen rectangle in a separate pointer overlay and converts it to world coordinates using the current camera. `renderPage` accepts an explicit region without adding fit-to-content margins. It renders ordinary canvas content through the shared export renderer, excluding editor and comment overlays. Screenshot export waits for pending saves so uploaded media references are stable; it never edits page content. PNG clipboard writes start in the user gesture and supply a promised image for Safari compatibility; browser support and secure-context checks leave download available when copying is unsupported.

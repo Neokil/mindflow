@@ -1,4 +1,5 @@
 import ElementLinkDialog from "./ElementLinkDialog";
+import ScreenshotExport from "../transfer/ScreenshotExport";
 import AlignmentMenu from "./AlignmentMenu";
 import { alignElements, canAlign } from "./alignment";
 import type { Alignment } from "./alignment";
@@ -25,6 +26,7 @@ import {
   LockKeyhole,
   LockKeyholeOpen,
   SlidersHorizontal,
+  Camera as CameraIcon,
   Trash2,
   X,
 } from "lucide-react";
@@ -83,6 +85,7 @@ export default function Canvas({
   onImportedPages: (id: string) => void;
 }) {
   const [linkOpen, setLinkOpen] = useState(false);
+  const [screenshotOpen, setScreenshotOpen] = useState(false);
   const [pdfImport, setPDFImport] = useState(false);
   const [viewingPDF, setViewingPDF] = useState<string>();
   const accent = useCanvasAccent();
@@ -752,6 +755,13 @@ export default function Canvas({
         onContextMenu={(event) => event.preventDefault()}
         data-testid="canvas"
       >
+        {screenshotOpen && (
+          <ScreenshotExport
+            session={session}
+            camera={camera}
+            close={() => setScreenshotOpen(false)}
+          />
+        )}
         <CanvasScene
           interactionRef={interaction}
           coarse={input.coarse}
@@ -965,6 +975,17 @@ export default function Canvas({
         />
       )}
       <div className="canvas-top-actions">
+        <button
+          className="icon-button"
+          aria-label="Export screenshot"
+          data-tooltip="Export a canvas area as PNG or copy it"
+          onClick={() => {
+            finishText();
+            setScreenshotOpen(true);
+          }}
+        >
+          <CameraIcon size={19} />
+        </button>
         <FullscreenButton fullscreen={fullscreen} />
         <button
           className={`inspector-toggle icon-button ${canvasSettingsOpen ? "active" : ""}`}

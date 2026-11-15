@@ -33,6 +33,12 @@ Visual exports fit all elements with a small margin, including rotated objects a
 
 Current-tab changes must save before export; reconnect or recover unsaved work first. Keep the tab open while rendering. Exporting does not require editor control, and all workspace members can export saved content. Anyone receiving a downloaded file can read it independently of workspace permissions.
 
+## Export a screenshot area
+
+Choose **Export screenshot** beside Canvas settings, then drag over the canvas to choose a rectangular region. Choose **Download PNG** or **Copy to clipboard**. The output includes canvas elements, background, and grid inside that region; toolbars, selections, comment pins, and other interface overlays are omitted. It uses the current zoom and display density, capped at a 4,096-pixel longest edge. Save or recover pending changes before exporting. Readers can export saved content too.
+
+Clipboard images require HTTPS (or localhost) and browser support/permission. If copying is unavailable or denied, download the PNG instead. Cancel or Escape leaves the document and selection unchanged. On a tablet, drag with one finger or Pencil to choose the region.
+
 ## Import mindflow files
 
 On the workspace list, choose **Import workspace**, select a `.mindflow` file, name the workspace and choose **Import**. Both whole-workspace and selected-page files create a new private workspace. To add their pages to an existing workspace instead, open it and choose **Import pages** beside the save status. Appending requires owner or full access; existing pages are retained, and new pages are added at the end.
