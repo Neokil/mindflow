@@ -31,11 +31,6 @@ test("imports Butterfly pages, embedded image, pen, shapes and white text", asyn
   await expect(
     page.getByRole("heading", { name: "Conversion notes", exact: true }),
   ).toBeVisible();
-  const imageLoaded = page.waitForResponse(
-    (response) =>
-      response.url().includes("/api/v1/assets/") &&
-      response.request().resourceType() === "image",
-  );
   await page
     .getByRole("button", { name: "Open workspace", exact: true })
     .click();
@@ -47,7 +42,6 @@ test("imports Butterfly pages, embedded image, pen, shapes and white text", asyn
     "background-color",
     "rgb(0, 0, 0)",
   );
-  await (await imageLoaded).finished();
   await page.evaluate(
     () =>
       new Promise<void>((resolve) =>
@@ -83,6 +77,16 @@ test("imports Butterfly pages, embedded image, pen, shapes and white text", asyn
       "content-type"
     ],
   ).toBe("image/png");
+  // Overview thumbnails may already have fetched this asset. Decode the actual
+  // image instead of waiting for a new network response that caching can skip.
+  expect(
+    await page.evaluate(async (assetId) => {
+      const image = new Image();
+      image.src = `/api/v1/assets/${assetId}`;
+      await image.decode();
+      return image.naturalWidth > 0 && image.naturalHeight > 0;
+    }, image.assetId!),
+  ).toBe(true);
   await page.screenshot({
     path: `../.cache/e2e/butterfly-page1-${info.project.name}.png`,
   });

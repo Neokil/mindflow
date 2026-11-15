@@ -241,9 +241,24 @@ test("image upload, object properties and comments work without a mouse", async 
     width: 300,
     height: 150,
   });
-  await page
-    .getByRole("button", { name: "Selection properties", exact: true })
-    .tap();
+  const properties = page.getByRole("button", {
+    name: "Selection properties",
+    exact: true,
+  });
+  await expect
+    .poll(() =>
+      properties.evaluate((button) => {
+        const rect = button.getBoundingClientRect();
+        return (
+          window.document.elementFromPoint(
+            rect.x + rect.width / 2,
+            rect.y + rect.height / 2,
+          ) === button
+        );
+      }),
+    )
+    .toBe(true);
+  await properties.tap();
   await expect(
     page.getByLabel("Object properties", { exact: true }),
   ).toBeVisible();

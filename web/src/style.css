@@ -49,6 +49,8 @@ textarea {
   font: inherit;
 }
 button {
+  /* Buttons are controls, not double-tap zoom targets. */
+  touch-action: manipulation;
   cursor: pointer;
 }
 button:disabled {
@@ -199,6 +201,10 @@ select {
   background: none;
   color: var(--muted);
   padding: 0;
+}
+/* Keep icon taps on the control while its visual state changes. */
+button svg {
+  pointer-events: none;
 }
 .icon-button:hover {
   background: var(--hover);
