@@ -1,5 +1,5 @@
 E2E_PROJECTS ?= chromium firefox chromium-http ipad-webkit tablet-chromium
-E2E_SHARDS ?= 2
+E2E_SHARDS ?= 3
 
 SQLC_VERSION := v1.31.1
 GOLANGCI_VERSION := v2.15.0
