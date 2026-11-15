@@ -11,6 +11,8 @@ mindflow is a self-hosted infinite canvas for images, shapes, text, drawing, and
 
 - [Installation and setup](user-docs/installation.md): Docker, TrueNAS, HTTPS, email, and initial accounts.
 - [Using mindflow](user-docs/using-mindflow.md): canvas controls, sharing, comments, and editor control.
+- [Import, export, and migration](user-docs/interoperability.md)
+- [Interoperability test checklist](user-docs/interoperability-testing.md)
 - [Operations](user-docs/operations.md): backups, restore, application upgrades, and troubleshooting.
 - [Security](SECURITY.md): deployment boundaries, private data, and vulnerability reporting.
 
@@ -20,8 +22,9 @@ mindflow is a self-hosted infinite canvas for images, shapes, text, drawing, and
 - [Data structures](developer-docs/data-model.md): database ownership, tables, and canvas JSON.
 - [Canvas and synchronization](developer-docs/canvas-and-sync.md): coordinates, saves, editor leases, media, and recovery.
 - [Development workflow](developer-docs/development.md): local setup, changes, tests, CI, and releases.
+- [Interoperability implementation](developer-docs/interoperability.md)
 - [Native import and export](developer-docs/native-transfer.md): portable files, permissions, rendering, and limits.
-- [Butterfly import](developer-docs/butterfly-import.md): format mapping, limits, and atomic workspace creation.
+- [Butterfly import and export](developer-docs/butterfly-import.md): format mapping, limits, and atomic workspace creation.
 - [Branding and colors](developer-docs/branding.md): artwork, palette roles, theme accents, and readability.
 - [Dependency updates](developer-docs/dependencies.md): `make upgrade` and review steps.
 - [Demo recording](developer-docs/demo.md): regenerating the README GIF.

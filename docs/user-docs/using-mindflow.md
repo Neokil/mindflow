@@ -247,3 +247,7 @@ Using mindflow while signed in counts as activity. Non-administrator accounts in
 Choose **Import workspace** from the overview and select up to 20 files totaling at most 512 MiB. Files are processed sequentially; each successful file creates its own private workspace named after the file. A failed file shows its error and does not roll back other imports. **Import remaining files** retries only failed or unprocessed files. **Stop after current file** leaves completed work intact and stops before the next file. Keep the tab open until the current import finishes.
 
 Native mindflow and Butterfly files follow their normal conversion limits. PDF files support up to 50 MiB and 100 pages each and become one image-backed canvas page per PDF page. The converted transfer must fit within 64 MiB; split large PDFs when necessary. Imported PDF pages can be annotated with new ink and elements, but their original content is not individually editable. **Import pages** inside a workspace accepts multiple mindflow and PDF files and appends their pages in selected-file order.
+
+## Interoperability and migration
+
+Use the [import/export guide](interoperability.md) for bulk migration, Goodnotes and OneNote native files, Butterfly export, PDF workflows, and selected-region PNG/clipboard screenshots. Conversion notes explain which objects stay editable and which require image fallbacks.

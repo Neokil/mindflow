@@ -66,13 +66,14 @@ For TrueNAS Apps, use [the installation guide](docs/user-docs/installation.md) a
 - **Keep your place:** workspace/page links, autosave, temporary disconnected editing, and a banner when a new build is available.
 - **Read and annotate PDFs:** import pages as images on one canvas or separate pages, or keep a PDF with an in-app reader.
 - **Take your work with you:** export workspaces or selected pages as editable `.mindflow` files, PDFs, or PNG images; import native files as new workspaces or append their pages.
-- **Bring existing work:** import Butterfly `.bfly` documents as private workspaces with editable pages and embedded images.
+- **Bring existing work:** import/export Butterfly and OneNote notebooks, try experimental native Goodnotes conversion, and bulk-import a collection of files.
+- **Capture a detail:** select a canvas region to download a PNG or copy an image to the clipboard.
 - **Help shape mindflow:** private bug reports and feature requests with image attachments, discussion, unread-reply badges, administrator search, and release-linked fixes; opt-in product-update emails.
 - **Make it yours:** light/dark appearance and a quiet interface for desktop Chrome/Firefox and iPad Safari.
 
 Scroll to zoom. Cmd/Ctrl + drag or hold the middle mouse button to pan. Hold Shift while creating an element for equal width and height. On tablets, drag with one finger or Pencil and use two fingers to pan/pinch to zoom. The editor's keyboard button lists more controls.
 
-Choose **Import workspace** on the workspace list to import a native `.mindflow` file or a Butterfly version-13 export. See the [user guide](docs/user-docs/using-mindflow.md#import-from-butterfly) for supported content and conversion limits.
+Choose **Import workspace** on the workspace list to select one or several mindflow, Butterfly, Goodnotes, OneNote, or PDF files. See [import, export, and migration](docs/user-docs/interoperability.md) for editability, experimental-format status, and conversion limits.
 
 ## License
 
@@ -87,6 +88,8 @@ cd web && npm ci && cd ..
 make frontend-build
 make dev
 ```
+
+Local development also requires .NET SDK 10 and the NativeAOT compiler toolchain for the OneNote adapter; see [build prerequisites](docs/developer-docs/interoperability.md#build-and-dependency-maintenance).
 
 Open **http://localhost:8080**. Development mode permits local HTTP; use production mode behind your HTTPS domain. For live frontend development, run `make frontend` in another terminal and open **http://localhost:5173**. Local data defaults to `data/mindflow.sqlite`; set `MINDFLOW_DATA` to change it.
 
