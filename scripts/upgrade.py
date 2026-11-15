@@ -11,7 +11,7 @@ import urllib.parse
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-IGNORED = {'.git', '.cache', 'node_modules', 'dist', 'test-results', '__pycache__', 'bin', 'obj'}
+IGNORED = {'.git', '.cache', 'node_modules', 'dist', 'test-results', '__pycache__'}
 
 
 def fetch(url, headers=None):
@@ -84,41 +84,6 @@ def source_files():
                 yield path
 
 
-def native_updates(changes):
-    """Stay on the codec's supported .NET LTS major and refresh stable NuGet pins."""
-    project = ROOT / 'internal/workspace/onenote/codec/OneNoteCodec.csproj'
-    source = project.read_text()
-    major = re.search(r'<TargetFramework>net(\d+)\.0</TargetFramework>', source)[1]
-    metadata, _ = fetch(f'https://builds.dotnet.microsoft.com/dotnet/release-metadata/{major}.0/releases.json')
-    sdk_version = metadata['latest-sdk']
-    release = next(entry for entry in metadata['releases'] if entry['release-version'] == metadata['latest-release'])
-    runtime_version = release['runtime']['version']
-    for version in (sdk_version, runtime_version):
-        if not re.fullmatch(r'\d+\.\d+\.\d+', version):
-            raise ValueError('Invalid stable .NET version')
-    sdk = next(sdk for entry in metadata['releases'] for sdk in entry.get('sdks', [entry['sdk']]) if sdk['version'] == sdk_version)
-    dockerfile = ROOT / 'Dockerfile'
-    docker_source = changes[dockerfile]
-    docker_source = re.sub(r'/Sdk/[\d.]+/dotnet-sdk-[\d.]+-', f'/Sdk/{sdk_version}/dotnet-sdk-{sdk_version}-', docker_source)
-    for architecture, rid in [('x64', 'linux-musl-x64'), ('arm64', 'linux-musl-arm64')]:
-        artifact = next(entry for entry in sdk['files'] if entry['rid'] == rid)
-        checksum = artifact['hash']
-        if not re.fullmatch(r'[0-9a-f]{128}', checksum):
-            raise ValueError('Invalid SDK checksum')
-        docker_source = re.sub(rf'(rid={architecture}; checksum=)[0-9a-f]+', lambda match: match[1] + checksum, docker_source)
-    changes[dockerfile] = docker_source
-    for path, text in list(changes.items()):
-        if path.parent == ROOT / '.github/workflows':
-            changes[path] = re.sub(r'dotnet-version:\s*[\d.]+', 'dotnet-version: ' + sdk_version, text)
-    for property_name in ('RuntimeFrameworkVersion', 'IlcPackageVersion'):
-        source = re.sub(rf'(<{property_name}>)[^<]+', lambda match: match[1] + runtime_version, source)
-    versions, _ = fetch('https://api.nuget.org/v3-flatcontainer/officeimo.onenote/index.json')
-    stable = [version for version in versions['versions'] if re.fullmatch(r'\d+\.\d+\.\d+', version)]
-    package = max(stable, key=lambda version: tuple(map(int, version.split('.'))))
-    source = re.sub(r'(Include="OfficeIMO.OneNote" Version=")[^"]+', lambda match: match[1] + package, source)
-    changes[project] = source
-
-
 def plan():
     changes = {}
     images = {}
@@ -174,7 +139,6 @@ def plan():
     changes[ROOT / 'scripts/reel-requirements.txt'] = ('Pillow==' + demo_metadata['info']['version'] + '\n'
                                                     + 'imageio-ffmpeg==' + reel_metadata['info']['version'] + '\n')
 
-    native_updates(changes)
     return changes
 
 
@@ -200,9 +164,6 @@ def main():
     run('go', 'get', '-u', './...')
     run('go', 'mod', 'tidy')
     run('npm', 'install', directory=ROOT / 'web')
-    os.environ['DOTNET_CLI_HOME'] = str(ROOT / '.cache/dotnet-home')
-    os.environ['NUGET_PACKAGES'] = str(ROOT / '.cache/nuget')
-    run('dotnet', 'restore', 'internal/workspace/onenote/codec/OneNoteCodec.csproj', '--force-evaluate')
     run('make', 'generate')
     run('make', 'lint', 'test', 'audit')
     if options.full:

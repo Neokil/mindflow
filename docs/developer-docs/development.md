@@ -1,6 +1,6 @@
 # Development workflow
 
-Use Go matching [go.mod](../../go.mod), Node.js 22.13+ with npm, Python 3 for repository scripts, and .NET SDK 10 with the host NativeAOT toolchain for the OneNote adapter (Xcode command-line tools on macOS; clang/build tools/zlib development headers on Linux). Tool/dependency versions are pinned in the manifests, Makefile, and container build rather than repeated here.
+Use Go matching [go.mod](../../go.mod), Node.js 22.13+ with npm, and Python 3 for repository scripts. Tool/dependency versions are pinned in the manifests, Makefile, and container build rather than repeated here.
 
 ## Local setup
 
@@ -12,7 +12,7 @@ make dev
 
 Open `http://localhost:8080` and complete setup using the credential in the server log. `make dev` enables local HTTP. For frontend live reload, run `make frontend` in another terminal and open `http://localhost:5173`; Vite proxies `/api` and `/health` to the backend.
 
-Data defaults to `data/mindflow.sqlite`; set `MINDFLOW_DATA` to use another directory. `make build` rebuilds the frontend and embeds it into a release binary, with `mindflow-onenote` alongside it. Keep both executables together. Rebuild Go after frontend changes when testing the bundled app. Docker is needed only for container verification/deployment, not normal local editing.
+Data defaults to `data/mindflow.sqlite`; set `MINDFLOW_DATA` to use another directory. `make build` rebuilds the frontend and embeds it into a release binary. Rebuild Go after frontend changes when testing the bundled app. Docker is needed only for container verification/deployment, not normal local editing.
 
 ## Making a change
 
@@ -35,9 +35,9 @@ Commit migrations, SQL, sqlc bindings, and the generated migration catalog toget
 
 | Command                 | Coverage                                                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `make lint`             | Go and native codec formatting/linters, migration/sqlc freshness, ESLint/hooks, Prettier, workflow validation, and Python syntax.  |
+| `make lint`             | Go linters/formatting, migration/sqlc freshness, ESLint/hooks, Prettier, workflow validation, and Python syntax.  |
 | `make test`             | Frontend build, Go race tests with real temporary SQLite databases, frontend unit tests, and script tests.        |
-| `make audit`            | Go module integrity, reachable known Go vulnerabilities, npm advisories, and locked native codec NuGet advisories.                                      |
+| `make audit`            | Go module integrity, reachable known Go vulnerabilities, and npm advisories.                                      |
 | `make test-e2e`         | Desktop Chrome/Firefox, insecure HTTP, and iPad WebKit/tablet Chromium interaction workflows.                     |
 | `make verify-container` | Scratch runtime, migrations, HTTPS cookies/SSE, TLS mail, persistence, restore, and non-root/read-only operation. |
 

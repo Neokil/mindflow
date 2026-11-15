@@ -47,7 +47,7 @@ export default function ExportDialog({
       await beforeExport?.(selection.pageIds);
       setProgress("Preparing export…");
       let file: { blob: Blob; name: string };
-      if (["mindflow", "butterfly", "one", "onepkg"].includes(format)) {
+      if (["mindflow", "butterfly"].includes(format)) {
         file = {
           blob: await apiFile(
             `/workspaces/${workspace.id}/export`,
@@ -166,8 +166,6 @@ export default function ExportDialog({
               <option value="goodnotes">
                 Goodnotes (.goodnotes, experimental)
               </option>
-              <option value="onepkg">OneNote notebook (.onepkg)</option>
-              <option value="one">OneNote section (.one)</option>
               <option value="pdf">PDF (.pdf)</option>
               <option value="png">PNG images (.png / .zip)</option>
             </select>
@@ -190,11 +188,11 @@ export default function ExportDialog({
                 details stay in this workspace.
               </p>
             </>
-          ) : ["butterfly", "one", "onepkg", "goodnotes"].includes(format) ? (
+          ) : ["butterfly", "goodnotes"].includes(format) ? (
             <p className="muted">
               Exports supported editable elements. Shapes and rotated text in
-              OneNote become individual images. Text layout and ink styling may
-              differ. Group locks, templates, and element links are omitted;
+              Goodnotes become individual images. Text layout and ink styling
+              may differ. Group locks, templates, and element links are omitted;
               embedded PDFs become preview images. Conversion notes appear after
               exporting.
             </p>

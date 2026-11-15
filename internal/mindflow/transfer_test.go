@@ -3,17 +3,13 @@ package mindflow_test
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"math"
 	"mime/multipart"
 	"mindflow/internal/workspace/butterfly"
 	"mindflow/internal/workspace/page/canvas"
 	"mindflow/internal/workspace/template"
 	"mindflow/internal/workspace/transfer"
 	"net/http/httptest"
-	"os"
 	"slices"
-	"strings"
 	"testing"
 )
 
@@ -254,100 +250,5 @@ func TestButterflyExportRoundTripAndAccess(t *testing.T) {
 	}
 	if owner.request("POST", path, transfer.Selection{Format: "unknown"}).Code != 400 {
 		t.Fatal("unknown export format was accepted")
-	}
-}
-
-func TestOneNoteNativeRoundTripAndPermissions(t *testing.T) {
-	t.Parallel()
-	if os.Getenv("MINDFLOW_ONENOTE_CODEC") == "" {
-		t.Skip("Run make test to build the native OneNote codec")
-	}
-	owner := fixture(t)
-	owner.setup()
-	workspaceID, _ := nativeSample(t, owner)
-	pages := decoded[[]struct {
-		ID string `json:"id"`
-	}](t, owner.ok("GET", "/api/v1/workspaces/"+workspaceID+"/pages", nil))
-	source := decoded[struct {
-		Document canvas.Document `json:"document"`
-	}](t, owner.ok("GET", "/api/v1/pages/"+pages[0].ID+"/document", nil)).Document
-	other, _ := sharedUser(owner, "onenote-recipient@example.com")
-	path := "/api/v1/workspaces/" + workspaceID + "/export"
-	for _, format := range []string{"one", "onepkg"} {
-		if other.request("POST", path, transfer.Selection{Format: format}).Code != 404 {
-			t.Fatal("native export bypassed private workspace permission")
-		}
-		exported := owner.ok("POST", path, transfer.Selection{Format: format})
-		if len(exported.Body.Bytes()) < 100 {
-			t.Fatal("empty native file")
-		}
-		var body bytes.Buffer
-		form := multipart.NewWriter(&body)
-		file, err := form.CreateFormFile("file", "notebook."+format)
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = file.Write(exported.Body.Bytes())
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = form.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		request := httptest.NewRequestWithContext(t.Context(), "POST", "/api/v1/workspaces/import/onenote", &body)
-		request.Header.Set("Content-Type", form.FormDataContentType())
-		request.Header.Set("X-CSRF-Token", other.csrf)
-		request.AddCookie(other.cookie)
-		response := httptest.NewRecorder()
-		other.a.ServeHTTP(response, request)
-		imported := decoded[transfer.Result](t, response)
-		if imported.PageCount != 2 || imported.ElementCount != 6 {
-			t.Fatal("native pages/elements lost", imported)
-		}
-		document := decoded[struct {
-			Document canvas.Document `json:"document"`
-		}](t, other.ok("GET", "/api/v1/pages/"+imported.PageID+"/document", nil)).Document
-		counts := map[string]int{}
-		for _, element := range document.Elements {
-			counts[element.Type]++
-		}
-		for _, axis := range []string{"x", "y"} {
-			position := func(element canvas.Element) float64 {
-				if axis == "x" {
-					return element.X - element.Width/2
-				}
-
-				return element.Y - element.Height/2
-			}
-			originalDelta := position(source.Elements[1]) - position(source.Elements[0])
-			restoredDelta := position(document.Elements[1]) - position(document.Elements[0])
-			if math.Abs(originalDelta-restoredDelta) > 1 {
-				t.Fatal("native transfer changed relative object position", axis, originalDelta, restoredDelta)
-			}
-		}
-		if counts["stroke"] != 1 || counts["image"] != 1 || counts["text"] != 1 {
-			t.Fatal("ink should remain editable and shapes should use individual image fallback", counts)
-		}
-	}
-}
-
-func TestOneNoteRejectsTooManyGeneratedImagesBeforeLaunchingCodec(t *testing.T) {
-	t.Parallel()
-	owner := fixture(t)
-	owner.setup()
-	workspaceID, _ := nativeSample(t, owner)
-	pages := decoded[[]struct {
-		ID string `json:"id"`
-	}](t, owner.ok("GET", "/api/v1/workspaces/"+workspaceID+"/pages", nil))
-	document := canvas.NewDocument()
-	for index := range 1001 {
-		document.Elements = append(document.Elements, canvas.Element{ID: fmt.Sprintf("shape-%d", index), Type: transferShapeType, Width: 2, Height: 2, Shape: transferRectangleShape, Fill: "#1b5e3b", Border: "#d9a441"})
-	}
-	lease := owner.acquire(pages[0].ID, "bounded-export", "acquire")
-	owner.ok("PUT", "/api/v1/pages/"+pages[0].ID+"/document", canvas.SaveDocumentCommand{Epoch: lease.Epoch, ClientID: "bounded-export", MutationID: "bounded-save", Document: document})
-	response := owner.request("POST", "/api/v1/workspaces/"+workspaceID+"/export", transfer.Selection{Format: "onepkg"})
-	if response.Code != 400 || !strings.Contains(response.Body.String(), "Generated export media exceeds") {
-		t.Fatal("generated media budget was not enforced before native conversion", response.Code, response.Body.String())
 	}
 }

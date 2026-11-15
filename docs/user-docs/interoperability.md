@@ -11,7 +11,6 @@ Use **Export workspace**, or a page's **Export page** action, to choose a whole 
 | mindflow `.mindflow` | New workspace or append | Workspace or selected pages | Native elements, pressure samples, groups/locks, optional templates, original media, and links whose targets are included. This is the most complete transfer format. |
 | Butterfly `.bfly` | New workspace | Workspace or selected pages | Supported version-13 text, images, shapes, and strokes. Stars export as filled pen paths; typography, pressure, and highlighting can differ. |
 | Goodnotes `.goodnotes` **experimental** | New workspace or append | Workspace or selected pages | Supported modern ZIP notebook text boxes, ink, and images. Exports contain native records, not a PDF renamed as `.goodnotes`. Destination-app compatibility still needs manual verification. |
-| OneNote `.onepkg` / `.one` | New workspace or append | Notebook package or section with selected pages | Text, ink, pressure samples, and images. Sections import as page-name prefixes. Unsupported shapes and rotated text export as separate images, so other objects stay editable. |
 | PDF `.pdf` | New workspace, append, or the editor's PDF placement options | Single or multi-page PDF | Imported page images can be annotated; exported canvas content is flattened. Each selected canvas becomes one PDF page. |
 | PNG `.png` / `.zip` | Place images with the image tool | One image per selected canvas | Flattened images. Several pages download together in a ZIP. |
 
@@ -25,11 +24,9 @@ Very large source pages split into continuation pages of at most 5,000 elements,
 
 On export, ordinary text and ink use native editable records. Shapes and rotated text become individual images; image rotation and crops remain represented separately. Pressure-varying strokes become constant-width editable strokes. Interactive list markers become visible text. A background PDF defines each exported page; very large canvases scale to fit PDF page limits. **Goodnotes itself is not part of automated CI:** the native export is experimental until checked in the destination app.
 
-### OneNote details
+### Migrating from Microsoft OneNote
 
-Export `.onepkg` for a notebook package, or `.one` for a section. Both retain supported editable objects. OneNote versions that cannot import native files directly may require desktop OneNote to open the file before syncing it to another device.
-
-Tables import as separately editable cell content. Rich text uses one style per paragraph. Nested sections flatten into page-name prefixes. History, deleted/conflict pages, tags, recordings, math, and file attachments are not imported. Canvas backgrounds/grids, comments, templates, links, and group locks are not exported. Text metrics, wrapping, vertical alignment, pen tips, and pressure/highlighter appearance can differ. Images with rotation/crops are baked into individual PNGs. Embedded PDFs export their first-page preview; export the PDF separately to retain all pages. Supported text and ink remain editable alongside these fallbacks.
+Export your OneNote pages or notebook to PDF, then import that PDF into mindflow. PDF import creates images that you can annotate; original text and ink are flattened. Native `.one` and `.onepkg` files are not supported. To move mindflow content into OneNote, export PDF or PNG images and insert them using OneNote's normal import/printout tools.
 
 ## Bulk import
 
@@ -38,7 +35,7 @@ Tables import as separately editable cell content. Rich text uses one style per 
 3. Open any successful workspace. A failed file does not undo other files.
 4. Retry failed files without duplicating successful imports, or stop after the current file finishes.
 
-Each non-PDF file is limited to 64 MiB; PDFs to 50 MiB. A batch is limited to 512 MiB. Native transfers allow 100 pages, 1,000 media assets, 128 MiB expanded, and a 32 MiB manifest. Individual canvases allow 10,000 objects and 20,000 samples per stroke. Native OneNote conversion also has a one-minute timeout and a 20 MiB limit per image; Goodnotes conversion runs in a worker with a two-minute timeout. Split larger notebooks into smaller source exports when necessary. The UI displays a useful error instead of partially saving a failed file.
+Each non-PDF file is limited to 64 MiB; PDFs to 50 MiB. A batch is limited to 512 MiB. Native transfers allow 100 pages, 1,000 media assets, 128 MiB expanded, and a 32 MiB manifest. Individual canvases allow 10,000 objects and 20,000 samples per stroke. Goodnotes conversion runs in a worker with a two-minute timeout. Split larger notebooks into smaller source exports when necessary. The UI displays a useful error instead of partially saving a failed file.
 
 ## PDF migration from other applications
 

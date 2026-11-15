@@ -6,7 +6,6 @@ import (
 	"mime"
 	"mindflow/internal/account/session"
 	"net/http"
-	"strings"
 )
 
 // HTTP supplies authenticated, CSRF-protected transfer endpoints.
@@ -26,8 +25,6 @@ func (a *Service) RegisterHTTP(routes HTTP) {
 	routes.Endpoint("POST /api/v1/workspaces/{id}/export", true, false, endpoint.export)
 	routes.Endpoint("POST /api/v1/workspaces/{id}/export/snapshot", true, false, endpoint.snapshot)
 	routes.Endpoint("POST /api/v1/workspaces/import/mindflow", true, false, endpoint.importNew)
-	routes.Endpoint("POST /api/v1/workspaces/import/onenote", true, false, endpoint.importOneNote)
-	routes.Endpoint("POST /api/v1/workspaces/{id}/import/onenote", true, false, endpoint.importOneNote)
 	routes.Endpoint("POST /api/v1/workspaces/{id}/import/mindflow", true, false, endpoint.importPages)
 }
 
@@ -43,9 +40,6 @@ func (endpoint *handler) export(writer http.ResponseWriter, request *http.Reques
 	switch selection.Format {
 	case "", "mindflow":
 		data, err = endpoint.service.Export(request.Context(), endpoint.routes.CurrentSession(request), request.PathValue("id"), selection)
-	case "one", "onepkg":
-		data, notes, err = endpoint.service.ExportOneNote(request.Context(), endpoint.routes.CurrentSession(request), request.PathValue("id"), selection, selection.Format)
-		filename, contentType = "workspace."+selection.Format, "application/octet-stream"
 	case "butterfly":
 		data, notes, err = endpoint.service.ExportButterfly(request.Context(), endpoint.routes.CurrentSession(request), request.PathValue("id"), selection)
 		filename, contentType = "workspace.bfly", "application/zip"
@@ -101,23 +95,11 @@ func (endpoint *handler) importFile(writer http.ResponseWriter, request *http.Re
 	if err != nil {
 		return nil, invalid("Choose a supported notebook export up to 64 MiB.")
 	}
-	file, header, err := request.FormFile("file")
+	file, _, err := request.FormFile("file")
 	if err != nil {
 		return nil, invalid("Choose a supported notebook export.")
 	}
 	defer func() { _ = file.Close() }()
-
-	if strings.HasSuffix(request.URL.Path, "/onenote") {
-		format := "one"
-		if !strings.HasSuffix(strings.ToLower(header.Filename), ".one") && !strings.HasSuffix(strings.ToLower(header.Filename), ".onepkg") {
-			return nil, invalid("Choose a .one or .onepkg file.")
-		}
-		if strings.HasSuffix(strings.ToLower(header.Filename), ".onepkg") {
-			format = "onepkg"
-		}
-
-		return endpoint.service.ImportOneNote(request.Context(), endpoint.routes.CurrentSession(request), file, request.FormValue("name"), target, format)
-	}
 
 	return endpoint.service.Import(request.Context(), endpoint.routes.CurrentSession(request), file, request.FormValue("name"), target)
 }
@@ -126,7 +108,3 @@ type responseWritten struct{}
 
 // ResponseWritten prevents the HTTP boundary from adding JSON to a binary download.
 func (responseWritten) ResponseWritten() {}
-
-func (endpoint *handler) importOneNote(writer http.ResponseWriter, request *http.Request) (any, error) {
-	return endpoint.importFile(writer, request, request.PathValue("id"))
-}

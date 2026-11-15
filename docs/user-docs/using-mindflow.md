@@ -250,4 +250,4 @@ Native mindflow and Butterfly files follow their normal conversion limits. PDF f
 
 ## Interoperability and migration
 
-Use the [import/export guide](interoperability.md) for bulk migration, Goodnotes and OneNote native files, Butterfly export, PDF workflows, and selected-region PNG/clipboard screenshots. Conversion notes explain which objects stay editable and which require image fallbacks.
+Use the [import/export guide](interoperability.md) for bulk migration, Goodnotes native files, Butterfly export, PDF workflows, and selected-region PNG/clipboard screenshots. Conversion notes explain which objects stay editable and which require image fallbacks.

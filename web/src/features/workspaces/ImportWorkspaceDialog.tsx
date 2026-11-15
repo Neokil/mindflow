@@ -79,8 +79,8 @@ export default function ImportWorkspaceDialog({
     >
       <p className="muted">
         {workspaceId
-          ? "Append pages from mindflow, Goodnotes, OneNote, or PDF files. Existing pages stay unchanged."
-          : "Import mindflow, Butterfly, Goodnotes, OneNote, or PDF files as new private workspaces. Select multiple files to migrate a collection."}{" "}
+          ? "Append pages from mindflow, Goodnotes, or PDF files. Existing pages stay unchanged."
+          : "Import mindflow, Butterfly, Goodnotes, or PDF files as new private workspaces. Select multiple files to migrate a collection."}{" "}
         Each file is independent; failed files do not undo successful imports.
         PDFs become page images that you can annotate.
       </p>
@@ -97,9 +97,7 @@ export default function ImportWorkspaceDialog({
               aria-label="Workspace export"
               type="file"
               accept={
-                workspaceId
-                  ? ".mindflow,.pdf,.goodnotes,.one,.onepkg"
-                  : IMPORT_EXTENSIONS
+                workspaceId ? ".mindflow,.pdf,.goodnotes" : IMPORT_EXTENSIONS
               }
               multiple
               required

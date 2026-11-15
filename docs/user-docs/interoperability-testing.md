@@ -1,6 +1,6 @@
 # Manual interoperability checklist
 
-Use disposable workspaces. Keep original notebooks, and compare content before discarding any source. Automated tests verify parser/API/browser round trips; they do not launch Goodnotes, OneNote, or Butterfly themselves.
+Use disposable workspaces. Keep original notebooks, and compare content before discarding any source. Automated tests verify parser/API/browser round trips; they do not launch Goodnotes or Butterfly themselves.
 
 ## Prepare one reference workspace
 
@@ -29,17 +29,16 @@ Create two pages. Add text with bold/italic, a list, a pressure-varying pen stro
 - [ ] Export the edited copy from Goodnotes and reimport it into mindflow.
 - [ ] Optionally open `docs/examples/mindflow-compatibility.goodnotes`. It contains only generated text, a green stroke, and a green/gold image; it is a format probe, not evidence of app compatibility.
 
-## OneNote
+## OneNote through PDF
 
-- [ ] Import your original OneNote test notebook locally. For the provided example, expect 14 active pages; compare section prefixes, text, and ink.
-- [ ] Export both `.onepkg` and `.one` from the reference workspace. Open them in desktop OneNote, then check mobile/tablet access through normal OneNote sync if needed.
-- [ ] Edit text, select/move ink, and move an image independently. Check shape/rotated-text PNG fallbacks and conversion notes.
-- [ ] Export the edited copy from OneNote and reimport it. Compare page order, pressure, and layout.
+- [ ] Export a OneNote notebook to PDF and import it into mindflow. Compare page order and appearance, then add annotations.
+- [ ] Export a mindflow page as PDF or PNG and insert it into OneNote.
+- [ ] Native `.one` and `.onepkg` files should be rejected; the migration guide explains the PDF path.
 
 ## Bulk migration and screenshots
 
-- [ ] Select Goodnotes, OneNote, Butterfly, PDF, and mindflow files together, plus one intentionally broken file. Successful files must remain available; retry must not duplicate them.
-- [ ] Append Goodnotes, OneNote, PDF, and mindflow pages to an existing workspace. A shared read-only user must not append.
+- [ ] Select Goodnotes, Butterfly, PDF, and mindflow files together, plus one intentionally broken file. Successful files must remain available; retry must not duplicate them.
+- [ ] Append Goodnotes, PDF, and mindflow pages to an existing workspace. A shared read-only user must not append.
 - [ ] Screenshot a small region, then another at a different zoom. Inspect dimensions/content in the PNG and paste the clipboard image into another application over HTTPS.
 - [ ] Repeat region selection with touch/Pencil on iPad. It must not pan the browser or modify the canvas.
 - [ ] Verify the clipboard explanation on plain HTTP and a failed/denied clipboard permission.

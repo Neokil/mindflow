@@ -8,11 +8,11 @@ export type ImportResult = {
   elementCount: number;
   warnings: string[];
 };
-export const IMPORT_EXTENSIONS = ".mindflow,.bfly,.pdf,.one,.onepkg,.goodnotes";
+export const IMPORT_EXTENSIONS = ".mindflow,.bfly,.pdf,.goodnotes";
 export function importName(file: File) {
   return (
     file.name
-      .replace(/\.(mindflow|bfly|pdf|one|onepkg|goodnotes)$/i, "")
+      .replace(/\.(mindflow|bfly|pdf|goodnotes)$/i, "")
       .trim()
       .slice(0, 180) || "Imported workspace"
   );
@@ -24,14 +24,8 @@ export async function importFile(
   progress: (message: string) => void,
 ): Promise<ImportResult> {
   const extension = file.name.split(".").pop()?.toLowerCase();
-  if (
-    !["mindflow", "bfly", "pdf", "one", "onepkg", "goodnotes"].includes(
-      extension || "",
-    )
-  )
-    throw new Error(
-      "Choose a mindflow, Butterfly, Goodnotes, OneNote, or PDF file.",
-    );
+  if (!["mindflow", "bfly", "pdf", "goodnotes"].includes(extension || ""))
+    throw new Error("Choose a mindflow, Butterfly, Goodnotes, or PDF file.");
   if (file.size > (extension === "pdf" ? MAX_PDF_BYTES : 64 * 1024 * 1024))
     throw new Error(
       "File exceeds the import size limit (PDF: 50 MiB; other files: 64 MiB).",
@@ -59,8 +53,8 @@ export async function importFile(
   progress("Saving imported workspace…");
   const result = await api<ImportResult>(
     workspaceId
-      ? `/workspaces/${workspaceId}/import/${extension === "one" || extension === "onepkg" ? "onenote" : "mindflow"}`
-      : `/workspaces/import/${extension === "bfly" ? "butterfly" : extension === "one" || extension === "onepkg" ? "onenote" : "mindflow"}`,
+      ? `/workspaces/${workspaceId}/import/mindflow`
+      : `/workspaces/import/${extension === "bfly" ? "butterfly" : "mindflow"}`,
     "POST",
     form,
   );

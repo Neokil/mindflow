@@ -153,14 +153,6 @@ try:
         call(f'/pages/{page}/document', 'PUT', mutation)
         assert call(f'/pages/{page}/document')['revision'] == 1
         wait_for(lambda: call('/assets/' + asset['id'] + '/meta')['variants'])
-        # Exercise the actual statically linked codec inside the hardened image.
-        native = call(f'/workspaces/{workspace}/export', 'POST', {'format': 'onepkg', 'pageIds': [], 'includeTemplates': False})
-        assert native.startswith(b'MSCF'), 'OneNote export is not a native CAB package'
-        boundary = uuid.uuid4().hex
-        native_form = (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="test.onepkg"\r\n\r\n'.encode() + native + f'\r\n--{boundary}--\r\n'.encode())
-        imported = call('/workspaces/import/onenote', 'POST', native_form, headers={'Content-Type': f'multipart/form-data; boundary={boundary}'})
-        assert imported['pageCount'] == 1 and imported['elementCount'] == 1
-
         readonly = call(f'/pages/{page}/lease', 'POST', {'clientId': 'second-editor', 'action': 'acquire'})
         assert not readonly['editable']
         pending = call(f'/pages/{page}/lease', 'POST', {'clientId': 'second-editor', 'action': 'takeover'})

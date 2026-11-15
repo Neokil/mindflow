@@ -43,12 +43,11 @@ import (
 
 // Config supplies development mode and the one-time setup credential.
 type Config struct {
-	OneNoteCodec string
-	Release      string
-	Version      string
-	Now          func() time.Time
-	Dev          bool
-	Bootstrap    string
+	Release   string
+	Version   string
+	Now       func() time.Time
+	Dev       bool
+	Bootstrap string
 }
 
 // App serves the HTTP API and coordinates domain services.
@@ -146,7 +145,7 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	service.editors.RegisterHTTP(service)
 	pdfs := pdf.NewService(data.Workspaces, service.pages, publish)
 	pdfs.RegisterHTTP(service)
-	transfer.NewService(data.Workspaces, service.workspace, service.pages, service.images, pdfs, templates, publish, config.OneNoteCodec).RegisterHTTP(service)
+	transfer.NewService(data.Workspaces, service.workspace, service.pages, service.images, pdfs, templates, publish).RegisterHTTP(service)
 	service.images.RegisterHTTP(service)
 	service.notifications.RegisterHTTP(service)
 
