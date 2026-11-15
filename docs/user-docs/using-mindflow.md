@@ -41,7 +41,7 @@ Clipboard images require HTTPS (or localhost) and browser support/permission. If
 
 ## Import mindflow files
 
-On the workspace list, choose **Import workspace**, select a `.mindflow` file, name the workspace and choose **Import**. Both whole-workspace and selected-page files create a new private workspace. To add their pages to an existing workspace instead, open it and choose **Import pages** beside the save status. Appending requires owner or full access; existing pages are retained, and new pages are added at the end.
+On the workspace list, choose **Import workspace**, select a `.mindflow` file, name the workspace and choose **Import**. You can also select multiple supported files for bulk migration. Both whole-workspace and selected-page files create a new private workspace. To add their pages to an existing workspace instead, open it and choose **Import pages** beside the save status. Appending requires owner or full access; existing pages are retained, and new pages are added at the end.
 
 Imported elements are independent editable copies. Groups, locks, settings, original media and included templates are preserved. Template name collisions are renamed and reported. A failed import leaves no partial changes. File limits are 64 MiB compressed, 128 MiB expanded, 100 pages, 100 templates and 1,000 media assets per transfer. If an export is too large, choose fewer pages. See the [native format reference](../developer-docs/native-transfer.md) for full limits.
 
@@ -240,3 +240,9 @@ A badge beside the administration button and on **Feedback & bugs** counts unrea
 ## Keep your account active
 
 Using mindflow while signed in counts as activity. Non-administrator accounts inactive for more than **90 days** receive a request to sign in within **30 days**. A final reminder gives at least **7 days** before permanent deletion. Both reminders must be successfully sent; delayed email delivery extends the grace period. Sign in or use the app to cancel the pending deletion. Administrators are exempt. Permanently deleting an account also deletes its owned workspaces, including content in Trash.
+
+## Bulk migration
+
+Choose **Import workspace** from the overview and select up to 20 files totaling at most 512 MiB. Files are processed sequentially; each successful file creates its own private workspace named after the file. A failed file shows its error and does not roll back other imports. **Import remaining files** retries only failed or unprocessed files. **Stop after current file** leaves completed work intact and stops before the next file. Keep the tab open until the current import finishes.
+
+Native mindflow and Butterfly files follow their normal conversion limits. PDF files support up to 50 MiB and 100 pages each and become one image-backed canvas page per PDF page. The converted transfer must fit within 64 MiB; split large PDFs when necessary. Imported PDF pages can be annotated with new ink and elements, but their original content is not individually editable. **Import pages** inside a workspace accepts multiple mindflow and PDF files and appends their pages in selected-file order.

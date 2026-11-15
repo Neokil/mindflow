@@ -1,14 +1,12 @@
-import { useState } from "react";
-import { api } from "../../api";
+import { useRef, useState } from "react";
 import { ErrorMessage, Modal, Spinner } from "../../ui";
-
-type Imported = {
-  id: string;
-  pageId: string;
-  pageCount: number;
-  elementCount: number;
-  warnings: string[];
-};
+import {
+  IMPORT_EXTENSIONS,
+  importFile,
+  importName,
+} from "../transfer/importFiles";
+import type { ImportResult } from "../transfer/importFiles";
+type Item = { file: File; result?: ImportResult; error?: string };
 export default function ImportWorkspaceDialog({
   close,
   open,
@@ -18,30 +16,56 @@ export default function ImportWorkspaceDialog({
   open: (id: string, pageId?: string) => Promise<void>;
   workspaceId?: string;
 }) {
-  const [file, setFile] = useState<File>(),
-    [name, setName] = useState(""),
-    [busy, setBusy] = useState(false),
+  const [items, setItems] = useState<Item[]>([]),
+    [name, setName] = useState("");
+  const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [result, setResult] = useState<Imported>();
+    [progress, setProgress] = useState("");
+  const stop = useRef(false);
+  const completed = items.filter((item) => item.result);
   async function submit() {
-    if (!file) return;
+    if (!items.length || busy) return;
+    setBusy(true);
+    setError("");
+    stop.current = false;
+    try {
+      for (const [index, item] of items.entries()) {
+        if (stop.current) break;
+        if (item.result) continue;
+        const update = (value: Partial<Item>) =>
+          setItems((entries) =>
+            entries.map((entry, i) =>
+              i === index ? { ...entry, ...value } : entry,
+            ),
+          );
+        update({ error: undefined });
+        try {
+          const result = await importFile(
+            item.file,
+            items.length === 1 ? name : importName(item.file),
+            workspaceId,
+            (message) =>
+              setProgress(
+                `${index + 1}/${items.length}: ${item.file.name} — ${message}`,
+              ),
+          );
+          update({ result });
+        } catch (err) {
+          update({ error: (err as Error).message });
+        }
+      }
+    } finally {
+      setBusy(false);
+      setProgress("");
+    }
+  }
+  async function openResult(result: ImportResult) {
     setBusy(true);
     setError("");
     try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("name", name);
-      setResult(
-        await api<Imported>(
-          workspaceId
-            ? `/workspaces/${workspaceId}/import/mindflow`
-            : `/workspaces/import/${file.name.toLowerCase().endsWith(".bfly") ? "butterfly" : "mindflow"}`,
-          "POST",
-          form,
-        ),
-      );
-    } catch (err) {
-      setError((err as Error).message);
+      await open(result.id, result.pageId);
+    } catch (error) {
+      setError((error as Error).message);
     } finally {
       setBusy(false);
     }
@@ -53,81 +77,47 @@ export default function ImportWorkspaceDialog({
         if (!busy) close();
       }}
     >
-      {result ? (
-        <>
-          <p role="status">
-            Imported {result.pageCount} pages and {result.elementCount} elements{" "}
-            {workspaceId ? "into this workspace." : "into a private workspace."}
-          </p>
-          {result.warnings.length > 0 && (
-            <>
-              <h3>Conversion notes</h3>
-              <ul className="import-notes">
-                {result.warnings.map((note) => (
-                  <li key={note}>{note}</li>
-                ))}
-              </ul>
-            </>
-          )}
-          <div className="form-actions">
-            <button className="secondary" disabled={busy} onClick={close}>
-              Done
-            </button>
-            <button
-              className="primary"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  await open(result.id, result.pageId);
-                } catch (err) {
-                  setError((err as Error).message);
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              {workspaceId ? "Open imported page" : "Open workspace"}
-            </button>
-          </div>
-        </>
-      ) : (
+      <p className="muted">
+        {workspaceId
+          ? "Append pages from mindflow or PDF files. Existing pages stay unchanged."
+          : "Import mindflow, Butterfly, or PDF files as new private workspaces. Select multiple files to migrate a collection."}{" "}
+        Each file is independent; failed files do not undo successful imports.
+        PDFs become page images that you can annotate.
+      </p>
+      {completed.length === 0 && (
         <form
           onSubmit={(event) => {
             event.preventDefault();
             void submit();
           }}
         >
-          <p className="muted">
-            {workspaceId
-              ? "Append pages from a .mindflow file. Existing pages stay unchanged."
-              : "Import a mindflow .mindflow or Butterfly .bfly export as a new private workspace."}
-          </p>
           <label>
-            {workspaceId
-              ? "mindflow export (.mindflow)"
-              : "Workspace export (.mindflow or .bfly)"}
+            Workspace exports
             <input
               aria-label="Workspace export"
               type="file"
-              accept={workspaceId ? ".mindflow" : ".mindflow,.bfly"}
+              accept={workspaceId ? ".mindflow,.pdf" : IMPORT_EXTENSIONS}
+              multiple
               required
               disabled={busy}
               onChange={(event) => {
-                const selected = event.target.files?.[0];
-                if (selected && selected.size > 64 * 1024 * 1024) {
-                  setError("Choose an export up to 64 MiB.");
-                  setFile(undefined);
+                const files = [...(event.target.files || [])];
+                if (!files.length) return;
+                if (
+                  files.length > 20 ||
+                  files.reduce((sum, file) => sum + file.size, 0) >
+                    512 * 1024 * 1024
+                ) {
+                  setError("Choose up to 20 files totaling at most 512 MiB.");
                   return;
                 }
+                setItems(files.map((file) => ({ file })));
+                setName(importName(files[0]));
                 setError("");
-                setFile(selected);
-                if (selected)
-                  setName(selected.name.replace(/\.(bfly|mindflow)$/i, ""));
               }}
             />
           </label>
-          {!workspaceId && (
+          {!workspaceId && items.length <= 1 && (
             <label>
               Workspace name
               <input
@@ -149,7 +139,7 @@ export default function ImportWorkspaceDialog({
             >
               Cancel
             </button>
-            <button className="primary" disabled={busy || !file}>
+            <button className="primary" disabled={busy || !items.length}>
               {busy ? (
                 <>
                   <Spinner /> Importing…
@@ -160,6 +150,74 @@ export default function ImportWorkspaceDialog({
             </button>
           </div>
         </form>
+      )}
+      {items.length > 0 && (
+        <ul className="import-results">
+          {items.map((item, index) => (
+            <li key={index}>
+              <strong>{item.file.name}</strong>
+              {item.result ? (
+                <>
+                  <p role="status">
+                    Imported {item.result.pageCount} pages and{" "}
+                    {item.result.elementCount} elements{" "}
+                    {workspaceId
+                      ? "into this workspace."
+                      : "into a private workspace."}
+                  </p>
+                  {item.result.warnings.length > 0 && (
+                    <>
+                      <h3>Conversion notes</h3>
+                      <ul className="import-notes">
+                        {item.result.warnings.map((note) => (
+                          <li key={note}>{note}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  <button
+                    className="secondary"
+                    disabled={busy}
+                    onClick={() => void openResult(item.result!)}
+                  >
+                    {workspaceId ? "Open imported page" : "Open workspace"}
+                  </button>
+                </>
+              ) : item.error ? (
+                <p className="error" role="alert">
+                  {item.error}
+                </p>
+              ) : (
+                <p className="muted">Waiting to import</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {busy && (
+        <>
+          <p role="status">{progress}</p>
+          <button
+            className="secondary"
+            onClick={() => {
+              stop.current = true;
+            }}
+          >
+            Stop after current file
+          </button>
+        </>
+      )}
+      {!busy && completed.length > 0 && (
+        <div className="form-actions">
+          <button className="secondary" onClick={close}>
+            Done
+          </button>
+          {completed.length < items.length && (
+            <button className="primary" onClick={() => void submit()}>
+              Import remaining files
+            </button>
+          )}
+        </div>
       )}
       <ErrorMessage message={error} />
     </Modal>
