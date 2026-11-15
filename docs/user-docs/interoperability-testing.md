@@ -45,3 +45,11 @@ Create two pages. Add text with bold/italic, a list, a pressure-varying pen stro
 - [ ] Verify a user without workspace access cannot export its content or media.
 
 Private sample files are not committed or uploaded by the test suite. Record the destination app/version and any visual or editing differences when reporting compatibility failures.
+
+## Image optimisation and stored previews
+
+- Import a notebook with large images. Confirm the optimisation question appears, choose it, and open the imported pages. Repeat with **Not now**.
+- Resize an image much smaller, save, and choose its page menu → **Optimise images**. Repeating the operation should create no duplicate versions. Crop and high-density displays should remain sharp; enlarging the image should load a suitable larger version/original.
+- Switch pages and return: previously loaded image URLs should use the browser cache. Replace an image or avatar: the new content must appear immediately under a different URL.
+- Save the first page, return to the overview, and check its thumbnail. Reorder/delete/restore the first page and check the new cover after opening the workspace. An older workspace may show a placeholder until it has been opened once after this update.
+- Inspect overview network requests: stored PNG previews should load without fetching canvas documents. Readers can view shared previews but cannot replace them or optimise images; revoked users cannot fetch private media over the network.

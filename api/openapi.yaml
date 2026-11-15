@@ -5216,6 +5216,189 @@
           }
         }
       }
+    },
+    "/pages/{id}/optimise-images": {
+      "post": {
+        "summary": "Create layout-sized image variants, preserving originals",
+        "tags": [
+          "Canvas"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scale": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 64,
+                    "description": "Zoom multiplied by display pixel density; zero defaults to one."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Counts of images and newly optimised variants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "images": {
+                      "type": "integer"
+                    },
+                    "optimised": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Full access required"
+          }
+        },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "operationId": "post_pages_id_optimise_images"
+      }
+    },
+    "/workspaces/{id}/preview": {
+      "get": {
+        "summary": "Inspect stored first-page preview revision",
+        "responses": {
+          "200": {
+            "description": "Preview state, needed flag and write permission"
+          }
+        },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "operationId": "get_workspaces_id_preview"
+      },
+      "post": {
+        "summary": "Store a bounded PNG for the current first-page revision",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "pageId",
+                  "revision"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "pageId": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stored content ID"
+          },
+          "409": {
+            "description": "First page or saved revision changed"
+          },
+          "403": {
+            "description": "Full access required"
+          }
+        },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "operationId": "post_workspaces_id_preview"
+      },
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "/workspaces/{id}/previews/{content}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "content",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Load an authenticated immutable stored preview",
+        "responses": {
+          "200": {
+            "description": "Private cache for one year",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Preview unavailable"
+          }
+        },
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "operationId": "get_workspaces_id_previews_content"
+      }
     }
   },
   "components": {
@@ -5647,7 +5830,14 @@
           "previewRevision": {
             "type": "integer",
             "minimum": 0,
-            "description": "Saved document revision of firstPageId; changes invalidate the workspace thumbnail."
+            "description": "Saved first-page revision; previewId identifies the last generated thumbnail."
+          },
+          "previewId": {
+            "type": "string",
+            "description": "Stored first-page PNG content ID, empty until generated."
+          },
+          "previewEmpty": {
+            "type": "boolean"
           }
         }
       },

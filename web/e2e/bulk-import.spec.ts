@@ -42,6 +42,16 @@ test("bulk import keeps successful notebooks and PDFs when another file fails", 
   await expect(pdf.getByRole("status")).toHaveText(
     "Imported 2 pages and 2 elements into a private workspace.",
   );
+  await expect(
+    page.getByRole("heading", { name: "Optimise imported images?" }),
+  ).toBeVisible();
+  await activate(
+    page,
+    page.getByRole("button", { name: "Optimise images", exact: true }),
+  );
+  await expect(
+    page.getByRole("heading", { name: "Optimise imported images?" }),
+  ).toHaveCount(0);
   const result = await (await page.request.get("/api/v1/workspaces")).json();
   expect(result).toHaveLength(initial.length + 2);
   await activate(

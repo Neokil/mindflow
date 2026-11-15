@@ -77,6 +77,7 @@ func (a *Service) RegisterHTTP(routes HTTP) {
 		if err != nil {
 			return nil, err
 		}
+		writer.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
 		writer.Header().Set("Content-Type", "image/png")
 		_, err = writer.Write(content) //nolint:gosec // G705: stored screenshot bytes are decoded and re-encoded as PNG, served with image/png and nosniff.
 

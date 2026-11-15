@@ -27,6 +27,7 @@ import (
 	"mindflow/internal/workspace/page/comment"
 	"mindflow/internal/workspace/page/editor"
 	"mindflow/internal/workspace/pdf"
+	"mindflow/internal/workspace/preview"
 	"mindflow/internal/workspace/sharing"
 	"mindflow/internal/workspace/template"
 	"mindflow/internal/workspace/transfer"
@@ -136,6 +137,7 @@ func New(ctx context.Context, data *storage.Database, config Config) (*App, erro
 	service.passwordResets.RegisterHTTP(service)
 	service.mail.RegisterHTTP(service)
 	service.workspace.RegisterHTTP(service)
+	preview.NewService(data.Workspaces, publish).RegisterHTTP(service)
 	butterfly.NewService(data.Workspaces, service.workspace, service.pages, service.images, publish).RegisterHTTP(service)
 	service.sharing.RegisterHTTP(service)
 	ownership.NewService(data.Workspaces, accounts, publish).RegisterHTTP(service)

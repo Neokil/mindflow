@@ -155,6 +155,13 @@ func (a *Service) ValidateAssetsWithin(ctx context.Context, transaction *storage
 }
 
 func (a *Service) enqueueImageVariants(ctx context.Context, owner string, d Document) {
+	targets := imageTargets(d)
+	for id, target := range targets {
+		_ = a.images.QueueVariant(ctx, owner, id, target[0], target[1])
+	}
+}
+
+func imageTargets(d Document) map[string][2]float64 {
 	targets := map[string][2]float64{}
 	for _, entry := range d.Elements {
 		if entry.Type == elementImage {
@@ -169,9 +176,8 @@ func (a *Service) enqueueImageVariants(ctx context.Context, owner string, d Docu
 			targets[entry.AssetID] = target
 		}
 	}
-	for id, target := range targets {
-		_ = a.images.QueueVariant(ctx, owner, id, target[0], target[1])
-	}
+
+	return targets
 }
 
 // CloneDocument assigns new element and group identities to a copied canvas.

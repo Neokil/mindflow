@@ -25,15 +25,12 @@ function ImageContent({
   const [image, setImage] = useState<HTMLImageElement>();
   const [failed, setFailed] = useState(false);
   const assetID = e.assetId!;
-  const renderWidth =
-    Math.ceil(
-      ((e.width / (e.crop?.width || 1)) * zoom * (devicePixelRatio || 1)) / 64,
-    ) * 64;
-  const renderHeight =
-    Math.ceil(
-      ((e.height / (e.crop?.height || 1)) * zoom * (devicePixelRatio || 1)) /
-        64,
-    ) * 64;
+  const renderWidth = Math.ceil(
+    (e.width / (e.crop?.width || 1)) * zoom * (devicePixelRatio || 1),
+  );
+  const renderHeight = Math.ceil(
+    (e.height / (e.crop?.height || 1)) * zoom * (devicePixelRatio || 1),
+  );
   useEffect(() => {
     if (loadedImage) return;
     let canceled = false;

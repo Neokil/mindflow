@@ -17,7 +17,7 @@ func TestBrowserDocumentAndPublicVersionIdentifySameBuild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(value.Version) != 64 || response.Header().Get("Cache-Control") != "no-store" {
+	if len(value.Version) != 64 || response.Header().Get("Cache-Control") != noStoreCache {
 		t.Fatal("version is missing or cacheable")
 	}
 	document := client.ok("GET", "/", nil)

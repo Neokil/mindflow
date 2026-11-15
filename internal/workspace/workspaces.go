@@ -17,7 +17,7 @@ func (a *Service) ListWorkspaces(ctx context.Context, actor session.Principal) (
 	}
 	out := make([]Workspace, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, Workspace{FirstPageID: row.FirstPageID, PreviewRevision: int(row.PreviewRevision), Role: row.Role, Shared: row.Shared, ID: row.ID, Name: row.Name, Revision: row.Revision, UpdatedAt: row.UpdatedAt, PageCount: int(row.PageCount)})
+		out = append(out, Workspace{PreviewID: row.PreviewID, PreviewEmpty: row.PreviewEmpty != 0, FirstPageID: row.FirstPageID, PreviewRevision: int(row.PreviewRevision), Role: row.Role, Shared: row.Shared, ID: row.ID, Name: row.Name, Revision: row.Revision, UpdatedAt: row.UpdatedAt, PageCount: int(row.PageCount)})
 	}
 
 	return out, nil

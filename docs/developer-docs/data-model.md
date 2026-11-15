@@ -140,3 +140,9 @@ Feedback activity uses monotonically increasing event IDs, including a report-cr
 `feedback_reports.closed_at` records entry into the closed state separately from `updated_at`. Closure sets it and reopening clears it, so discussion activity cannot postpone expiry. The feedback worker deletes closed reports at 30 days; domain foreign keys cascade their comments, activity, and read positions, and the report row owns its attachment BLOB. Migration grants already-closed reports a full 30-day window from installation of this policy. New closure timestamps and deadlines use the service clock.
 
 Feedback search stays inside the feedback storage boundary: parameterized literal substring matching covers title, description, and related comment bodies. The same author/admin access predicate is applied before filtering, and search does not change global unread counts. The admin UI supplies the query through `q`; the API bounds it to 200 characters.
+
+## Stored workspace previews
+
+`workspace_previews` is owned by workspace storage (Goose migration 7). It stores the workspace ID, source first-page ID/revision, a SHA-256 content ID, normalized PNG bytes and whether the source page is blank. The workspace foreign key cascades on permanent deletion. Soft-deleted workspaces/pages cannot expose previews; reordered or deleted first pages suppress a mismatched preview until the next render. Thumbnails live in SQLite alongside originals and variants, so database snapshots include them. Their content IDs change whenever their PNG bytes change.
+
+Manual page optimisation derives image dimensions from the saved document. Repeated references to the same image use the largest required width/height, including uncropped source area. Exact-size variants share the immutable `(asset_id, bucket)` key with automatic variants, so repeated requests reuse existing bytes. The original asset and document are never replaced.

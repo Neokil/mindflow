@@ -79,6 +79,7 @@ export class PageSession {
     public id: string,
     private request: Transport = api,
     private onAuthenticationRequired: () => void = () => {},
+    private onSaved: () => void = () => {},
   ) {}
   get canWrite() {
     return this.permission === "owner" || this.permission === "full";
@@ -258,6 +259,7 @@ export class PageSession {
         pending.request,
       );
       this.revision = result.revision;
+      this.onSaved();
       this.acknowledged = pending.generation;
       this.pending = undefined;
       this.dirtySince = this.dirty ? Date.now() : 0;

@@ -69,6 +69,8 @@ export type WorkspacePermission = "owner" | "read" | "comment" | "full";
 export type Workspace = {
   firstPageId: string;
   previewRevision: number;
+  previewId?: string;
+  previewEmpty?: boolean;
   role?: WorkspacePermission;
   shared?: boolean;
   id: string;

@@ -44,6 +44,7 @@ func (a *httpHandler) login(writer http.ResponseWriter, request *http.Request) (
 
 func (a *httpHandler) logout(writer http.ResponseWriter, request *http.Request) (any, error) {
 	err := a.service.sessions.Logout(request.Context(), Current(request.Context()))
+	writer.Header().Set("Clear-Site-Data", `"cache"`)
 	a.service.setSessionCookie(writer, &http.Cookie{Name: "mindflow_session", Path: "/", MaxAge: -1, HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode})
 
 	return map[string]bool{"ok": true}, err

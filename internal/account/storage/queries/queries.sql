@@ -144,3 +144,6 @@ SELECT t.user_id FROM account_tokens t JOIN account_update_preferences p ON p.us
 
 -- name: UpdatesDeleteTokens :exec
 DELETE FROM account_tokens WHERE user_id=? AND purpose='updates_unsubscribe';
+
+-- name: AvatarVersionedContent :one
+SELECT content FROM avatars JOIN users ON users.id=avatars.user_id WHERE user_id=? AND users.status='active' AND users.avatar_version=?;

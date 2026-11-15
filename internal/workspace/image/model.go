@@ -15,6 +15,7 @@ type AssetInfo struct {
 
 // Blob contains image bytes and their display metadata.
 type Blob struct {
+	Immutable     bool
 	Data          []byte
 	MIME          string
 	Width, Height int

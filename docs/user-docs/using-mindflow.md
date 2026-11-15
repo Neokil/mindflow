@@ -13,7 +13,7 @@ Sign in to see your own and shared workspaces. Create a workspace, open it, and 
 
 ## Workspace previews
 
-Workspace cards show a small preview of the first page in tab order, fitted to its saved content. Multipage workspaces show stacked sheets and a page-count badge. Saving changes to the first page, changing page order, or deleting the first page refreshes the preview. Blank pages and workspaces with no pages have explicit labels. Previews follow the canvas background and your light/dark appearance, and load as cards come into view. Viewing a preview does not acquire editor control.
+Workspace cards show a small preview of the first page in tab order, fitted to its saved content. Multipage workspaces show stacked sheets and a page-count badge. Saving changes to the first page, changing page order, or deleting the first page refreshes the preview. Blank pages and workspaces with no pages have explicit labels. Previews follow the canvas background and your light/dark appearance, and load as cards come into view. Viewing a preview does not acquire editor control. Thumbnails are stored on the server after saves/imports; the overview only loads those small images. An existing workspace may show a placeholder until you open it once after upgrading.
 
 ![Workspace overview with a preview of its first page](../media/guide-workspaces.png)
 
@@ -251,3 +251,5 @@ Native mindflow and Butterfly files follow their normal conversion limits. PDF f
 ## Interoperability and migration
 
 Use the [import/export guide](interoperability.md) for bulk migration, Goodnotes native files, Butterfly export, PDF workflows, and selected-region PNG/clipboard screenshots. Conversion notes explain which objects stay editable and which require image fallbacks.
+
+Use a page tab menu → **Optimise images** to create smaller versions for its saved layout while keeping originals. File imports also offer this step. See [migration and formats](interoperability.md#optimise-images-after-migration) for details.

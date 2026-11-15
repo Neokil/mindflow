@@ -64,7 +64,17 @@ func TestAvatarAuthorizationPersistenceAndRemoval(t *testing.T) {
 	if (&testClient{a: owner.a, t: t}).request("GET", path, nil).Code != 401 {
 		t.Fatal("anonymous avatar access allowed")
 	}
+	versioned := owner.ok("GET", path+"?v="+identity.User.AvatarVersion, nil)
+	if versioned.Header().Get("Cache-Control") != immutableCache {
+		t.Fatal("versioned avatar not cached")
+	}
+	if owner.request("GET", path+"?v=stale", nil).Code != 404 {
+		t.Fatal("stale avatar URL served new content")
+	}
 	content := owner.ok("GET", path, nil)
+	if content.Header().Get("Cache-Control") != noStoreCache {
+		t.Fatal("unversioned avatar cached")
+	}
 	config, kind, err := image.DecodeConfig(content.Body)
 	if err != nil || kind != "png" || config.Width != 128 || config.Height != 128 {
 		t.Fatal("unprocessed avatar returned", config, kind, err)

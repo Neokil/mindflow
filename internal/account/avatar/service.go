@@ -37,6 +37,16 @@ func (a *Service) Get(ctx context.Context, userID string) ([]byte, error) {
 	return content, err
 }
 
+// GetVersioned returns an immutable representation only for the current version.
+func (a *Service) GetVersioned(ctx context.Context, userID, version string) ([]byte, error) {
+	content, err := a.repository.AvatarVersionedContent(ctx, storage.AvatarVersionedContentParams{UserID: userID, AvatarVersion: version})
+	if storage.IsNotFound(err) {
+		return nil, &account.Error{Code: "not_found", Message: "Avatar unavailable."}
+	}
+
+	return content, err
+}
+
 // Set replaces or removes the caller's avatar atomically.
 func (a *Service) Set(ctx context.Context, userID string, raw []byte) (account.Completed, error) {
 	a.processing.Lock()

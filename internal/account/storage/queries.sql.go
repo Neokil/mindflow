@@ -523,6 +523,22 @@ func (q *Queries) AvatarVersion(ctx context.Context, arg AvatarVersionParams) er
 	return err
 }
 
+const avatarVersionedContent = `-- name: AvatarVersionedContent :one
+SELECT content FROM avatars JOIN users ON users.id=avatars.user_id WHERE user_id=? AND users.status='active' AND users.avatar_version=?
+`
+
+type AvatarVersionedContentParams struct {
+	UserID        string
+	AvatarVersion string
+}
+
+func (q *Queries) AvatarVersionedContent(ctx context.Context, arg AvatarVersionedContentParams) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, avatarVersionedContent, arg.UserID, arg.AvatarVersion)
+	var content []byte
+	err := row.Scan(&content)
+	return content, err
+}
+
 const invitationCountValidTokens = `-- name: InvitationCountValidTokens :one
 SELECT count(*) FROM account_tokens t JOIN users u ON u.id=t.user_id WHERE t.token_hash=? AND t.purpose='invite' AND t.expires_at>? AND u.status='invited'
 `

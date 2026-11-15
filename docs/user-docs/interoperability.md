@@ -50,3 +50,9 @@ Choose the camera button beside canvas settings. Drag a rectangle over the visib
 Clipboard image writing requires HTTPS (or localhost) and browser support. If it is unavailable, its button is disabled with an explanation; PNG downloads remain available. Clipboard permissions or browser policy may still reject a write. The screenshot includes the configured canvas background but excludes app chrome, sharing dialogs, comments, and selection handles.
 
 See the [manual interoperability checklist](interoperability-testing.md) for destination-app checks and the [developer format notes](../developer-docs/interoperability.md) for implementation and validation boundaries.
+
+## Optimise images after migration
+
+After importing files, mindflow asks **Optimise imported images?**. Choose **Optimise images** to create smaller display versions for all imported pages, or **Not now**. You can also use a page tab's menu → **Optimise images** after resizing pictures. Pending edits are saved first. The optimisation uses the layout, crop, zoom and screen pixel density; images must be at least 20% smaller to benefit. Original images remain stored for later resizing and export, so this reduces loading and rendering costs rather than removing original database storage.
+
+Images and previews are cached privately by the browser. Their URLs change when their contents change. Workspace cards use stored first-page thumbnails generated after saves and imports; existing workspaces get their first stored preview when opened. The overview does not regenerate canvases.

@@ -1,3 +1,5 @@
+import { refreshWorkspacePreview } from "./preview";
+import { optimiseImportedImages } from "./optimiseImages";
 import { useRef, useState } from "react";
 import { ErrorMessage, Modal, Spinner } from "../../ui";
 import {
@@ -22,6 +24,8 @@ export default function ImportWorkspaceDialog({
     [error, setError] = useState(""),
     [progress, setProgress] = useState("");
   const stop = useRef(false);
+  const [optimisePrompt, setOptimisePrompt] = useState(false);
+  const [optimising, setOptimising] = useState(false);
   const completed = items.filter((item) => item.result);
   async function submit() {
     if (!items.length || busy) return;
@@ -50,6 +54,8 @@ export default function ImportWorkspaceDialog({
               ),
           );
           update({ result });
+          refreshWorkspacePreview(result.id);
+          setOptimisePrompt(true);
         } catch (err) {
           update({ error: (err as Error).message });
         }
@@ -74,7 +80,7 @@ export default function ImportWorkspaceDialog({
     <Modal
       title={workspaceId ? "Import pages" : "Import workspace"}
       close={() => {
-        if (!busy) close();
+        if (!busy && !optimising) close();
       }}
     >
       <p className="muted">
@@ -101,7 +107,7 @@ export default function ImportWorkspaceDialog({
               }
               multiple
               required
-              disabled={busy}
+              disabled={busy || optimising}
               onChange={(event) => {
                 const files = [...(event.target.files || [])];
                 if (!files.length) return;
@@ -127,7 +133,7 @@ export default function ImportWorkspaceDialog({
                 value={name}
                 maxLength={200}
                 required
-                disabled={busy}
+                disabled={busy || optimising}
                 onChange={(event) => setName(event.target.value)}
               />
             </label>
@@ -136,12 +142,15 @@ export default function ImportWorkspaceDialog({
             <button
               className="secondary"
               type="button"
-              disabled={busy}
+              disabled={busy || optimising}
               onClick={close}
             >
               Cancel
             </button>
-            <button className="primary" disabled={busy || !items.length}>
+            <button
+              className="primary"
+              disabled={busy || optimising || !items.length}
+            >
               {busy ? (
                 <>
                   <Spinner /> Importing…
@@ -179,7 +188,7 @@ export default function ImportWorkspaceDialog({
                   )}
                   <button
                     className="secondary"
-                    disabled={busy}
+                    disabled={busy || optimising}
                     onClick={() => void openResult(item.result!)}
                   >
                     {workspaceId ? "Open imported page" : "Open workspace"}
@@ -209,9 +218,50 @@ export default function ImportWorkspaceDialog({
           </button>
         </>
       )}
+      {!busy && optimisePrompt && completed.length > 0 && (
+        <section aria-label="Optimise imported images">
+          <h3>Optimise imported images?</h3>
+          <p>
+            Create smaller display versions that fit the imported layout.
+            Original images are always preserved.
+          </p>
+          <div className="form-actions">
+            <button
+              className="secondary"
+              disabled={optimising}
+              onClick={() => setOptimisePrompt(false)}
+            >
+              Not now
+            </button>
+            <button
+              className="primary"
+              disabled={optimising}
+              onClick={() => {
+                setOptimising(true);
+                setError("");
+                void optimiseImportedImages(
+                  completed.map((item) => item.result!),
+                  setProgress,
+                )
+                  .then((count) => {
+                    setProgress(
+                      `Created ${count} smaller image versions. Originals are preserved.`,
+                    );
+                    setOptimisePrompt(false);
+                  })
+                  .catch((error) => setError((error as Error).message))
+                  .finally(() => setOptimising(false));
+              }}
+            >
+              {optimising ? "Optimising…" : "Optimise images"}
+            </button>
+          </div>
+          {progress && <p role="status">{progress}</p>}
+        </section>
+      )}
       {!busy && completed.length > 0 && (
         <div className="form-actions">
-          <button className="secondary" onClick={close}>
+          <button className="secondary" disabled={optimising} onClick={close}>
             Done
           </button>
           {completed.length < items.length && (

@@ -58,6 +58,9 @@ func (a *httpHandler) getAsset(writer http.ResponseWriter, r *http.Request) (any
 	if err != nil {
 		return nil, err
 	}
+	if blob.Immutable {
+		writer.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
+	}
 	writer.Header().Set("Content-Type", blob.MIME)
 	if blob.MIME == "application/pdf" {
 		writer.Header().Set("Content-Disposition", "attachment; filename=document.pdf")

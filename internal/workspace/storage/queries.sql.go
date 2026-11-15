@@ -788,7 +788,7 @@ func (q *Queries) ImageGetImage(ctx context.Context, arg ImageGetImageParams) (I
 }
 
 const imageImageVariant = `-- name: ImageImageVariant :one
-SELECT v.data,v.mime,v.width,v.height FROM asset_variants v JOIN assets a ON a.id=v.asset_id WHERE a.id=? AND a.id IN (SELECT asset_id FROM asset_access WHERE user_id=?3) AND v.bucket=?
+SELECT v.data,v.mime,v.width,v.height FROM asset_variants v JOIN assets a ON a.id=v.asset_id WHERE a.id=?1 AND a.id IN (SELECT asset_id FROM asset_access WHERE user_id=?2) AND v.bucket=?3
 `
 
 type ImageImageVariantParams struct {
@@ -1409,9 +1409,12 @@ SELECT w.id,w.name,w.revision,w.updated_at,wa.role,
  EXISTS(SELECT 1 FROM workspace_members m WHERE m.workspace_id=w.id) AS shared,
  (SELECT count(*) FROM active_pages p WHERE p.workspace_id=w.id) AS page_count,
  CAST(COALESCE(first_page.id,'') AS TEXT) AS first_page_id,
- CAST(COALESCE(first_page.revision,0) AS INTEGER) AS preview_revision
+ CAST(COALESCE(first_page.revision,0) AS INTEGER) AS preview_revision,
+ CAST(COALESCE(preview.content_id,'') AS TEXT) AS preview_id,
+ CAST(COALESCE(preview.empty,0) AS INTEGER) AS preview_empty
 FROM active_workspaces w JOIN workspace_access wa ON wa.workspace_id=w.id
 LEFT JOIN active_pages first_page ON first_page.id=(SELECT p.id FROM active_pages p WHERE p.workspace_id=w.id ORDER BY p.position,p.id LIMIT 1)
+LEFT JOIN workspace_previews preview ON preview.workspace_id=w.id AND preview.page_id=first_page.id
 WHERE wa.user_id=? ORDER BY w.updated_at DESC,w.id
 `
 
@@ -1425,6 +1428,8 @@ type WorkspaceListWorkspacesRow struct {
 	PageCount       int64
 	FirstPageID     string
 	PreviewRevision int64
+	PreviewID       string
+	PreviewEmpty    int64
 }
 
 func (q *Queries) WorkspaceListWorkspaces(ctx context.Context, userID string) ([]WorkspaceListWorkspacesRow, error) {
@@ -1446,6 +1451,8 @@ func (q *Queries) WorkspaceListWorkspaces(ctx context.Context, userID string) ([
 			&i.PageCount,
 			&i.FirstPageID,
 			&i.PreviewRevision,
+			&i.PreviewID,
+			&i.PreviewEmpty,
 		); err != nil {
 			return nil, err
 		}

@@ -928,6 +928,8 @@ export default function Canvas({
       )}
       {pdfImport && (
         <PDFImportDialog
+          pageId={session.id}
+          saveChanges={() => session.savePendingChanges()}
           workspaceId={session.workspaceId}
           elementCount={doc.elements.length}
           close={() => setPDFImport(false)}

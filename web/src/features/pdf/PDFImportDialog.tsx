@@ -1,3 +1,5 @@
+import { optimisePageImages } from "../workspaces/optimiseImages";
+import { refreshWorkspacePreview } from "../workspaces/preview";
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { api } from "../../api";
@@ -9,16 +11,22 @@ type Mode = "pages" | "current" | "viewer";
 export default function PDFImportDialog({
   workspaceId,
   elementCount,
+  pageId,
+  saveChanges,
   onElements,
   onPages,
   close,
 }: {
   workspaceId: string;
   elementCount: number;
+  pageId: string;
+  saveChanges: () => Promise<void>;
   onElements: (elements: CanvasElement[]) => void;
   onPages: (id: string) => void;
   close: () => void;
 }) {
+  const [imported, setImported] = useState<string[]>();
+  const [createdPages, setCreatedPages] = useState(false);
   const [file, setFile] = useState<File>();
   const [mode, setMode] = useState<Mode>("pages");
   const [busy, setBusy] = useState(false),
@@ -112,10 +120,15 @@ export default function PDFImportDialog({
             "POST",
             { pages },
           );
-          onPages(result.ids[0]);
-        } else onElements(elements);
+          setCreatedPages(true);
+          setImported(result.ids);
+          refreshWorkspacePreview(workspaceId);
+        } else {
+          onElements(elements);
+          setImported([pageId]);
+        }
       }
-      close();
+      if (mode === "viewer") close();
     } catch (err) {
       if (!controller.signal.aborted)
         setError((err as Error).message || "The PDF could not be imported.");
@@ -126,6 +139,59 @@ export default function PDFImportDialog({
         setProgress("");
       }
     }
+  }
+  if (imported) {
+    const finish = () => {
+      close();
+      if (createdPages) onPages(imported[0]);
+    };
+    return (
+      <Modal
+        title="Optimise imported images?"
+        close={() => {
+          if (!busy) finish();
+        }}
+      >
+        <p>
+          Create smaller display versions that fit this layout. Original images
+          are preserved.
+        </p>
+        {progress && <p role="status">{progress}</p>}
+        <ErrorMessage message={error} />
+        <div className="form-actions">
+          <button className="secondary" disabled={busy} onClick={finish}>
+            Not now
+          </button>
+          <button
+            className="primary"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              setError("");
+              void (async () => {
+                try {
+                  if (!createdPages) await saveChanges();
+                  for (const [index, id] of imported.entries()) {
+                    setProgress(
+                      `Optimising page ${index + 1}/${imported.length}…`,
+                    );
+                    await optimisePageImages(id);
+                  }
+                  refreshWorkspacePreview(workspaceId);
+                  finish();
+                } catch (error) {
+                  setError((error as Error).message);
+                } finally {
+                  setBusy(false);
+                }
+              })();
+            }}
+          >
+            {busy ? "Optimising…" : "Optimise images"}
+          </button>
+        </div>
+      </Modal>
+    );
   }
   return (
     <Modal

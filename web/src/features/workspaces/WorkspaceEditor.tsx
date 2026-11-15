@@ -1,3 +1,5 @@
+import { refreshWorkspacePreview } from "./preview";
+import { optimisePageImages } from "./optimiseImages";
 import ExportDialog from "../transfer/ExportDialog";
 import ImportWorkspaceDialog from "./ImportWorkspaceDialog";
 import type { CanvasFullscreen } from "../../useCanvasFullscreen";
@@ -62,6 +64,10 @@ export default function WorkspaceEditor({
       action: (name: string) => Promise<void>;
     }>(),
     [menu, setMenu] = useState<string>();
+  const [optimisation, setOptimisation] = useState<{
+    busy: boolean;
+    message: string;
+  }>();
   const [exporting, setExporting] = useState<{ pageId?: string }>();
   const [focusTarget, setFocusTarget] = useState<ElementLink>();
   const focusHandled = useCallback(() => setFocusTarget(undefined), []);
@@ -89,6 +95,7 @@ export default function WorkspaceEditor({
     const all = await api<Workspace[]>("/workspaces");
     const current = all.find((w) => w.id === workspaceId);
     if (current) setWorkspace(current);
+    refreshWorkspacePreview(workspaceId);
   }, [workspaceId]);
   useEffect(() => {
     const openSessions = sessions.current;
@@ -110,7 +117,9 @@ export default function WorkspaceEditor({
       sessions.current.has(pageId)
     )
       return;
-    const s = new PageSession(pageId, api, onAuthenticationRequired);
+    const s = new PageSession(pageId, api, onAuthenticationRequired, () =>
+      refreshWorkspacePreview(workspaceId),
+    );
     sessions.current.set(pageId, s);
     unsubscribers.current.set(
       pageId,
@@ -121,7 +130,7 @@ export default function WorkspaceEditor({
     );
     void s.open();
     render((n) => n + 1);
-  }, [pageId, pages, dirtyChanged, onAuthenticationRequired]);
+  }, [pageId, pages, dirtyChanged, onAuthenticationRequired, workspaceId]);
   useEffect(() => {
     for (const session of sessions.current.values()) void session.sync();
     if (serverEvent.type === "workspace" || serverEvent.type === "connected")
@@ -417,6 +426,39 @@ export default function WorkspaceEditor({
                         Export page
                       </button>
                       <button
+                        disabled={!canWrite || optimisation?.busy}
+                        onClick={() => {
+                          setMenu(undefined);
+                          setOptimisation({
+                            busy: true,
+                            message: "Creating layout-sized image versions…",
+                          });
+                          void (async () => {
+                            try {
+                              const target = sessions.current.get(p.id);
+                              if (target) await target.savePendingChanges();
+                              const result = await optimisePageImages(
+                                p.id,
+                                target?.camera?.zoom || 1,
+                              );
+                              setOptimisation({
+                                busy: false,
+                                message: `Created ${result.optimised} smaller image versions. Originals are preserved.`,
+                              });
+                              setRefresh((value) => value + 1);
+                              refreshWorkspacePreview(workspaceId);
+                            } catch (error) {
+                              setOptimisation({
+                                busy: false,
+                                message: (error as Error).message,
+                              });
+                            }
+                          })();
+                        }}
+                      >
+                        Optimise images
+                      </button>
+                      <button
                         disabled={!canWrite}
                         onClick={() => pageAction(p, "rename")}
                       >
@@ -589,6 +631,26 @@ export default function WorkspaceEditor({
             </button>
           )}
         </div>
+      )}
+      {optimisation && (
+        <Modal
+          title="Optimise images"
+          close={() => {
+            if (!optimisation.busy) setOptimisation(undefined);
+          }}
+        >
+          <p role="status">{optimisation.message}</p>
+          {!optimisation.busy && (
+            <div className="form-actions">
+              <button
+                className="primary"
+                onClick={() => setOptimisation(undefined)}
+              >
+                Done
+              </button>
+            </div>
+          )}
+        </Modal>
       )}
       {exporting && (
         <ExportDialog

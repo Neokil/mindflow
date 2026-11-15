@@ -220,7 +220,10 @@ func (a *Service) RunVariant(ctx context.Context) {
 	}
 	preview, err := renderPreview(original.Original, original.Width, original.Height, request.Bucket)
 	if err == nil {
-		err = a.storePreview(ctx, job, request.Bucket, preview)
+		err = a.storePreview(ctx, job.UserID, job.AssetID, request.Bucket, preview)
+	}
+	if err == nil {
+		_, err = a.repository.ImageDeleteJob(ctx, job.ID)
 	}
 	if err == nil {
 		a.publish(job.UserID, "asset", job.AssetID)
@@ -256,26 +259,22 @@ func renderPreview(raw []byte, width, height, bucket int) (Blob, error) {
 	return Blob{Data: buffer.Bytes(), MIME: mime, Width: targetWidth, Height: targetHeight}, nil
 }
 
-func (a *Service) storePreview(ctx context.Context, job storage.ImageDueVariantRow, bucket int, preview Blob) error {
+func (a *Service) storePreview(ctx context.Context, ownerID, assetID string, bucket int, preview Blob) error {
 	transaction, err := a.repository.Begin(ctx)
 	if err != nil {
 		return wrap("begin preview transaction", err)
 	}
 	defer func() { _ = transaction.Rollback() }()
 	queries := a.repository.Within(transaction)
-	exists, err := queries.ImageCountOwnedAsset(ctx, storage.ImageCountOwnedAssetParams{ID: job.AssetID, OwnerID: job.UserID})
+	exists, err := queries.ImageCountOwnedAsset(ctx, storage.ImageCountOwnedAssetParams{ID: assetID, OwnerID: ownerID})
 	if err != nil {
 		return err
 	}
 	if exists == 1 {
-		_, err = queries.ImageCreateVariant(ctx, storage.ImageCreateVariantParams{AssetID: job.AssetID, Bucket: bucket, Mime: preview.MIME, Data: preview.Data, Width: preview.Width, Height: preview.Height})
+		_, err = queries.ImageCreateVariant(ctx, storage.ImageCreateVariantParams{AssetID: assetID, Bucket: bucket, Mime: preview.MIME, Data: preview.Data, Width: preview.Width, Height: preview.Height})
 		if err != nil {
 			return err
 		}
-	}
-	_, err = queries.ImageDeleteJob(ctx, job.ID)
-	if err != nil {
-		return err
 	}
 
 	return wrap("commit preview", transaction.Commit())
@@ -354,9 +353,11 @@ func (a *Service) GetAsset(ctx context.Context, actor session.Principal, resourc
 	var raw []byte
 	var mime string
 	var width, height int
+	immutable := bucket <= 0
 	if bucket > 0 {
 		imageVariantRow, _ := a.repository.ImageImageVariant(ctx, storage.ImageImageVariantParams{ID: resourceID, OwnerID: actor.ID, Bucket: bucket})
 		raw = imageVariantRow.Data
+		immutable = len(raw) > 0
 		mime = imageVariantRow.Mime
 		width = imageVariantRow.Width
 		height = imageVariantRow.Height
@@ -372,7 +373,7 @@ func (a *Service) GetAsset(ctx context.Context, actor session.Principal, resourc
 		}
 	}
 
-	return Blob{Data: raw, MIME: mime, Width: width, Height: height}, nil
+	return Blob{Immutable: immutable, Data: raw, MIME: mime, Width: width, Height: height}, nil
 }
 
 // StoreWithin stores a validated original in the caller's workspace transaction.
@@ -388,3 +389,38 @@ func (a *Service) StoreWithin(ctx context.Context, transaction *storage.Transact
 }
 
 const maxOriginalBytes = 20 << 20
+
+// OptimiseVariant creates an immutable preview at the exact displayed resolution.
+// Originals remain available for subsequent resizing and export.
+func (a *Service) OptimiseVariant(ctx context.Context, userID, resourceID string, width, height float64) (bool, error) {
+	a.mediaMu.Lock()
+	defer a.mediaMu.Unlock()
+	dimensions, err := a.repository.ImageAssetDimensions(ctx, storage.ImageAssetDimensionsParams{ID: resourceID, OwnerID: userID})
+	if err != nil {
+		return false, err
+	}
+	scale := math.Max(width/float64(dimensions.Width), height/float64(dimensions.Height))
+	if scale >= variantScaleThreshold {
+		return false, nil
+	}
+	bucket := max(1, int(math.Ceil(float64(max(dimensions.Width, dimensions.Height))*scale)))
+	count, err := a.repository.ImageCountVariants(ctx, storage.ImageCountVariantsParams{AssetID: resourceID, Bucket: bucket})
+	if err != nil || count > 0 {
+		return false, err
+	}
+	original, err := a.repository.ImageOriginalImage(ctx, storage.ImageOriginalImageParams{ID: resourceID, OwnerID: userID})
+	if err != nil {
+		return false, err
+	}
+	preview, err := renderPreview(original.Original, original.Width, original.Height, bucket)
+	if err != nil {
+		return false, err
+	}
+	err = a.storePreview(ctx, dimensions.OwnerID, resourceID, bucket, preview)
+	if err != nil {
+		return false, err
+	}
+	a.publish(dimensions.OwnerID, "asset", resourceID)
+
+	return true, nil
+}

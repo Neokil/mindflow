@@ -21,6 +21,7 @@ func (a *Service) RegisterHTTP(routes HTTP) {
 	handler := &httpHandler{service: a, routes: routes}
 	routes.Endpoint("GET /api/v1/pages/{id}/document", true, false, handler.getDocument)
 	routes.Endpoint("PUT /api/v1/pages/{id}/document", true, false, handler.saveDocument)
+	routes.Endpoint("POST /api/v1/pages/{id}/optimise-images", true, false, handler.optimiseImages)
 }
 
 func (a *httpHandler) getDocument(_ http.ResponseWriter, r *http.Request) (any, error) {
@@ -35,4 +36,14 @@ func (a *httpHandler) saveDocument(w http.ResponseWriter, request *http.Request)
 	}
 
 	return a.service.SaveDocument(request.Context(), a.routes.CurrentSession(request), request.PathValue("id"), value)
+}
+
+func (a *httpHandler) optimiseImages(writer http.ResponseWriter, request *http.Request) (any, error) {
+	var command OptimiseImagesCommand
+	err := a.routes.Decode(writer, request, &command)
+	if err != nil {
+		return nil, err
+	}
+
+	return a.service.OptimiseImages(request.Context(), a.routes.CurrentSession(request), request.PathValue("id"), command)
 }

@@ -25,7 +25,16 @@ func (a *Service) RegisterHTTP(routes HTTP) {
 }
 
 func (a *handler) get(writer http.ResponseWriter, request *http.Request) (any, error) {
-	content, err := a.service.Get(request.Context(), request.PathValue("id"))
+	var content []byte
+	var err error
+	if version := request.URL.Query().Get("v"); version != "" {
+		content, err = a.service.GetVersioned(request.Context(), request.PathValue("id"), version)
+		if err == nil {
+			writer.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
+		}
+	} else {
+		content, err = a.service.Get(request.Context(), request.PathValue("id"))
+	}
 	if err != nil {
 		return nil, err
 	}

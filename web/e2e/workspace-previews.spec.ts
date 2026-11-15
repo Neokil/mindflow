@@ -1,5 +1,5 @@
 import { expect, test, type Locator } from "@playwright/test";
-import { login } from "./helpers";
+import { login, activate } from "./helpers";
 import { emptyDocument } from "../src/model";
 import type {
   CanvasDocument,
@@ -77,11 +77,32 @@ test("workspace thumbnails follow the first page, saved edits, ordering, and del
     exact: true,
   });
   await expect(
-    card.getByText("Blank first page", { exact: true }),
+    card.getByText("Preview available after opening the workspace"),
   ).toBeVisible();
-  const browserLeases: string[] = [];
+  async function renderSavedPreview() {
+    const stored = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/workspaces/${workspace.id}/preview`) &&
+        response.request().method() === "POST" &&
+        response.ok(),
+    );
+    await page.goto(`/#/workspaces/${workspace.id}/pages/${workspace.pageId}`);
+    await expect(page.getByTestId("canvas")).toBeVisible();
+    await stored;
+    await activate(
+      page,
+      page.getByRole("button", { name: "Back to workspaces", exact: true }),
+    );
+    await expect(card).toBeVisible();
+  }
+  let dashboardDocuments = 0;
   page.on("request", (request) => {
-    if (request.url().endsWith("/lease")) browserLeases.push(request.url());
+    if (
+      new URL(page.url()).pathname === "/" &&
+      !page.url().includes("#/workspaces/") &&
+      request.url().endsWith("/document")
+    )
+      dashboardDocuments++;
   });
   async function save(id: string, color: string, revision = 0) {
     const leaseResponse = await page.request.post(`/api/v1/pages/${id}/lease`, {
@@ -104,6 +125,7 @@ test("workspace thumbnails follow the first page, saved edits, ordering, and del
     expect(response.ok(), await response.text()).toBe(true);
   }
   await save(workspace.pageId, "#ff0000");
+  await renderSavedPreview();
   await expect.poll(() => centerPixel(image)).toEqual([255, 0, 0]);
   await expect(image).toHaveJSProperty("naturalWidth", 512);
   const displayed = (await image.boundingBox())!;
@@ -111,7 +133,9 @@ test("workspace thumbnails follow the first page, saved edits, ordering, and del
   expect(displayed.width).toBeLessThanOrEqual(frame.width);
   expect(displayed.height).toBeLessThanOrEqual(frame.height);
 
-  expect(await image.getAttribute("src")).toMatch(/^blob:/);
+  expect(await image.getAttribute("src")).toContain(
+    `/api/v1/workspaces/${workspace.id}/previews/`,
+  );
   const secondResponse = await page.request.post(
     `/api/v1/workspaces/${workspace.id}/pages`,
     { headers, data: { name: "Second page" } },
@@ -133,8 +157,10 @@ test("workspace thumbnails follow the first page, saved edits, ordering, and del
     },
   );
   expect(reorder.ok()).toBe(true);
+  await renderSavedPreview();
   await expect.poll(() => centerPixel(image)).toEqual([0, 0, 255]);
   await save(second.id, "#00ff00", 1);
+  await renderSavedPreview();
   await expect.poll(() => centerPixel(image)).toEqual([0, 255, 0]);
   await page.screenshot({
     path: `../.cache/e2e/workspace-previews-${info.project.name}.png`,
@@ -152,12 +178,13 @@ test("workspace thumbnails follow the first page, saved edits, ordering, and del
     });
     expect(removed.ok()).toBe(true);
     if (id === second.id) {
+      await renderSavedPreview();
       await expect.poll(() => centerPixel(image)).toEqual([255, 0, 0]);
       await expect(card.locator(".workspace-page-count")).toHaveCount(0);
     }
   }
   await expect(card.getByText("No pages", { exact: true })).toBeVisible();
   await expect(image).toHaveCount(0);
-  expect(browserLeases).toEqual([]);
+  expect(dashboardDocuments).toBe(0);
   expect(await card.locator(".preview-stack").count()).toBe(0);
 });

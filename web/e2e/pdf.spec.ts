@@ -30,6 +30,12 @@ test("imports PDF images onto this canvas, separate pages, and a retained viewer
     await expect(
       page.getByRole("dialog", { name: "Import PDF", exact: true }),
     ).toHaveCount(0, { timeout: 30000 });
+    if (mode !== "viewer") {
+      await activate(
+        page,
+        page.getByRole("button", { name: "Not now", exact: true }),
+      );
+    }
   };
   await choose("current");
   await expect(page.getByTestId("element-count")).toHaveText("2 elements");
