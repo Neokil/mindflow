@@ -249,7 +249,9 @@ test("image placement, independent resize handles, rotation, and variants", asyn
     .toBeGreaterThan(0);
   const response = await page.request.get(`/api/v1/assets/${before.assetId}`);
   expect(response.ok()).toBe(true);
-  expect(response.headers()["cache-control"]).toBe("no-store");
+  expect(response.headers()["cache-control"]).toBe(
+    "private, max-age=31536000, immutable",
+  );
   expect(await response.body()).toEqual(Buffer.from(encoded, "base64"));
   await page.evaluate((data) => {
     const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));

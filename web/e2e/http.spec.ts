@@ -28,13 +28,26 @@ test("opens, edits and reopens a workspace over insecure HTTP", async ({
   await page.mouse.click(canvas.x + 450, canvas.y + 300);
   await expect(page.getByTestId("element-count")).toHaveText("1 element");
   await expect(page.getByTestId("save-status")).toHaveText("Saved");
+  await expect
+    .poll(async () => {
+      const state = await page.evaluate(async () => {
+        const workspaceId = location.hash
+          .split("/workspaces/")[1]
+          .split("/")[0];
+        return (
+          await fetch(`/api/v1/workspaces/${workspaceId}/preview`)
+        ).json();
+      });
+      return state.needed;
+    })
+    .toBe(false);
   // A thumbnail may finish loading between pressing and releasing its button.
   // Keep that timing deterministic: the control must still receive the click.
   let releasePreview!: () => void;
   const pendingPreview = new Promise<void>((resolve) => {
     releasePreview = resolve;
   });
-  await page.route("**/api/v1/pages/*/document", async (route) => {
+  await page.route("**/api/v1/workspaces/*/previews/*", async (route) => {
     await pendingPreview;
     await route.continue();
   });
@@ -46,12 +59,13 @@ test("opens, edits and reopens a workspace over insecure HTTP", async ({
       name: `Open ${name}`,
       exact: true,
     });
-    const loading = preview.getByText("Loading preview…", { exact: true });
-    await expect(loading).toBeVisible();
+    const thumbnail = preview.getByRole("img");
+    await expect(thumbnail).toBeAttached();
+    await expect(thumbnail).toHaveJSProperty("naturalWidth", 0);
     await preview.hover();
     await page.mouse.down();
     releasePreview();
-    await expect(preview.getByRole("img")).toBeVisible();
+    await expect(thumbnail).toHaveJSProperty("naturalWidth", 512);
     await page.mouse.up();
     await expect(page.getByTestId("element-count")).toHaveText("1 element");
   } finally {
