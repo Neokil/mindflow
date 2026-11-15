@@ -1,4 +1,4 @@
-import type { CDPSession, Page } from "@playwright/test";
+import type { CDPSession, Locator, Page } from "@playwright/test";
 type Contact = { id: number; x: number; y: number };
 
 // Chromium exercises trusted browser touch/pen input. WebKit lacks a multi-touch
@@ -39,6 +39,21 @@ export class TabletInput {
         })),
       });
     } else await this.dispatch(kind, contact, "touch", active);
+  }
+  async tap(target: Locator) {
+    if (!this.cdp) {
+      await target.tap();
+      return;
+    }
+    // Use the same virtual touchscreen as canvas gestures. Mixing CDP sessions
+    // can suppress compatibility clicks after a prevented canvas touch event.
+    await target.tap({ trial: true });
+    const box = await target.boundingBox();
+    if (!box) throw new Error("Touch target has no visible bounds");
+    const x = box.x + box.width / 2,
+      y = box.y + box.height / 2;
+    await this.touch("down", 1, x, y);
+    await this.touch("up", 1, x, y);
   }
   async pen(
     kind: "down" | "move" | "up" | "cancel",

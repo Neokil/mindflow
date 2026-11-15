@@ -258,33 +258,39 @@ test("image upload, object properties and comments work without a mouse", async 
       }),
     )
     .toBe(true);
-  await properties.tap();
+  await input.tap(properties);
   await expect(
     page.getByLabel("Object properties", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Close settings", exact: true }).tap();
-  await page.getByRole("button", { name: "Add comment", exact: true }).tap();
+  await input.tap(
+    page.getByRole("button", { name: "Close settings", exact: true }),
+  );
+  await input.tap(
+    page.getByRole("button", { name: "Add comment", exact: true }),
+  );
   const p = point(500, 500);
   await input.touch("down", 1, p.x, p.y);
   await input.touch("up", 1, p.x, p.y);
   await page
     .getByLabel("Comment text", { exact: true })
     .fill("A tablet comment");
-  await page.getByRole("button", { name: "Post comment", exact: true }).tap();
+  await input.tap(
+    page.getByRole("button", { name: "Post comment", exact: true }),
+  );
   const author = await (await page.request.get("/api/v1/auth/me")).json();
-  await page
-    .getByRole("button", {
+  await input.tap(
+    page.getByRole("button", {
       name: `Comment by ${author.user.displayName}`,
       exact: true,
-    })
-    .tap();
+    }),
+  );
   await expect(
     page.getByText("A tablet comment", { exact: true }),
   ).toBeVisible();
   await page
     .getByLabel("Reply to comment", { exact: true })
     .fill("And a reply");
-  await page.getByRole("button", { name: "Reply", exact: true }).tap();
+  await input.tap(page.getByRole("button", { name: "Reply", exact: true }));
   await expect(page.getByText("And a reply", { exact: true })).toBeVisible();
 });
 
