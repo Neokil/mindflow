@@ -8,14 +8,16 @@ import (
 	"encoding/hex"
 	"mindflow/internal/account"
 	"mindflow/internal/account/storage"
+	"mindflow/internal/email"
 	"mindflow/internal/mindflow/storage/transaction"
+	"mindflow/internal/release"
 	"net/http"
 	"strings"
 )
 
 // Mail queues notices and cancels release messages when consent is withdrawn.
 type Mail interface {
-	QueueWithin(ctx context.Context, transactionValue *transaction.Transaction, userID, purpose, to, subject, body, tokenHash string) error
+	QueueProductUpdateWithin(ctx context.Context, transactionValue *transaction.Transaction, userID, to string, notice email.ProductUpdate) error
 	CancelUpdatesWithin(ctx context.Context, transactionValue *transaction.Transaction, userID string) error
 }
 
@@ -37,7 +39,7 @@ func NewService(repository *storage.Repository, mail Mail, configuration Configu
 }
 
 // NotifyWithin queues release mail for active subscribers in the upgrade transaction.
-func (a *Service) NotifyWithin(ctx context.Context, transactionValue *transaction.Transaction, version string) error {
+func (a *Service) NotifyWithin(ctx context.Context, transactionValue *transaction.Transaction, version, notes string) error {
 	address, err := a.configuration.PublicAddressWithin(ctx, transactionValue)
 	if err != nil {
 		return err
@@ -53,8 +55,8 @@ func (a *Service) NotifyWithin(ctx context.Context, transactionValue *transactio
 		if err != nil {
 			return err
 		}
-		body := "A new version of mindflow is ready: " + version + ".\n\nOpen mindflow\t" + address + "/\nView patchnotes on GitHub\thttps://github.com/Neokil/mindflow/releases/tag/" + version + "\nUnsubscribe from product updates\t" + address + "/api/v1/auth/product-updates/unsubscribe?token=" + token
-		err = a.mail.QueueWithin(ctx, transactionValue, user.ID, "release-"+version, user.Email, "mindflow "+version+" is available", body, "")
+		notice := email.ProductUpdate{Version: version, Changelog: notes, ApplicationURL: address + "/", ReleaseURL: release.NotesURL(version), UnsubscribeURL: address + "/api/v1/auth/product-updates/unsubscribe?token=" + token}
+		err = a.mail.QueueProductUpdateWithin(ctx, transactionValue, user.ID, user.Email, notice)
 		if err != nil {
 			return err
 		}

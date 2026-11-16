@@ -18,7 +18,7 @@ const htmlMIME = "text/html"
 func TestMessageContainsEscapedHTMLAndClickableLinks(t *testing.T) {
 	t.Parallel()
 	const link = "https://mindflow.example/#accept-invite/secret?mode=setup&next=home"
-	value, err := email.FormatMessage(email.Config{From: "mindflow@example.com", Name: "mindflow"}, "reader@example.com", "You're invited to mindflow", "You're invited to mindflow\n\nHello <script>alert(1)</script>\n\n"+link)
+	value, err := email.FormatMessage(email.Config{From: testSender, Name: testBrand}, testReader, "You're invited to mindflow", "You're invited to mindflow\n\nHello <script>alert(1)</script>\n\n"+link)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestLabeledWelcomeLinksAreEscapedAndDistinct(t *testing.T) {
 	const application = "https://mindflow.example/"
 	const releases = "https://github.com/Neokil/mindflow/releases"
 	const issues = "https://github.com/Neokil/mindflow/issues"
-	value, err := email.FormatMessage(email.Config{From: "mindflow@example.com", Name: "mindflow"}, "friend@example.com", "Welcome <Simon>!", "Learn how to use mindflow\thttps://github.com/Neokil/mindflow/wiki/user-docs-using-mindflow\nOpen mindflow\t"+application+"\nView patchnotes on GitHub\t"+releases+"\nReport an error or request a feature on GitHub\t"+issues)
+	value, err := email.FormatMessage(email.Config{From: testSender, Name: testBrand}, "friend@example.com", "Welcome <Simon>!", "Learn how to use mindflow\thttps://github.com/Neokil/mindflow/wiki/user-docs-using-mindflow\nOpen mindflow\t"+application+"\nView patchnotes on GitHub\t"+releases+"\nReport an error or request a feature on GitHub\t"+issues)
 	if err != nil {
 		t.Fatal(err)
 	}

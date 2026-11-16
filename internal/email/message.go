@@ -29,12 +29,19 @@ type messageLine struct {
 
 const contentTypeHeader = "Content-Type"
 
-const messageHTML = `<!doctype html><html><body style="margin:0;background:#f5f5f7;color:#1d1d1f;font-family:Arial,sans-serif"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 16px"><table role="presentation" width="560" style="width:100%;max-width:560px;background:#fff;border-radius:20px" cellpadding="32"><tr><td><table role="presentation"><tr><td><img src="cid:mindflow-icon" width="36" height="36" alt="" /></td><td style="padding-left:10px;color:#1b5e3b;font-size:24px;font-weight:bold">mindflow<span style="color:#4caf50">.</span></td><td valign="middle" style="padding-left:20px;vertical-align:middle"><a href="https://github.com/Neokil/mindflow" aria-label="mindflow on GitHub" style="display:inline-block;line-height:0"><img src="cid:github-icon" width="20" height="20" alt="GitHub" style="display:block;border:0" /></a></td></tr></table><h1 style="font-size:24px">{{.Subject}}</h1>{{range .Lines}}{{if .Link}}<p style="padding:12px 0"><a href="{{.Link}}" style="background:#1b5e3b;color:#fff;border-radius:10px;padding:14px 20px;display:inline-block;text-decoration:none">{{if .Label}}{{.Label}}{{else}}{{$.Action}}{{end}}</a></p>{{if not .Label}}<p style="font-size:12px;overflow-wrap:anywhere"><a href="{{.Link}}" style="color:#1b5e3b">{{.Link}}</a></p>{{end}}{{else}}<p style="line-height:1.6">{{.Text}}</p>{{end}}{{end}}<hr style="border:0;border-top:1px solid #eee;margin-top:32px"><p style="font-size:12px;color:#6e6e73">Your place for thoughts.</p></td></tr></table></td></tr></table></body></html>`
+//go:embed assets/message.html
+var messageHTML string
+
+type messageView struct {
+	Subject   string
+	Lines     []messageLine
+	Action    string
+	Update    *ProductUpdate
+	Changelog template.HTML
+}
 
 // FormatMessage builds escaped HTML and plain text alternatives for delivery.
 func FormatMessage(config Config, recipient, subject, body string) (string, error) {
-	var content bytes.Buffer
-	alternative := multipart.NewWriter(&content)
 	var html bytes.Buffer
 	lines := make([]messageLine, 0, strings.Count(body, "\n")+1)
 	for line := range strings.SplitSeq(body, "\n") {
@@ -62,15 +69,19 @@ func FormatMessage(config Config, recipient, subject, body string) (string, erro
 	if strings.Contains(body, "/#reset-password/") {
 		action = "Reset password"
 	}
-	err := messageTemplate.Execute(&html, struct {
-		Subject string
-		Lines   []messageLine
-		Action  string
-	}{subject, lines, action})
+	err := messageTemplate.Execute(&html, messageView{Subject: subject, Lines: lines, Action: action})
 	if err != nil {
 		return "", wrap("render email", err)
 	}
-	for _, part := range []struct{ kind, text string }{{"text/plain", body}, {"text/html", html.String()}} {
+
+	return formatAlternatives(config, recipient, subject, body, html.String())
+}
+
+func formatAlternatives(config Config, recipient, subject, body, html string) (string, error) {
+	var content bytes.Buffer
+	alternative := multipart.NewWriter(&content)
+
+	for _, part := range []struct{ kind, text string }{{"text/plain", body}, {"text/html", html}} {
 		headers := textproto.MIMEHeader{contentTypeHeader: {part.kind + "; charset=UTF-8"}, "Content-Transfer-Encoding": {"quoted-printable"}}
 		writer, err := alternative.CreatePart(headers)
 		if err != nil {
@@ -86,7 +97,7 @@ func FormatMessage(config Config, recipient, subject, body string) (string, erro
 			return "", wrap("close email part", err)
 		}
 	}
-	err = alternative.Close()
+	err := alternative.Close()
 	if err != nil {
 		return "", wrap("close email", err)
 	}

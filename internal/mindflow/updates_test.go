@@ -56,11 +56,15 @@ func TestReleaseConsentUpgradeDeduplicationAndUnsubscribe(t *testing.T) {
 		t.Fatal(err)
 	}
 	var message struct {
-		Body string `json:"body"`
+		Body   string               `json:"body"`
+		Update *email.ProductUpdate `json:"update"`
 	}
 	err = json.Unmarshal([]byte(raw), &message)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if message.Update == nil || message.Update.Version != "v1.1.0" || message.Update.ReleaseURL != release.NotesURL("v1.1.0") {
+		t.Fatal("release layout content was not queued", message.Update)
 	}
 	_, token, found := strings.Cut(message.Body, "unsubscribe?token=")
 	if !found {

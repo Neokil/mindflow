@@ -48,6 +48,8 @@ jobs:
           tags: |
             type=semver,pattern={{version}},value=${{ github.event.release.tag_name }}
             type=raw,value=latest,enable=${{ !github.event.release.prerelease && !contains(github.event.release.tag_name, '-') }}
+      - name: Bundle the release changelog for update emails
+        run: python3 scripts/embed-release-notes.py --event "$GITHUB_EVENT_PATH" --output internal/release/notes.json
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: .

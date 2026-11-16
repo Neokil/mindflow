@@ -8,3 +8,5 @@ Review the diff, compatibility changes, and [third-party notices](../../THIRD_PA
 
 The password suggester bundles EFF's [Short Wordlist #1](https://www.eff.org/files/2016/09/08/eff_short_wordlist_1.txt), by the Electronic Frontier Foundation, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Dice indices and the single hyphenated entry were removed; two or three words are sampled locally with Web Crypto and random punctuation, resampling whole words until the total length is 10–15 characters. See [EFF's passphrase guidance](https://www.eff.org/dice). Suggestions never call an external service.
 
+
+Product-update email changelogs use `github.com/yuin/goldmark` (MIT). Raw HTML and unsafe links remain disabled; release Markdown is captured at build time rather than fetched by running servers.

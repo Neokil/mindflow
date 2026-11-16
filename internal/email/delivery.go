@@ -26,16 +26,22 @@ type Config struct {
 }
 
 type mailJob struct {
-	UserID    string `json:"userId,omitempty"`
-	Purpose   string `json:"purpose,omitempty"`
-	To        string `json:"to"`
-	Subject   string `json:"subject"`
-	Body      string `json:"body"`
-	TokenHash string `json:"tokenHash"`
+	Update    *ProductUpdate `json:"update,omitempty"`
+	UserID    string         `json:"userId,omitempty"`
+	Purpose   string         `json:"purpose,omitempty"`
+	To        string         `json:"to"`
+	Subject   string         `json:"subject"`
+	Body      string         `json:"body"`
+	TokenHash string         `json:"tokenHash"`
 }
 
 // Send delivers a message using the configured TLS mode.
 func Send(ctx context.Context, config Config, toValue, subject, body string) error {
+	return sendJob(ctx, config, mailJob{To: toValue, Subject: subject, Body: body})
+}
+
+func sendJob(ctx context.Context, config Config, job mailJob) error {
+	toValue, subject, body := job.To, job.Subject, job.Body
 	if config.Mode != "tls" && config.Mode != "starttls" {
 		return errTLSRequired
 	}
@@ -91,7 +97,12 @@ func Send(ctx context.Context, config Config, toValue, subject, body string) err
 	if err != nil {
 		return wrap("mail_worker.go", err)
 	}
-	message, err := FormatMessage(config, toValue, subject, body)
+	var message string
+	if job.Update != nil {
+		message, err = FormatProductUpdate(config, toValue, *job.Update)
+	} else {
+		message, err = FormatMessage(config, toValue, subject, body)
+	}
 	if err != nil {
 		return err
 	}
@@ -134,7 +145,7 @@ func (a *Service) runMail(ctx context.Context) {
 	}
 	s, err := a.configuration.DeliveryConfig(ctx)
 	if err == nil {
-		err = Send(ctx, s, job.To, job.Subject, job.Body)
+		err = sendJob(ctx, s, job)
 	}
 	if err == nil {
 		_ = a.recordDelivery(ctx, resourceID, job)

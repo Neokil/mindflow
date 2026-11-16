@@ -9,7 +9,7 @@ import (
 
 // Subscribers supplies opted-in recipients without exposing account tables.
 type Subscribers interface {
-	NotifyWithin(ctx context.Context, transactionValue *transaction.Transaction, version string) error
+	NotifyWithin(ctx context.Context, transactionValue *transaction.Transaction, version, notes string) error
 }
 
 // Service persists the highest observed release in the same transaction as announcements.
@@ -43,7 +43,7 @@ func (a *Service) Observe(ctx context.Context, version string) error {
 		return nil
 	}
 	if !first {
-		err = a.subscribers.NotifyWithin(ctx, transactionValue, version)
+		err = a.subscribers.NotifyWithin(ctx, transactionValue, version, BundledNotes(version))
 		if err != nil {
 			return err
 		}

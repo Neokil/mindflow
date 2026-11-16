@@ -4,6 +4,7 @@ go 1.26.11
 
 require (
 	github.com/pressly/goose/v3 v3.30.0
+	github.com/yuin/goldmark v1.8.7
 	golang.org/x/crypto v0.59.0
 	golang.org/x/image v0.48.0
 	modernc.org/sqlite v1.62.0
