@@ -5,6 +5,9 @@ import { Ellipse, Image as KImage, Line, Rect, Text } from "react-konva";
 import { api } from "../../api";
 import {
   getAssetMetadata,
+  assetImageURL,
+  peekAssetMetadata,
+  peekAssetImage,
   getDecodedImage,
   invalidateMedia,
 } from "../../media";
@@ -22,7 +25,10 @@ function ImageContent({
   refresh: number;
   loadedImage?: HTMLImageElement;
 }) {
-  const [image, setImage] = useState<HTMLImageElement>();
+  const [loaded, setLoaded] = useState<{
+    assetID: string;
+    image: HTMLImageElement;
+  }>();
   const [failed, setFailed] = useState(false);
   const assetID = e.assetId!;
   const renderWidth = Math.ceil(
@@ -31,6 +37,10 @@ function ImageContent({
   const renderHeight = Math.ceil(
     (e.height / (e.crop?.height || 1)) * zoom * (devicePixelRatio || 1),
   );
+  const cachedImage = loadedImage
+    ? undefined
+    : peekAssetImage(assetID, renderWidth, renderHeight);
+  const image = loaded?.assetID === assetID ? loaded.image : undefined;
   useEffect(() => {
     if (loadedImage) return;
     let canceled = false;
@@ -40,7 +50,7 @@ function ImageContent({
       getDecodedImage(url)
         .then((im) => {
           if (!canceled) {
-            setImage(im);
+            setLoaded({ assetID, image: im });
             setFailed(false);
           }
         })
@@ -61,6 +71,9 @@ function ImageContent({
       };
     }
     if (local) load(local.url);
+    const cachedMetadata = peekAssetMetadata(assetID);
+    if (cachedMetadata && !cachedImage)
+      load(assetImageURL(assetID, cachedMetadata, renderWidth, renderHeight));
     const run = async () => {
       try {
         const meta = await getAssetMetadata(assetID);
@@ -84,15 +97,27 @@ function ImageContent({
         if (!local) setFailed(true);
       }
     };
-    const delay = setTimeout(run, 300);
+    // Initial loads start now. Debounce only resolution upgrades during zoom/resize;
+    // the cached/current image remains visible throughout those background checks.
+    const delay =
+      cachedImage || cachedMetadata ? setTimeout(run, 300) : undefined;
+    if (!delay) void run();
     return () => {
       canceled = true;
       clearTimeout(delay);
       clearTimeout(retry);
     };
     // Re-evaluate image resolution only when the actual display requirement changes.
-  }, [assetID, renderWidth, renderHeight, refresh, e.type, loadedImage]);
-  const displayed = loadedImage || image;
+  }, [
+    assetID,
+    renderWidth,
+    renderHeight,
+    refresh,
+    e.type,
+    loadedImage,
+    cachedImage,
+  ]);
+  const displayed = loadedImage || cachedImage || image;
   return displayed ? (
     <KImage
       image={displayed}
