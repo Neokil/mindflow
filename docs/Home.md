@@ -19,6 +19,7 @@ mindflow is a self-hosted infinite canvas for images, shapes, text, drawing, and
 ## Developer Docs
 
 - [Project structure](developer-docs/architecture.md): domains, frontend components, and application boundaries.
+- [New project standard](developer-docs/project-standard.md): reusable engineering baseline and agent handoff checklist.
 - [Data structures](developer-docs/data-model.md): database ownership, tables, and canvas JSON.
 - [Canvas and synchronization](developer-docs/canvas-and-sync.md): coordinates, saves, editor leases, media, and recovery.
 - [Development workflow](developer-docs/development.md): local setup, changes, tests, CI, and releases.

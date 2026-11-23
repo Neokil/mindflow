@@ -17,6 +17,7 @@
 ### Developer Docs
 
 - [Project structure](developer-docs/architecture.md)
+- [New project standard](developer-docs/project-standard.md)
 - [Data structures](developer-docs/data-model.md)
 - [Canvas and synchronization](developer-docs/canvas-and-sync.md)
 - [Development workflow](developer-docs/development.md)
